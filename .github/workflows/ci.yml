@@ -1,0 +1,127 @@
+# Continuous integration: every check a change must pass before it can be
+# merged, on every pull request and every push to main.
+#
+# The jobs run in parallel, each on a fresh Ubuntu machine. Later Milestone 0
+# work adds two more: integration tests against a real database, and a Docker
+# image build.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: the workflow's token can read the repository and nothing
+# else. No job here writes to GitHub.
+permissions:
+  contents: read
+
+# A new push to the same branch or PR cancels the run it supersedes, so only
+# the latest commit is checked. Runs on main are never cancelled, so every
+# commit that lands there has a complete result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# Actions are pinned to a major version: fixes and security patches arrive
+# automatically, breaking changes do not. Pinning to a full commit SHA is
+# stricter (the publisher cannot re-point it) and worth doing once something
+# like Dependabot keeps the SHAs current.
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          # Caches pip's download cache, keyed on pyproject.toml, so
+          # dependencies download once rather than on every run.
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      # --check reports unformatted files without changing them; running
+      # `ruff format` locally (or the pre-commit hook) fixes them.
+      - run: ruff format --check .
+
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      # Strict mode and the package list come from [tool.mypy] in
+      # pyproject.toml, so CI and local runs check exactly the same thing.
+      - run: mypy
+
+  unit:
+    name: Unit tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      # Unit tests only: fast, no Docker, no network, model calls mocked.
+      # Tests that need a real database carry the `integration` marker and
+      # run in their own job.
+      - run: pytest -m "not integration"
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Keep in step with the gitleaks hook in .pre-commit-config.yaml, so a
+      # commit that passes locally is judged by the same rules here.
+      GITLEAKS_VERSION: '8.30.0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The whole history, not just the latest commit: a secret that was
+          # added and later deleted is still readable in the repository.
+          fetch-depth: 0
+      # The gitleaks CLI directly, rather than gitleaks-action: the CLI is
+      # MIT-licensed and needs no token, while the action posts PR comments
+      # (which a read-only token cannot do). The download is checked against
+      # the release's published checksums before it runs.
+      - name: Install gitleaks
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfLO "${base}/${tarball}"
+          curl -sSfL "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" | grep " ${tarball}\$" | sha256sum --check
+          tar -xzf "${tarball}" gitleaks
+      # --redact keeps any secret it finds out of the (public) job log.
+      - run: ./gitleaks git --redact --verbose
+
+  dependencies:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      # Checks every installed package against known vulnerabilities (the
+      # PyPI advisory database). --skip-editable leaves out this project
+      # itself, which is not published anywhere to look up.
+      - run: pip-audit --skip-editable

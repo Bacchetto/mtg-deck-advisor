@@ -13,9 +13,12 @@ dependencies = [
 dev = [
     "pytest>=8.2",
     "pytest-cov>=5.0",
-    "ruff>=0.6",
+    # Exact pin, matching the ruff hook in .pre-commit-config.yaml: formatter
+    # output can change between versions, and CI must agree with the hook.
+    "ruff==0.16.9",
     "mypy>=1.11",
     "pre-commit>=3.8",
+    "pip-audit>=2.7",
 ]
 
 [build-system]
