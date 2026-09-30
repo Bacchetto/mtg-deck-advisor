@@ -1,0 +1,11 @@
+# An allowlist: nothing goes into the build context unless named here. It is
+# safer than listing what to exclude: a new secret file (.env, a credentials
+# JSON) can never slip into an image by being forgotten here.
+*
+!pyproject.toml
+!README.md
+!src/
+
+# Local artefacts that can appear inside src/.
+**/__pycache__
+**/*.py[cod]

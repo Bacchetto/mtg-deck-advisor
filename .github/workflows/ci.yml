@@ -1,8 +1,7 @@
 # Continuous integration: every check a change must pass before it can be
 # merged, on every pull request and every push to main.
 #
-# The jobs run in parallel, each on a fresh Ubuntu machine. A Docker image
-# build joins them later in Milestone 0.
+# The jobs run in parallel, each on a fresh Ubuntu machine.
 name: CI
 
 on:
@@ -97,6 +96,37 @@ jobs:
       # provide. No database service is declared here: the tests manage
       # their own, exactly as they do on a developer's machine.
       - run: pytest -m integration
+
+  docker:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # BuildKit, which the Dockerfile's `RUN --mount=type=cache` needs.
+      - uses: docker/setup-buildx-action@v4
+
+      # Builds the image to prove it builds; nothing is pushed. type=gha keeps
+      # the image's layers in GitHub's cache between runs, so an unchanged
+      # dependency layer is not rebuilt. load: true makes the image available
+      # to the next step.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mtg-deck-advisor:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A smoke test of the built image: both entry points import, as the
+      # unprivileged user the image runs as. It catches a runtime dependency
+      # missing from the image, which no test outside the image would notice.
+      - name: Smoke test the image
+        run: |
+          docker run --rm mtg-deck-advisor:ci python -c "import mtg_deck_advisor.api.app, mtg_deck_advisor.db.migrate"
+          test "$(docker run --rm mtg-deck-advisor:ci id -un)" = app
 
   secrets:
     name: Secret scan (gitleaks)
