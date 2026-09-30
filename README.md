@@ -65,7 +65,15 @@ pip install -e ".[dev]"
 pre-commit install          # secret scanning + ruff on every commit
 cp .env.example .env
 
+docker compose up -d --wait              # Postgres 16 + pgvector on 127.0.0.1:5432
+python -m mtg_deck_advisor.db.migrate    # apply database migrations
+
 ruff check . && ruff format --check .
 mypy
-pytest
+pytest -m "not integration"   # unit tests: fast, no Docker
+pytest -m integration         # integration tests: start their own pgvector container
 ```
+
+Integration tests need a running Docker engine (on Windows, Rancher Desktop with the
+dockerd engine works). They start and remove their own database container, independent
+of the Compose one.

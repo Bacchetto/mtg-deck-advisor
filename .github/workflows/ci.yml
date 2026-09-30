@@ -1,9 +1,8 @@
 # Continuous integration: every check a change must pass before it can be
 # merged, on every pull request and every push to main.
 #
-# The jobs run in parallel, each on a fresh Ubuntu machine. Later Milestone 0
-# work adds two more: integration tests against a real database, and a Docker
-# image build.
+# The jobs run in parallel, each on a fresh Ubuntu machine. A Docker image
+# build joins them later in Milestone 0.
 name: CI
 
 on:
@@ -80,6 +79,24 @@ jobs:
       # Tests that need a real database carry the `integration` marker and
       # run in their own job.
       - run: pytest -m "not integration"
+
+  integration:
+    name: Integration tests (pytest + Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e ".[dev]"
+      # Tests under tests/integration/ start a real pgvector container through
+      # testcontainers, using the Docker engine GitHub's Ubuntu runners
+      # provide. No database service is declared here: the tests manage
+      # their own, exactly as they do on a developer's machine.
+      - run: pytest -m integration
 
   secrets:
     name: Secret scan (gitleaks)

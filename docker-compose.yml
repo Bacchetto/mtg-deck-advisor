@@ -1,0 +1,48 @@
+# Local development stack.
+#
+#   docker compose up -d           start the database
+#   docker compose ps              db should show "healthy"
+#   docker compose down            stop it; data survives in the volume
+#   docker compose down -v         stop it and delete all data
+#
+# Then apply migrations from the host:
+#   python -m mtg_deck_advisor.db.migrate
+#
+# Values come from .env in this directory, which Compose reads automatically,
+# falling back to the defaults below. The defaults match DATABASE_URL in
+# .env.example, so a fresh clone works with `cp .env.example .env` and nothing
+# else.
+#
+# No bind mounts anywhere in this file: the repository lives on a network
+# drive, and Rancher Desktop refuses to mount from it. Anything a container
+# needs is built into its image instead.
+
+name: mtg-deck-advisor
+
+services:
+  db:
+    # PostgreSQL 16 with the pgvector extension available. Pinned to an exact
+    # pgvector release and Debian base, and kept in step with PGVECTOR_IMAGE in
+    # tests/integration/conftest.py, so local runs and tests use one database.
+    image: pgvector/pgvector:0.8.6-pg16-trixie
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mtg_deck_advisor}
+      POSTGRES_USER: ${POSTGRES_USER:-mtg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mtg}
+    ports:
+      # Published on localhost only. Binding to all interfaces would expose a
+      # database with a development password to the whole network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # $$ passes a literal $ through to the container, so these are the
+      # container's own variables rather than ones Compose substitutes.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  # Named, so data outlives the container: `down` keeps it, `down -v` removes it.
+  pgdata:
