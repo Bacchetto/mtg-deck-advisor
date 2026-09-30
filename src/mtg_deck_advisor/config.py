@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "json"
     environment: Literal["development", "test", "production"] = "development"
 
+    # Where the API listens. Localhost by default, so a development server is
+    # never reachable from the network by accident; the container image sets
+    # 0.0.0.0, and Docker's port mapping decides what is exposed.
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+
 
 @lru_cache
 def get_settings() -> Settings:
