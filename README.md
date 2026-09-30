@@ -67,6 +67,7 @@ cp .env.example .env
 
 docker compose up -d --wait              # Postgres 16 + pgvector on 127.0.0.1:5432
 python -m mtg_deck_advisor.db.migrate    # apply database migrations
+python -m mtg_deck_advisor.api           # API on http://127.0.0.1:8000 (docs at /docs)
 
 ruff check . && ruff format --check .
 mypy

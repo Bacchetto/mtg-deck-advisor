@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import structlog
+import uvicorn
 
 from mtg_deck_advisor.api import __main__ as serve_module
 from mtg_deck_advisor.config import Settings
@@ -23,7 +24,7 @@ def test_serve_leaves_logging_to_the_app_and_listens_where_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict[str, Any]] = []
-    monkeypatch.setattr(serve_module.uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
     settings = Settings(
         _env_file=None,
         database_url="postgresql://x:y@127.0.0.1/db",
@@ -48,7 +49,7 @@ def test_uvicorn_lines_are_json_once_serve_has_configured_logging(
     def fake_run(*_args: Any, **_kwargs: Any) -> None:
         logging.getLogger("uvicorn.error").info("Started server process")
 
-    monkeypatch.setattr(serve_module.uvicorn, "run", fake_run)
+    monkeypatch.setattr(uvicorn, "run", fake_run)
     settings = Settings(
         _env_file=None, database_url="postgresql://x:y@127.0.0.1/db", log_format="json"
     )

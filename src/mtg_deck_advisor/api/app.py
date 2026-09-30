@@ -1,12 +1,8 @@
 """The HTTP API (ENG-5). OpenAPI documentation is served at /docs.
 
-Run it with uvicorn's factory mode, so settings are read when the server
-starts rather than when the module is imported:
-
-    uvicorn mtg_deck_advisor.api.app:create_app --factory --no-access-log
-
-The access log is off because TraceMiddleware logs every request itself,
-with its trace ID.
+Run it with `python -m mtg_deck_advisor.api` (see `__main__.py`), which sets
+up logging before the server starts. create_app is a factory, so settings are
+read when the server starts rather than when this module is imported.
 """
 
 from collections.abc import AsyncIterator
