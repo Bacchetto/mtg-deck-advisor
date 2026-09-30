@@ -1,0 +1,79 @@
+# --- Secrets (SEC-1) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials*.json
+service-account*.json
+
+# --- Personal notes (deliberately untracked) ---
+INTERVIEW-NOTES.md
+WORKING-AGREEMENT.md
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+pip-wheel-metadata/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Tooling caches ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+pytest-cache-files-*/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Local data, API caches, model files ---
+data/*
+!data/.gitkeep
+.cache/
+*.sqlite
+*.sqlite3
+*.db
+*.gguf
+*.safetensors
+
+# --- Eval run output (keep curated datasets; timestamped reports are committed deliberately) ---
+evals/runs/
+
+# --- Logs / traces ---
+logs/
+*.log
+
+# --- Docker / infra ---
+docker-compose.override.yml
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+
+# --- Editors / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

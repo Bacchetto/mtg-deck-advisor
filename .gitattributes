@@ -1,0 +1,27 @@
+# Normalise line endings in the repository to LF.
+# This machine has core.autocrlf=true, which would otherwise give scripts
+# CRLF endings in the working tree. The Docker build copies from the working
+# tree into a Linux image, where a CRLF shebang fails with
+# "bad interpreter: No such file or directory" -- so anything executed
+# inside Linux containers or CI runners is pinned to LF explicitly rather
+# than left to autocrlf.
+* text=auto
+
+# Must be LF: executed inside Linux containers and CI runners.
+*.sh           text eol=lf
+*.py           text eol=lf
+Dockerfile     text eol=lf
+*.Dockerfile   text eol=lf
+
+# Must be CRLF: only ever run by Windows shells.
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=crlf
+
+# Never munge these.
+*.png          binary
+*.jpg          binary
+*.ico          binary
+*.gif          binary
+*.pdf          binary
+*.parquet      binary
