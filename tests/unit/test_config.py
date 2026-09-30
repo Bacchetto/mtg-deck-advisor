@@ -16,7 +16,7 @@ def clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def load() -> Settings:
     # _env_file=None: read the process environment only, never a developer's .env.
-    return Settings(_env_file=None)  # type: ignore[call-arg]
+    return Settings(_env_file=None)
 
 
 def test_loads_values_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -49,7 +49,8 @@ known-first-party = ["mtg_deck_advisor"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
-packages = ["mtg_deck_advisor"]
+# Tests too: typed tests catch misused fixtures and stale type: ignores.
+files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
