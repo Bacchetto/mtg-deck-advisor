@@ -53,7 +53,7 @@ def test_concurrent_tasks_each_see_only_their_own_trace_id() -> None:
             return trace_id, current_trace_id()
 
     async def main() -> list[tuple[str, str | None]]:
-        return await asyncio.gather(handle_request(), handle_request())
+        return list(await asyncio.gather(handle_request(), handle_request()))
 
     results = asyncio.run(main())
 
