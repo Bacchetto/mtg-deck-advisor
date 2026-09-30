@@ -6,6 +6,11 @@ guardrails with human approval, and an evaluation suite that gates CI.
 
 > Status: early scaffolding.
 
+The first version builds a legal Commander deck from the cards a user owns: submit a card
+pool and a commander, get a cited draft, then refine it by approving or rejecting the
+agent's proposed changes. See [docs/project-plan.md](docs/project-plan.md) for the product,
+architecture, and milestones.
+
 ## Goals
 
 The full requirements, with IDs and acceptance criteria, are in
