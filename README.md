@@ -56,6 +56,24 @@ scripts/            seed and utility scripts
 docs/               design notes
 ```
 
+## Running it
+
+The whole stack (database, migrations, API) with Docker Compose:
+
+```bash
+cp .env.example .env
+docker compose up -d --build --wait
+```
+
+Then, while it's running:
+
+- http://127.0.0.1:8000/health: `{"status": "ok", "database": "ok"}`
+- http://127.0.0.1:8000/docs: interactive API documentation (Swagger UI), generated
+  from the code and served by the running API
+
+`docker compose down` stops everything. `docker compose down -v` also deletes the data.
+The application image is 273 MB.
+
 ## Development
 
 ```bash
@@ -65,15 +83,20 @@ pip install -e ".[dev]"
 pre-commit install          # secret scanning + ruff on every commit
 cp .env.example .env
 
-docker compose up -d --wait              # Postgres 16 + pgvector on 127.0.0.1:5432
+docker compose up -d --wait db           # just the database: Postgres 16 + pgvector
 python -m mtg_deck_advisor.db.migrate    # apply database migrations
-python -m mtg_deck_advisor.api           # API on http://127.0.0.1:8000 (docs at /docs)
+python -m mtg_deck_advisor.api           # API on http://127.0.0.1:8000
 
 ruff check . && ruff format --check .
 mypy
 pytest -m "not integration"   # unit tests: fast, no Docker
 pytest -m integration         # integration tests: start their own pgvector container
 ```
+
+The API container and a host-run API both use port 8000, so run one or the other. Code
+is built into the image rather than mounted (see
+[ADR 0004](docs/decisions/0004-local-tooling-on-a-network-drive.md)), so after a change
+to the source, `docker compose up -d --build` picks it up.
 
 Integration tests need a running Docker engine (on Windows, Rancher Desktop with the
 dockerd engine works). They start and remove their own database container, independent

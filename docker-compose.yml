@@ -1,21 +1,27 @@
-# Local development stack.
+# Local stack: the database, a one-shot migration step, and the API.
 #
-#   docker compose up -d           start the database
-#   docker compose ps              db should show "healthy"
-#   docker compose down            stop it; data survives in the volume
-#   docker compose down -v         stop it and delete all data
+#   docker compose up -d --build   build the image, then start everything:
+#                                  db, then migrate (runs and exits), then app
+#   docker compose ps -a           db and app "healthy"; migrate "Exited (0)"
+#   docker compose up -d db        just the database, for running the API on
+#                                  the host instead (python -m mtg_deck_advisor.api)
+#   docker compose down            stop everything; data survives in the volume
+#   docker compose down -v         stop everything and delete all data
 #
-# Then apply migrations from the host:
-#   python -m mtg_deck_advisor.db.migrate
+#   API:           http://127.0.0.1:8000/health
+#   API docs:      http://127.0.0.1:8000/docs   (served by the running API)
+#
+# The API container and a host-run API both use port 8000, so run one or the
+# other. After editing the source, rebuild with `--build`: the code is built
+# into the image, never mounted.
 #
 # Values come from .env in this directory, which Compose reads automatically,
-# falling back to the defaults below. The defaults match DATABASE_URL in
-# .env.example, so a fresh clone works with `cp .env.example .env` and nothing
-# else.
+# falling back to the defaults below. The defaults match .env.example, so a
+# fresh clone works with `cp .env.example .env` and nothing else.
 #
 # No bind mounts anywhere in this file: the repository lives on a network
-# drive, and Rancher Desktop refuses to mount from it. Anything a container
-# needs is built into its image instead.
+# drive, and Rancher Desktop refuses to mount from it (ADR 0004). Anything a
+# container needs is built into its image instead.
 
 name: mtg-deck-advisor
 
@@ -42,6 +48,42 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  migrate:
+    # The app image, running the migration command instead of the server, then
+    # exiting. Migrations are a separate step so the app never migrates on
+    # startup (ADR 0003).
+    build: .
+    image: mtg-deck-advisor:local
+    command: ["python", "-m", "mtg_deck_advisor.db.migrate"]
+    environment: &app-environment
+      # Inside the Compose network the database is the `db` service, not
+      # 127.0.0.1. The credentials are the same ones db was created with.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mtg}:${POSTGRES_PASSWORD:-mtg}@db:5432/${POSTGRES_DB:-mtg_deck_advisor}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: development
+    depends_on:
+      db:
+        # Wait for Postgres to accept connections, not merely to start.
+        condition: service_healthy
+    # The image's HEALTHCHECK probes the API, which this container never runs.
+    healthcheck:
+      disable: true
+
+  app:
+    build: .
+    image: mtg-deck-advisor:local
+    environment: *app-environment
+    ports:
+      # Localhost only, like the database.
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        # Start only once migrations have run and exited cleanly. A failed
+        # migration keeps the app down rather than serving an old schema.
+        condition: service_completed_successfully
 
 volumes:
   # Named, so data outlives the container: `down` keeps it, `down -v` removes it.
