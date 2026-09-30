@@ -3,7 +3,7 @@ from collections.abc import Iterator
 
 import psycopg
 import pytest
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 from mtg_deck_advisor.config import Settings
 

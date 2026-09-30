@@ -8,6 +8,10 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "structlog>=26.1",
+    # "binary" ships libpq inside the wheel, so no system Postgres client is needed.
+    "psycopg[binary]>=3.3",
+    "alembic>=1.20",
+    "sqlalchemy>=2.1",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +24,7 @@ dev = [
     "mypy>=1.11",
     "pre-commit>=3.8",
     "pip-audit>=2.7",
+    "testcontainers[postgres]>=4.15",
 ]
 
 [build-system]
