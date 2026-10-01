@@ -50,6 +50,8 @@ TRANSFORM: dict[str, Any] = {
             "type_line": "Creature — Human Wizard",
             "oracle_text": "At the beginning of your upkeep, look at the top card of your library.",
             "colors": ["U"],
+            "power": "1",
+            "toughness": "1",
         },
         {
             "name": "Insectile Aberration",
@@ -57,6 +59,8 @@ TRANSFORM: dict[str, Any] = {
             "type_line": "Creature — Human Insect",
             "oracle_text": "Flying",
             "colors": ["U"],
+            "power": "3",
+            "toughness": "2",
         },
     ],
 }
@@ -72,6 +76,8 @@ ADVENTURE: dict[str, Any] = {
     "colors": ["R"],
     "color_identity": ["R"],
     "keywords": [],
+    "power": "4",
+    "toughness": "3",
     "legalities": {"commander": "legal"},
     "game_changer": False,
     "card_faces": [
@@ -268,3 +274,69 @@ def test_content_hash_changes_when_commander_legality_changes() -> None:
     assert original is not None and changed is not None
 
     assert content_hash(original) != content_hash(changed)
+
+
+# --- power and toughness ---------------------------------------------------
+
+
+def test_a_non_creature_has_no_power_or_toughness() -> None:
+    record = normalise(SOL_RING)
+
+    assert record is not None
+    assert (record.power, record.toughness) == (None, None)
+
+
+def test_power_and_toughness_come_from_the_top_level() -> None:
+    record = normalise(ADVENTURE)
+
+    assert record is not None
+    assert (record.power, record.toughness) == ("4", "3")
+
+
+def test_a_double_faced_card_takes_power_and_toughness_from_its_front_face() -> None:
+    # Outside the game, a double-faced card has its front face's characteristics.
+    record = normalise(TRANSFORM)
+
+    assert record is not None
+    assert (record.power, record.toughness) == ("1", "1")
+
+
+def test_a_card_that_is_a_creature_only_on_its_back_face_has_none() -> None:
+    back_only = card(TRANSFORM)
+    for key in ("power", "toughness"):
+        del back_only["card_faces"][0][key]
+
+    record = normalise(back_only)
+
+    assert record is not None
+    assert (record.power, record.toughness) == (None, None)
+
+
+def test_power_is_kept_as_text_because_it_is_not_always_a_number() -> None:
+    record = normalise(card(SOL_RING, power="1+*", toughness="*"))
+
+    assert record is not None
+    assert (record.power, record.toughness) == ("1+*", "*")
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    [({"power": "5", "toughness": "5"}, ("5", "5")), ({}, (None, None))],
+)
+def test_spacecraft_with_and_without_power_toughness_boxes(
+    stats: dict[str, str], expected: tuple[str | None, str | None]
+) -> None:
+    # Inspirit, Flagship Vessel has 5/5; The Eternity Elevator has none.
+    spacecraft = card(SOL_RING, type_line="Legendary Artifact — Spacecraft", **stats)
+
+    record = normalise(spacecraft)
+
+    assert record is not None
+    assert (record.power, record.toughness) == expected
+
+
+def test_content_hash_changes_when_power_changes() -> None:
+    original, buffed = normalise(ADVENTURE), normalise(card(ADVENTURE, power="5"))
+    assert original is not None and buffed is not None
+
+    assert content_hash(original) != content_hash(buffed)
