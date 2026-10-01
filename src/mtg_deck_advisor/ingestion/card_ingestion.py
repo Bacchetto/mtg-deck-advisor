@@ -49,6 +49,8 @@ CARD_FIELDS = (
     "produced_mana",
     "commander_legality",
     "game_changer",
+    "power",
+    "toughness",
 )
 
 

@@ -64,6 +64,10 @@ class CardRecord(BaseModel):
     produced_mana: tuple[str, ...]
     commander_legality: CommanderLegality
     game_changer: bool
+    # Text, not numbers: "*", "1+*" and "2.5" all occur. None for a card with
+    # no power/toughness on its front face.
+    power: str | None
+    toughness: str | None
 
 
 def fold_name(name: str) -> str:
@@ -117,6 +121,11 @@ def normalise(raw: dict[str, Any]) -> CardRecord | None:
     else:
         colors = sorted({color for face in faces for color in face.get("colors", [])})
 
+    # Power and toughness: the top level, else the front face. A double-faced
+    # card has its front face's characteristics outside the game, so one that
+    # is a creature only on its back face has none.
+    stats = raw if "power" in raw else (faces[0] if faces else {})
+
     if "oracle_text" in raw:
         oracle_text = raw["oracle_text"]
     else:
@@ -142,4 +151,6 @@ def normalise(raw: dict[str, Any]) -> CardRecord | None:
         produced_mana=tuple(raw.get("produced_mana", [])),
         commander_legality=raw["legalities"]["commander"],
         game_changer=raw.get("game_changer", False),
+        power=stats.get("power"),
+        toughness=stats.get("toughness"),
     )
