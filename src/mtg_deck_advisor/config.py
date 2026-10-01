@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     cache_dir: Path = Path("data/cache")
     # Scryfall asks every API client for a User-Agent naming the application
     # and how to reach its maintainer.
+    # The Comprehensive Rules text file, pinned to one dated edition so that
+    # moving to a new edition is a deliberate change. Wizards links the
+    # current file from https://magic.wizards.com/en/rules.
+    rules_url: str = "https://media.wizards.com/2026/downloads/MagicCompRules%2020260925.txt"
     scryfall_user_agent: str = (
         "mtg-deck-advisor/0.1 (+https://github.com/Bacchetto/mtg-deck-advisor)"
     )

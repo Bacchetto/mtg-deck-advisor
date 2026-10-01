@@ -38,7 +38,7 @@ def test_rules_are_stored_and_a_second_run_changes_nothing(migrated: Settings) -
         row = conn.execute(
             "SELECT parent, section, left(text, 40) FROM rules WHERE number = '903.4a'"
         ).fetchone()
-    assert row == ("903.4", "903. Commander", "Color identity is established before th")
+    assert row == ("903.4", "903. Commander", "Color identity is established before the")
 
 
 def test_a_reworded_rule_is_updated_and_a_dropped_rule_is_removed(migrated: Settings) -> None:
