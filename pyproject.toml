@@ -14,6 +14,10 @@ dependencies = [
     "sqlalchemy>=2.1",
     "fastapi>=0.142",
     "uvicorn>=0.54",
+    # HTTP client for Scryfall and the rules download; also what FastAPI's
+    # TestClient (from Starlette) is built on.
+    "httpx2>=2.13",
+    "tenacity>=9.1",
 ]
 
 [project.optional-dependencies]
@@ -27,9 +31,6 @@ dev = [
     "pre-commit>=3.8",
     "pip-audit>=2.7",
     "testcontainers[postgres]>=4.15",
-    # FastAPI's TestClient (from Starlette) is built on httpx2; plain httpx
-    # still works but is deprecated there.
-    "httpx2>=2.13",
 ]
 
 [build-system]
