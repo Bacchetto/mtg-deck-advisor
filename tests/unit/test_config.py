@@ -89,3 +89,11 @@ def test_ingestion_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.cache_dir == Path("data/cache")
     # Scryfall asks for a User-Agent that identifies the application.
     assert settings.scryfall_user_agent.startswith("mtg-deck-advisor/")
+
+
+def test_the_rules_source_is_pinned_to_one_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.delenv("RULES_URL", raising=False)
+
+    # A dated file, so updating the rules is a deliberate change of this setting.
+    assert load().rules_url.endswith("MagicCompRules%2020260925.txt")

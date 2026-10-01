@@ -20,3 +20,7 @@ def test_an_unknown_command_is_rejected(capsys: pytest.CaptureFixture[str]) -> N
 
 def test_cards_is_a_command() -> None:
     assert cli.parse_args(["cards"]).command == "cards"
+
+
+def test_rules_is_a_command() -> None:
+    assert cli.parse_args(["rules"]).command == "rules"
