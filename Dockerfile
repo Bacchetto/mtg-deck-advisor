@@ -58,6 +58,11 @@ FROM python:3.12.14-slim-trixie
 # far better starting point for an attacker.
 RUN groupadd --system app && useradd --system --gid app --no-create-home app
 
+# Ingestion's download cache. Owned by the app user, because the container
+# runs as that user; Compose mounts a named volume here so the cache survives
+# between runs (a new volume takes this directory's ownership).
+RUN mkdir -p /var/cache/mtg-deck-advisor && chown app:app /var/cache/mtg-deck-advisor
+
 COPY --from=build /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -70,7 +75,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
     API_HOST=0.0.0.0 \
     API_PORT=8000 \
     LOG_FORMAT=json \
-    ENVIRONMENT=production
+    ENVIRONMENT=production \
+    # Ingestion's download cache: the directory created above.
+    CACHE_DIR=/var/cache/mtg-deck-advisor
 
 USER app
 EXPOSE 8000
