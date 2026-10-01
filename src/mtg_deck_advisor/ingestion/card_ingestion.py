@@ -16,21 +16,21 @@ from uuid import UUID
 
 import psycopg
 import structlog
-from psycopg import sql
 
 from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.db.connection import connect
-from mtg_deck_advisor.ingestion.cards import CardRecord, content_hash, normalise
+from mtg_deck_advisor.ingestion.cards import CardRecord, normalise
 from mtg_deck_advisor.ingestion.runs import finish_run, start_run
 from mtg_deck_advisor.ingestion.scryfall import ScryfallClient
-from mtg_deck_advisor.ingestion.sync import Existing, IngestionReport, diff
+from mtg_deck_advisor.ingestion.store import Row, apply_changes
+from mtg_deck_advisor.ingestion.sync import IngestionReport, content_hash
 from mtg_deck_advisor.observability.tracing import traced
 
 log = structlog.get_logger(__name__)
 
 SOURCE = "scryfall_oracle_cards"
 
-# The stored fields of a CardRecord, plus its hash, in table column order.
+# The stored fields of a CardRecord, in table column order (the key first).
 CARD_FIELDS = (
     "oracle_id",
     "name",
@@ -48,7 +48,6 @@ CARD_FIELDS = (
     "commander_legality",
     "game_changer",
 )
-COLUMNS = (*CARD_FIELDS, "content_hash")
 
 
 def read_bulk_file(path: Path) -> Iterator[dict[str, Any]]:
@@ -59,62 +58,21 @@ def read_bulk_file(path: Path) -> Iterator[dict[str, Any]]:
                 yield json.loads(line)
 
 
-def _row(record: CardRecord, record_hash: str) -> tuple[Any, ...]:
+def _row(record: CardRecord) -> tuple[Any, ...]:
     # Tuples become lists: psycopg sends a list as a Postgres array, but a
     # tuple as a composite value.
-    values = [getattr(record, name) for name in CARD_FIELDS]
-    return (*(list(v) if isinstance(v, tuple) else v for v in values), record_hash)
+    values = (getattr(record, name) for name in CARD_FIELDS)
+    return tuple(list(v) if isinstance(v, tuple) else v for v in values)
 
 
 def apply_cards(conn: psycopg.Connection, records: Iterable[CardRecord]) -> IngestionReport:
     """Bring the cards table in line with `records`, in one transaction."""
-    incoming: dict[UUID, tuple[CardRecord, str]] = {}
+    incoming: dict[UUID, Row] = {}
     for record in records:
         if record.oracle_id in incoming:
             raise ValueError(f"duplicate oracle_id in source data: {record.oracle_id}")
-        incoming[record.oracle_id] = (record, content_hash(record))
-
-    with conn.transaction():
-        existing = {
-            oracle_id: Existing(stored_hash, removed)
-            for oracle_id, stored_hash, removed in conn.execute(
-                "SELECT oracle_id, content_hash, removed_at IS NOT NULL FROM cards"
-            )
-        }
-        changes = diff(existing, {key: record_hash for key, (_, record_hash) in incoming.items()})
-
-        if changes.added:
-            # COPY rather than INSERT: the first run loads ~35,000 rows.
-            copy_sql = sql.SQL("COPY cards ({}) FROM STDIN").format(
-                sql.SQL(", ").join(map(sql.Identifier, COLUMNS))
-            )
-            with conn.cursor().copy(copy_sql) as copy:
-                for key in changes.added:
-                    copy.write_row(_row(*incoming[key]))
-
-        rewrite = changes.updated + changes.restored
-        if rewrite:
-            # Column names are composed as identifiers, never pasted into
-            # the SQL text, so the statement is injection-safe by construction.
-            update_sql = sql.SQL(
-                "UPDATE cards SET {}, updated_at = now(), removed_at = NULL WHERE oracle_id = %s"
-            ).format(
-                sql.SQL(", ").join(
-                    sql.SQL("{} = %s").format(sql.Identifier(column)) for column in COLUMNS[1:]
-                )
-            )
-            conn.cursor().executemany(
-                update_sql,
-                [(*_row(*incoming[key])[1:], key) for key in rewrite],
-            )
-
-        if changes.removed:
-            conn.execute(
-                "UPDATE cards SET removed_at = now() WHERE oracle_id = ANY(%s)",
-                (changes.removed,),
-            )
-
-    return changes.report()
+        incoming[record.oracle_id] = (_row(record), content_hash(record))
+    return apply_changes(conn, table="cards", columns=CARD_FIELDS, incoming=incoming)
 
 
 def normalised_cards(path: Path) -> Iterator[CardRecord]:

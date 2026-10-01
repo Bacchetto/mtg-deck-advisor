@@ -8,14 +8,15 @@ out, so the content hash changes only when the card itself does (ING-3). See
 ADR 0006.
 """
 
-import hashlib
-import json
 import re
 import unicodedata
 from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+# Re-exported: the hash is defined once, for every source, in sync.
+from mtg_deck_advisor.ingestion.sync import content_hash as content_hash
 
 # Scryfall layouts for objects that are not cards a deck can contain.
 NON_CARD_LAYOUTS = frozenset(
@@ -121,11 +122,3 @@ def normalise(raw: dict[str, Any]) -> CardRecord | None:
         commander_legality=raw["legalities"]["commander"],
         game_changer=raw.get("game_changer", False),
     )
-
-
-def content_hash(record: CardRecord) -> str:
-    """SHA-256 of the record's canonical JSON: same card data, same hash."""
-    canonical = json.dumps(
-        record.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
