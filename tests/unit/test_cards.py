@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from mtg_deck_advisor.ingestion.cards import content_hash, fold_name, normalise
+from mtg_deck_advisor.ingestion.cards import content_hash, fold_name, loose_name, normalise
 
 SOL_RING: dict[str, Any] = {
     "object": "card",
@@ -120,6 +120,25 @@ def test_fold_name_ignores_case_accents_spacing_and_apostrophe_style(
     assert fold_name(name) == folded
 
 
+@pytest.mark.parametrize(
+    ("name", "loose"),
+    [
+        ("Atraxa, Praetors' Voice", "atraxa praetors voice"),
+        ("Lim-Dûl's Cohort", "lim duls cohort"),  # a hyphen reads as a space
+        (
+            "Kytheon, Hero of Akros // Gideon, Battle-Forged",
+            "kytheon hero of akros // gideon battle forged",
+        ),
+        ("Fire // Ice", "fire // ice"),  # the face separator is kept
+        ("B.F.M. (Big Furry Monster)", "bfm big furry monster"),
+        ("70,000 Light-Years from Home", "70000 light years from home"),
+        ("Sol Ring", "sol ring"),
+    ],
+)
+def test_loose_name_also_ignores_punctuation(name: str, loose: str) -> None:
+    assert loose_name(name) == loose
+
+
 # --- normalise -------------------------------------------------------------
 
 
@@ -131,6 +150,8 @@ def test_a_single_faced_card_keeps_its_oracle_fields() -> None:
     assert record.name == "Sol Ring"
     assert record.name_key == "sol ring"
     assert record.front_face_key is None
+    assert record.loose_name_key == "sol ring"
+    assert record.loose_front_face_key is None
     assert record.mana_cost == "{1}"
     assert record.cmc == 1.0
     assert record.type_line == "Artifact"
@@ -164,6 +185,7 @@ def test_a_double_faced_card_takes_text_colors_and_cost_from_its_faces() -> None
     assert record.colors == ("U",)
     assert record.front_face_key == "delver of secrets"
     assert record.name_key == "delver of secrets // insectile aberration"
+    assert record.loose_front_face_key == "delver of secrets"
 
 
 def test_an_adventure_card_takes_text_from_its_faces_but_keeps_its_own_cost() -> None:
