@@ -106,7 +106,7 @@ def test_downloading_a_bulk_file_uses_the_cache(tmp_path: Path) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.host == "data.scryfall.io":
             downloads.append(request)
-            return httpx2.Response(200, content=body)
+            return httpx2.Response(200, stream=httpx2.ByteStream(body))
         return httpx2.Response(200, json=ORACLE_CARDS)
 
     with scryfall(httpx2.MockTransport(handler), tmp_path) as client:

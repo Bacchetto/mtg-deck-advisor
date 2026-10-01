@@ -20,9 +20,15 @@ Handler = Callable[[httpx2.Request], httpx2.Response]
 
 
 class Recorder:
-    """A fake server: answers with the given responses in turn, counting requests."""
+    """A fake server: answers with the given responses in turn, counting requests.
 
-    def __init__(self, *responses: httpx2.Response | Exception) -> None:
+    The last answer repeats. An answer may be a function returning a fresh
+    response, for streamed bodies, which can be read only once.
+    """
+
+    def __init__(
+        self, *responses: httpx2.Response | Exception | Callable[[], httpx2.Response]
+    ) -> None:
         self.responses = list(responses)
         self.requests: list[httpx2.Request] = []
 
@@ -31,7 +37,18 @@ class Recorder:
         response = self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
         if isinstance(response, Exception):
             raise response
+        if callable(response):
+            return response()
         return response
+
+
+def streamed(data: bytes, **headers: str) -> httpx2.Response:
+    """A 200 response whose body arrives as a stream, as it does over a network.
+
+    A Response built with `content=` holds its body already read, which
+    httpx2 then refuses to stream raw.
+    """
+    return httpx2.Response(200, stream=httpx2.ByteStream(data), headers=headers)
 
 
 def client_for(handler: Handler) -> httpx2.Client:
@@ -122,7 +139,7 @@ def test_a_client_error_is_not_retried() -> None:
 
 
 def test_a_download_is_saved_in_the_cache(tmp_path: Path) -> None:
-    server = Recorder(httpx2.Response(200, content=BODY))
+    server = Recorder(streamed(BODY))
 
     path = download_to_cache(client_for(server), URL, tmp_path, expected_size=len(BODY))
 
@@ -131,7 +148,7 @@ def test_a_download_is_saved_in_the_cache(tmp_path: Path) -> None:
 
 
 def test_a_cached_download_makes_no_request(tmp_path: Path) -> None:
-    server = Recorder(httpx2.Response(200, content=BODY))
+    server = Recorder(streamed(BODY))
     client = client_for(server)
 
     first = download_to_cache(client, URL, tmp_path, expected_size=len(BODY))
@@ -142,7 +159,7 @@ def test_a_cached_download_makes_no_request(tmp_path: Path) -> None:
 
 
 def test_a_truncated_download_is_rejected_and_leaves_nothing_behind(tmp_path: Path) -> None:
-    server = Recorder(httpx2.Response(200, content=BODY[:400]))
+    server = Recorder(lambda: streamed(BODY[:400]))
 
     with pytest.raises(DownloadError, match="400"):
         download_to_cache(
@@ -154,7 +171,7 @@ def test_a_truncated_download_is_rejected_and_leaves_nothing_behind(tmp_path: Pa
 
 def test_a_cached_file_of_the_wrong_size_is_downloaded_again(tmp_path: Path) -> None:
     cache_path(tmp_path, URL).write_bytes(b"partial")
-    server = Recorder(httpx2.Response(200, content=BODY))
+    server = Recorder(streamed(BODY))
 
     path = download_to_cache(client_for(server), URL, tmp_path, expected_size=len(BODY))
 
@@ -164,16 +181,14 @@ def test_a_cached_file_of_the_wrong_size_is_downloaded_again(tmp_path: Path) -> 
 
 def test_without_an_expected_size_the_content_length_is_checked(tmp_path: Path) -> None:
     # The server promises 1000 bytes but the connection delivers 400.
-    server = Recorder(
-        httpx2.Response(200, content=BODY[:400], headers={"Content-Length": str(len(BODY))})
-    )
+    server = Recorder(lambda: streamed(BODY[:400], **{"Content-Length": str(len(BODY))}))
 
     with pytest.raises(DownloadError):
         download_to_cache(client_for(server), URL, tmp_path, sleep=Sleeps())
 
 
 def test_a_failed_download_is_retried(tmp_path: Path) -> None:
-    server = Recorder(httpx2.Response(502), httpx2.Response(200, content=BODY))
+    server = Recorder(httpx2.Response(502), streamed(BODY))
 
     path = download_to_cache(
         client_for(server), URL, tmp_path, expected_size=len(BODY), sleep=Sleeps()
