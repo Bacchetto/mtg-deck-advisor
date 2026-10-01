@@ -4,6 +4,8 @@ Pure functions, shared by every source (cards, rules). The database code that
 applies a Diff lives with each source. See ADR 0006.
 """
 
+import hashlib
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import NamedTuple
@@ -63,3 +65,11 @@ def diff[K](existing: Mapping[K, Existing], incoming: Mapping[K, str]) -> Diff[K
         if key not in incoming and not stored.removed:
             result.removed.append(key)
     return result
+
+
+def content_hash(record: BaseModel) -> str:
+    """SHA-256 of a record's canonical JSON: same data, same hash, whatever the field order."""
+    canonical = json.dumps(
+        record.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

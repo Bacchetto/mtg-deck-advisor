@@ -71,18 +71,21 @@ Then, while it's running:
 - http://127.0.0.1:8000/docs: interactive API documentation (Swagger UI), generated
   from the code and served by the running API
 
-To load card data from Scryfall (about 35,000 cards; the first run downloads a 25 MB
-file, later runs reuse it):
+To load the data: card data from Scryfall (about 35,000 cards, from a 25 MB download) and
+the Comprehensive Rules (about 3,200 rules). Downloads are cached, so later runs reuse them:
 
 ```bash
-docker compose run --rm ingest cards
+docker compose run --rm ingest all     # or `cards`, or `rules`
 ```
 
 Ingestion is idempotent: run it again and nothing changes unless Scryfall's data did.
 
 ```text
 cards: 34664 added, 0 updated, 0 unchanged, 0 removed      # first run
+rules: 3166 added, 0 updated, 0 unchanged, 0 removed
+
 cards: 0 added, 0 updated, 34664 unchanged, 0 removed      # second run
+rules: 0 added, 0 updated, 3166 unchanged, 0 removed
 ```
 
 `docker compose down` stops everything. `docker compose down -v` also deletes the data.
@@ -100,7 +103,7 @@ cp .env.example .env
 docker compose up -d --wait db           # just the database: Postgres 16 + pgvector
 python -m mtg_deck_advisor.db.migrate    # apply database migrations
 python -m mtg_deck_advisor.api           # API on http://127.0.0.1:8000
-python -m mtg_deck_advisor.ingestion cards   # load card data from Scryfall
+python -m mtg_deck_advisor.ingestion all     # load cards (Scryfall) and the rules
 
 ruff check . && ruff format --check .
 mypy

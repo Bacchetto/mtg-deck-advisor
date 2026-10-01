@@ -1,0 +1,67 @@
+Magic: The Gathering Comprehensive Rules
+ 
+These rules are effective as of September 25, 2026.
+ 
+Introduction
+ 
+This document is the ultimate authority for Magic: The Gathering® competitive game play. It consists of a series of numbered rules followed by a glossary. Many of the numbered rules are divided into subrules, and each separate rule and subrule of the game has its own number. (Note that subrules skip the letters “l” and “o” due to potential confusion with the numbers “1” and “0”; subrule 704.5k is followed by 704.5m, then 704.5n, then 704.5p, for example.)
+ 
+Changes may have been made to this document since its publication. You can download the most recent version from the Magic rules website at Magic.Wizards.com/Rules.
+
+Contents
+ 
+1. Game Concepts
+100. General
+101. The Magic Golden Rules
+102. Players
+905. Conspiracy Draft
+ 
+Glossary
+ 
+Credits
+
+1. Game Concepts
+ 
+100. General
+ 
+100.1. These Magic rules apply to any Magic game with two or more players, including two-player games and multiplayer games.
+ 
+100.1a A two-player game is a game that begins with only two players.
+ 
+100.1b A multiplayer game is a game that begins with more than two players. See section 8, “Multiplayer Rules.”
+ 
+100.2. To play, each player needs their own deck of traditional Magic cards, small items to represent any tokens and counters, and some way to clearly track life totals.
+ 
+7. Additional Rules
+ 
+704. State-Based Actions
+ 
+704.5z If a permanent has more than one Role controlled by the same player attached to it, each of those Roles except the one with the most recent timestamp is put into its owner’s graveyard.
+ 
+704.5aa If a player controls a permanent with start your engines! and that player has no speed, that player’s speed becomes 1. See rule 702.179, “Start Your Engines!”
+ 
+9. Casual Variants
+ 
+903. Commander
+ 
+903.4. The Commander variant uses color identity to determine what cards can be in a deck with a certain commander. The color identity of a card is the color or colors of any mana symbols in that card’s mana cost or rules text, plus any colors defined by its characteristic-defining abilities (see rule 604.3) or color indicator (see rule 204).
+Example: Bosh, Iron Golem is a legendary artifact creature with mana cost {8} and the ability “{3}{R}, Sacrifice an artifact: Bosh, Iron Golem deals damage equal to the sacrificed artifact’s mana value to any target.” Bosh’s color identity is red.
+ 
+903.4a Color identity is established before the game begins. If a rule or effect refers to the color identity of an object in the game represented by a card, it uses the color identity established for that card as the game began.
+ 
+903.4b If a commander has a static ability that causes a player to choose its color before the game begins, that choice applies during deck construction and throughout the game, even as the commander changes zones. That choice affects the commander’s color identity. The player reveals that choice as they put their commander into the command zone before the game begins. See rules 103.2c and 607.2p.
+ 
+903.4c Reminder text is ignored when determining a card’s color identity. See rule 207.2.
+ 
+
+Glossary
+ 
+Abandon
+To turn a face-up ongoing scheme card face down and put it on the bottom of its owner’s scheme deck. See rule 701.33, “Abandon.”
+ 
+Ability
+1. Text on an object that explains what that object does or can do.
+2. An activated or triggered ability on the stack. This kind of ability is an object.
+Credits
+ 
+Magic: The Gathering Original Game Design: Richard Garfield
