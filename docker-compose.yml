@@ -5,6 +5,9 @@
 #   docker compose ps -a           db and app "healthy"; migrate "Exited (0)"
 #   docker compose up -d db        just the database, for running the API on
 #                                  the host instead (python -m mtg_deck_advisor.api)
+#   docker compose run --rm ingest cards
+#                                  load Scryfall's card data (safe to repeat:
+#                                  a run with nothing new changes nothing)
 #   docker compose down            stop everything; data survives in the volume
 #   docker compose down -v         stop everything and delete all data
 #
@@ -85,6 +88,27 @@ services:
         # migration keeps the app down rather than serving an old schema.
         condition: service_completed_successfully
 
+  ingest:
+    # Ingestion, run on demand rather than as part of `up`: the `tools`
+    # profile keeps it out of the default stack. `docker compose run --rm
+    # ingest <source>` picks the source, since the command is the argument.
+    profiles: ["tools"]
+    build: .
+    image: mtg-deck-advisor:local
+    entrypoint: ["python", "-m", "mtg_deck_advisor.ingestion"]
+    command: ["cards"]
+    environment: *app-environment
+    volumes:
+      # Downloaded source files, kept between runs so an unchanged source is
+      # never downloaded twice.
+      - cache:/var/cache/mtg-deck-advisor
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
 volumes:
   # Named, so data outlives the container: `down` keeps it, `down -v` removes it.
   pgdata:
+  cache:

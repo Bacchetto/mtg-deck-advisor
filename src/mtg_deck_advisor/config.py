@@ -6,6 +6,7 @@ missing secret fails at startup instead of silently using a placeholder.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import SecretStr
@@ -36,6 +37,15 @@ class Settings(BaseSettings):
     # 0.0.0.0, and Docker's port mapping decides what is exposed.
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+
+    # Where downloaded source files (Scryfall bulk data, the rules file) are
+    # cached. Relative paths are relative to the working directory.
+    cache_dir: Path = Path("data/cache")
+    # Scryfall asks every API client for a User-Agent naming the application
+    # and how to reach its maintainer.
+    scryfall_user_agent: str = (
+        "mtg-deck-advisor/0.1 (+https://github.com/Bacchetto/mtg-deck-advisor)"
+    )
 
 
 @lru_cache
