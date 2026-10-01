@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -75,3 +77,15 @@ def test_get_settings_returns_one_shared_instance(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
 
     assert get_settings() is get_settings()
+
+
+def test_ingestion_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.delenv("CACHE_DIR", raising=False)
+    monkeypatch.delenv("SCRYFALL_USER_AGENT", raising=False)
+
+    settings = load()
+
+    assert settings.cache_dir == Path("data/cache")
+    # Scryfall asks for a User-Agent that identifies the application.
+    assert settings.scryfall_user_agent.startswith("mtg-deck-advisor/")
