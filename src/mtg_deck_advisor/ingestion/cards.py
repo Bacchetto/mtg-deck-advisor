@@ -50,6 +50,9 @@ class CardRecord(BaseModel):
     name: str
     name_key: str
     front_face_key: str | None
+    # The same keys with punctuation ignored, for names typed without it.
+    loose_name_key: str
+    loose_front_face_key: str | None
     layout: str
     mana_cost: str
     cmc: float
@@ -74,6 +77,21 @@ def fold_name(name: str) -> str:
     decomposed = unicodedata.normalize("NFKD", name)
     without_accents = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", without_accents).strip().casefold()
+
+
+def loose_name(name: str) -> str:
+    """A folded name with punctuation ignored, for a second, looser lookup.
+
+    Hyphens read as spaces and other punctuation is dropped, so
+    "Atraxa, Praetors' Voice" and "atraxa praetors voice" match, as do
+    "Lim-Dûl's Cohort" and "lim duls cohort". The " // " between the faces of
+    a multi-face card is kept. A few names collide this way (a real card and a
+    joke card, such as "Lava Axe" and "Lava, Axe"); resolution's tie-break
+    handles them.
+    """
+    faces = fold_name(name).split(" // ")
+    loosened = (re.sub(r"[^\w\s]", "", face.replace("-", " ")) for face in faces)
+    return " // ".join(re.sub(r"\s+", " ", face).strip() for face in loosened)
 
 
 def _in_wubrg_order(colors: list[str]) -> tuple[str, ...]:
@@ -105,11 +123,14 @@ def normalise(raw: dict[str, Any]) -> CardRecord | None:
         oracle_text = from_faces("oracle_text", FACE_SEPARATOR)
 
     name: str = raw["name"]
+    front_face = name.split(" // ")[0] if " // " in name else None
     return CardRecord(
         oracle_id=raw["oracle_id"],
         name=name,
         name_key=fold_name(name),
-        front_face_key=fold_name(name.split(" // ")[0]) if " // " in name else None,
+        front_face_key=fold_name(front_face) if front_face else None,
+        loose_name_key=loose_name(name),
+        loose_front_face_key=loose_name(front_face) if front_face else None,
         layout=raw["layout"],
         mana_cost=raw["mana_cost"] if "mana_cost" in raw else from_faces("mana_cost", " // "),
         cmc=raw["cmc"],

@@ -14,13 +14,19 @@ from mtg_deck_advisor.ingestion.cards import CardRecord, normalise
 from mtg_deck_advisor.ingestion.pool import PoolEntry
 from mtg_deck_advisor.ingestion.resolve import ResolvedPool, resolve
 
-FIXTURE = Path(__file__).parent.parent / "fixtures" / "scryfall" / "oracle_cards_sample.jsonl"
+FIXTURES = Path(__file__).parent.parent / "fixtures" / "scryfall"
 
 
 def fixture_cards() -> list[CardRecord]:
-    """Sol Ring, Delver of Secrets, Bonecrusher Giant, Lim-Dûl's Cohort, Mox Jet (banned),
-    and two Red Herrings: one Commander-legal, one a joke card."""
-    lines = FIXTURE.read_text(encoding="utf-8").splitlines()
+    """Real cards: Sol Ring, Delver of Secrets, Bonecrusher Giant, Lim-Dûl's Cohort, Mox Jet
+    (banned) and two Red Herrings (one Commander-legal, one a joke card); and, with
+    punctuation in their names, Atraxa, Kytheon (double-faced), and the legal "Glimpse the
+    Unthinkable" beside the joke "Glimpse, the Unthinkable"."""
+    lines = [
+        line
+        for name in ("oracle_cards_sample.jsonl", "oracle_cards_punctuation.jsonl")
+        for line in (FIXTURES / name).read_text(encoding="utf-8").splitlines()
+    ]
     return [record for line in lines if (record := normalise(json.loads(line))) is not None]
 
 
@@ -147,3 +153,47 @@ def test_every_entry_lands_in_exactly_one_group_in_input_order(loaded: Settings)
     assert [m.entry.line for m in pool.matched] == [1, 3, 4]
     assert [u.entry.line for u in pool.unknown] == [2]
     assert pool.ambiguous == []
+
+
+# --- ignoring punctuation --------------------------------------------------
+
+
+def test_a_name_typed_without_punctuation_matches(loaded: Settings) -> None:
+    pool = resolve_names(loaded, "Atraxa Praetors Voice", "Lim Duls Cohort", "lim-duls cohort")
+
+    assert matched_names(pool) == [
+        "Atraxa, Praetors' Voice",
+        "Lim-Dûl's Cohort",
+        "Lim-Dûl's Cohort",
+    ]
+    assert pool.matched[0].matched_by == "name_ignoring_punctuation"
+
+
+def test_a_front_face_typed_without_punctuation_matches(loaded: Settings) -> None:
+    [match] = resolve_names(loaded, "Kytheon Hero of Akros").matched
+
+    assert match.card.name == "Kytheon, Hero of Akros // Gideon, Battle-Forged"
+    assert match.matched_by == "front_face_ignoring_punctuation"
+
+
+def test_an_exact_name_wins_over_a_punctuation_free_match(loaded: Settings) -> None:
+    # Typed with its comma, this is the joke card's exact name.
+    [match] = resolve_names(loaded, "Glimpse, the Unthinkable").matched
+
+    assert match.card.commander_legality == "not_legal"
+    assert match.matched_by == "name"
+
+
+def test_punctuation_collisions_resolve_to_the_commander_legal_card(loaded: Settings) -> None:
+    # Only the punctuation-free step matches, and it finds both Glimpses.
+    [match] = resolve_names(loaded, "Glimpse the Unthinkable.").matched
+
+    assert match.card.name == "Glimpse the Unthinkable"
+    assert match.card.commander_legality == "legal"
+    assert match.matched_by == "name_ignoring_punctuation"
+
+
+def test_a_misspelling_without_punctuation_still_gets_a_suggestion(loaded: Settings) -> None:
+    [unknown] = resolve_names(loaded, "Atraxa Praetor Voice").unknown
+
+    assert unknown.suggestions[0] == "Atraxa, Praetors' Voice"

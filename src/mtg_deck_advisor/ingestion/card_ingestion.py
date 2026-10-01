@@ -36,6 +36,8 @@ CARD_FIELDS = (
     "name",
     "name_key",
     "front_face_key",
+    "loose_name_key",
+    "loose_front_face_key",
     "layout",
     "mana_cost",
     "cmc",
