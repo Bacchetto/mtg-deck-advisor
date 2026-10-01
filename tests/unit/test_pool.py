@@ -26,7 +26,10 @@ def entries(pool: ParsedPool) -> list[tuple[str, int]]:
         ("4 Forest", ("Forest", 4)),
         ("1x Sol Ring", ("Sol Ring", 1)),
         ("2X Sol Ring", ("Sol Ring", 2)),
-        ("1 x Sol Ring", ("Sol Ring", 1)),
+        # A real card is named "X", so "1 X" is one X, not a quantity marker.
+        ("1 X", ("X", 1)),
+        ("1x X", ("X", 1)),
+        ("1 X (CMR) 472 *F*", ("X", 1)),
         ("Sol Ring", ("Sol Ring", 1)),
         ("  1   Sol Ring  ", ("Sol Ring", 1)),
         # Arena and Moxfield exports add the set and collector number.
