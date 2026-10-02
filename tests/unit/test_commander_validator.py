@@ -156,7 +156,7 @@ def test_a_second_copy_of_a_singleton_card_is_reported() -> None:
 
     assert violation.code == "too_many_copies"
     assert violation.rule == "903.5b"
-    assert "2" in violation.message
+    assert violation.message == "The deck has 2 copies of Sol Ring; at most 1 allowed."
 
 
 def test_the_commander_counts_as_a_copy() -> None:

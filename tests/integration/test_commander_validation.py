@@ -76,14 +76,12 @@ def test_each_rule_broken_alone_gives_exactly_its_violation(
     deck, pool = atraxa_deck()
     forest = ID["Forest"]
 
-    def replacing_a_forest(name: str, owned: int = 1) -> tuple[DeckState, dict[UUID, int]]:
-        return deck.without_card(forest).with_card(ID[name]), pool | {ID[name]: owned}
+    def replacing_a_forest(name: str) -> str:
+        """The single violation when one Forest is swapped for `name`, which the pool holds."""
+        return only_code(deck.without_card(forest).with_card(ID[name]), facts, pool | {ID[name]: 1})
 
-    assert (
-        only_code(*replacing_a_forest("Bonecrusher Giant // Stomp"), facts=facts)
-        == "color_identity"
-    )
-    assert only_code(*replacing_a_forest("Mox Jet"), facts=facts) == "banned"
+    assert replacing_a_forest("Bonecrusher Giant // Stomp") == "color_identity"
+    assert replacing_a_forest("Mox Jet") == "banned"
     assert (
         only_code(
             deck.without_card(forest).with_card(ID["Sol Ring"]), facts, pool | {ID["Sol Ring"]: 2}
