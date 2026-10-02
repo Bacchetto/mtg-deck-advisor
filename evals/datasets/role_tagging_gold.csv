@@ -1,0 +1,199 @@
+oracle_id,name,type_line,mana_cost,oracle_text,selected_as,roles,note
+a34b7416-cfe3-4a1e-a8c1-a3056b747519,"Kiki-Jiki, Mirror Breaker",Legendary Creature — Goblin Shaman,{2}{R}{R}{R},"Haste
+{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.",random:creature,token_maker,"Copies are temporary; a combo piece, but not a finisher alone."
+eb7ae3e8-0489-4f3a-8343-7e7ec2fe3f01,"Damia, Sage of Stone",Legendary Creature — Gorgon Wizard,{4}{B}{G}{U},"Deathtouch
+Skip your draw step.
+At the beginning of your upkeep, if you have fewer than seven cards in hand, draw cards equal to the difference.",random:creature,card_draw,
+12a9a9a4-6b8c-48a1-833f-457a7ece8e7e,Wasp Lancer,Creature — Faerie Soldier,{U/B}{U/B}{U/B},Flying,random:creature,,
+d398868b-7574-40d5-8915-6393ee489067,Granitic Titan,Creature — Elemental,{4}{R}{R},"Menace
+Cycling {2} ({2}, Discard this card: Draw a card.)",random:creature,,"Cycling replaces itself, so not card_draw."
+2edf106d-f504-430e-ad9c-50fc95b0ad9c,Bone Picker,Creature — Bird,{3}{B},"This spell costs {3} less to cast if a creature died this turn.
+Flying, deathtouch",random:creature,,
+30b03dda-409f-4615-b392-477d66eb49f4,Maelstrom Muse,Creature — Djinn Wizard,{1}{U}{U/R}{R},"Flying
+Whenever this creature attacks, the next instant or sorcery spell you cast this turn costs {X} less to cast, where X is this creature's power as this ability resolves.",random:creature,ramp,REVIEW: cost reduction on attack only; counts as ramp under the cost-reducer rule.
+5863c67b-a47c-4466-8bd1-210ab26e0d3f,Inspired Insurgent,Creature — Human Peasant Ally,{1}{W},"{1}, Sacrifice this creature: Destroy target artifact or enchantment.",random:creature,removal,
+7904dd02-f231-4538-b1bb-81bce69309b1,Rubblebelt Raiders,Creature — Human Warrior,{1}{R/G}{R/G}{R/G},"Whenever this creature attacks, put a +1/+1 counter on it for each attacking creature you control.",random:creature,,
+9369f131-3356-4926-9a9f-88a636305bd0,Goblin Psychopath,Creature — Goblin Mutant,{3}{R},"Whenever this creature attacks or blocks, flip a coin. If you lose the flip, the next time it would deal combat damage this turn, it deals that damage to you instead.",random:creature,,
+a05bcc3e-25d5-4111-820e-a097189afb7e,Weldfast Wingsmith,Creature — Human Artificer,{3}{U},"Whenever an artifact you control enters, this creature gains flying until end of turn.",random:creature,,
+f96f1a94-6226-4e1f-a7fb-a43a276b3c3a,Deathless Knight,Creature — Skeleton Knight,{B/G}{B/G}{B/G}{B/G},"Haste
+When you gain life for the first time each turn, return this card from your graveyard to your hand.",random:creature,recursion,REVIEW: returns only itself from the graveyard.
+e1c49bdb-cfd1-4ebf-90f7-73bd5009f75e,Looming Hoverguard,Creature — Drone,{4}{U}{U},"Flying
+When this creature enters, put target artifact on top of its owner's library.",random:creature,removal,Puts an artifact on top of its owner's library (like a bounce).
+b2d4ce3c-00b1-4a72-b652-4c129475080f,"Kasla, the Broken Halo",Legendary Creature — Angel Ally,{3}{U}{R}{W},"Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)
+Flying, vigilance, haste
+Whenever you cast another spell that has convoke, scry 2, then draw a card.",random:creature,card_draw,
+fcae4f9d-8f81-42f9-93a3-82a482851bdd,Moonstone Harbinger,Creature — Bat Warrior,{2}{B},"Flying, deathtouch
+Whenever you gain or lose life during your turn, Bats you control get +1/+0 and gain deathtouch until end of turn. This ability triggers only once each turn.",random:creature,,
+1d79b7a8-2b4c-4893-afdb-879c74957288,Arbalest Elite,Creature — Human Archer,{2}{W}{W},"{2}{W}, {T}: This creature deals 3 damage to target attacking or blocking creature. This creature doesn't untap during your next untap step.",random:creature,removal,"Repeatable, attacking or blocking creatures only."
+9c975fda-471a-4d41-9bb6-ea42edc6a0e6,Blood Burglar,Creature — Vampire Rogue,{1}{B},"During your turn, this creature has lifelink.(Damage dealt by this creature also causes you to gain that much life.)",random:creature,,
+b2252471-01ca-4d58-aa99-4ab0aa5eae12,Stormcatch Mentor,Creature — Otter Wizard,{U}{R},"Haste
+Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)
+Instant and sorcery spells you cast cost {1} less to cast.",random:creature,ramp,REVIEW: reduces instant and sorcery costs; ramp under the cost-reducer rule.
+0432e07d-baf6-4c20-8646-08338c7dc950,Desperate Castaways,Creature — Human Pirate,{1}{B},This creature can't attack unless you control an artifact.,random:creature,,
+feee1926-0b63-404f-9b01-df965de26b5f,Brokers Veteran,Creature — Human Soldier,{1}{U},"When this creature dies, put a shield counter on target creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",random:creature,protection,Shield counter on your creature when it dies.
+9b5cfbb7-21ed-491d-b77d-547e4d30a7da,Phyrexian Vindicator,Creature — Phyrexian Horror,{W}{W}{W}{W},"Flying
+If damage would be dealt to this creature, prevent that damage. When damage is prevented this way, this creature deals that much damage to any other target.",random:creature,,REVIEW: damage redirection is conditional; not counted as removal.
+97489ef7-98c3-4700-bbe6-185215d41b25,Aloe Alchemist,Creature — Plant Warlock,{1}{G},"Trample
+When this card becomes plotted, target creature gets +3/+2 and gains trample until end of turn.
+Plot {1}{G} (You may pay {1}{G} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",random:creature,,
+f5430b0e-e77f-47b8-ae6d-30bcff4d7e35,Midnight Guard,Creature — Human Soldier,{2}{W},"Whenever another creature enters, untap this creature.",random:creature,,
+6a732900-6529-4d5c-ab94-52bd0048d483,Shepherd of Heroes,Creature — Angel Cleric,{4}{W},"Flying
+When this creature enters, you gain 2 life for each creature in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)",random:creature,,Life gain isn't a role in this taxonomy.
+26f6cc1e-d85e-45a3-a1ed-7f09d7cfc7df,Gaea's Revenge,Creature — Elemental,{5}{G}{G},"This spell can't be countered.
+Haste
+This creature can't be the target of nongreen spells or abilities from nongreen sources.",random:creature,,"REVIEW: large and hard to remove, but not evasive, so not finisher."
+88dadc31-dfac-41b3-bf2a-65fa89e3c16d,"Linvala, Keeper of Silence",Legendary Creature — Angel,{2}{W}{W},"Flying
+Activated abilities of creatures your opponents control can't be activated.",random:creature,,Stax-like; no role in this taxonomy.
+612c9079-adae-4fe5-9a72-8efc09ddfe5c,Practiced Tactics,Instant,{W},"Choose target attacking or blocking creature. Practiced Tactics deals damage to that creature equal to twice the number of creatures in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)",random:instant,removal,
+5cd51d39-aebc-4367-9157-da70b8d9b1a3,Berserker's Frenzy,Instant,{2}{R},"Cast this spell only before combat or during combat before blockers are declared.
+Roll two d20 and ignore the lower roll.
+1—14 | Choose any number of creatures. They block this turn if able.
+15—20 | You choose which creatures block this turn and how those creatures block.",random:instant,,
+cbc808dd-8d50-4f42-b0f1-d4e45d0462a2,Coat with Venom,Instant,{B},Target creature gets +1/+2 and gains deathtouch until end of turn. (Any amount of damage it deals to a creature is enough to destroy it.),random:instant,,Combat trick.
+3b3ecaf2-7e95-4b62-9bc0-a61985508808,March of Reckless Joy,Instant,{X}{R},"As an additional cost to cast this spell, you may exile any number of red cards from your hand. This spell costs {2} less to cast for each card exiled this way.
+Exile the top X cards of your library. You may play up to two of those cards until the end of your next turn.",random:instant,card_draw,Impulse draw.
+6bdbe36f-b46d-4746-baf2-04f0977bb532,Nexus Mentality,Instant,{3}{U},"Choose one. If you control a commander as you cast this spell, you may choose both instead.
+• Move all counters from target nonland permanent you control onto another target nonland permanent you control.
+• Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way.",random:instant,card_draw,Conditional on counters.
+3f404fe4-4335-4dcc-ba90-78246c4b880b,Elspeth's Smite,Instant,{W},"Elspeth's Smite deals 3 damage to target attacking or blocking creature. If that creature would die this turn, exile it instead.",random:instant,removal,
+7fb7c848-377c-4476-9b3f-d95d145137f1,Reward the Faithful,Instant,{W},Any number of target players each gain life equal to the greatest mana value among permanents you control.,random:instant,,
+266d3f06-c982-4427-b421-7520e5da5c2e,Might of the Old Ways,Instant,{1}{G},"Target creature gets +2/+2 until end of turn.
+Coven — Then if you control three or more creatures with different powers, draw a card.",random:instant,,Conditional cantrip only replaces itself.
+397964db-465a-407d-9dc7-d0a4944473ac,Enhanced Awareness,Instant,{4}{U},"Draw three cards, then discard a card.",random:instant,card_draw,
+342d20ca-178d-433e-9630-6fed33a8d0bc,Thrash // Threat,Instant // Sorcery,{R/G}{R/G} // {2}{R}{G},"Target creature you control deals damage equal to its power to target creature or planeswalker you don't control.
+//
+Create a 4/4 red and green Beast creature token with trample.",random:instant,removal token_maker,Split card: both halves.
+324493fc-a205-4177-aa94-cf4672844c81,Random Encounter,Sorcery,{4}{R}{R},"Shuffle your library, then mill four cards. Put each creature card milled this way onto the battlefield. They gain haste. At the beginning of the next end step, return those creatures to their owner's hand.
+Flashback {6}{R}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",random:sorcery,,Creatures return to hand: not recursion or ramp.
+335a6c6a-030f-45d4-806c-467a22962eed,Final Act,Sorcery,{4}{B}{B},"Choose one or more —
+• Destroy all creatures.
+• Destroy all planeswalkers.
+• Destroy all battles.
+• Exile all graveyards.
+• Each opponent loses all counters.",random:sorcery,board_wipe,
+21645448-ecbd-4036-b9ed-47cd903079e4,Defeat,Sorcery,{1}{B},Destroy target creature with power 2 or less.,random:sorcery,removal,
+8060dc97-9868-4846-85f4-0ef70da2b021,Grim Bounty,Sorcery,{2}{B}{B},"Destroy target creature or planeswalker. Create a Treasure token. (It's an artifact with ""{T}, Sacrifice this token: Add one mana of any color."")",random:sorcery,removal ramp,Treasure counts as ramp.
+efc12fda-054b-466a-a863-06cf54878172,Oust,Sorcery,{W},Put target creature into its owner's library second from the top. Its controller gains 3 life.,random:sorcery,removal,
+086b2564-9114-4ba2-94fd-b490f98f38a7,Chain Reaction,Sorcery,{2}{R}{R},"Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.",random:sorcery,board_wipe,
+19ad338a-c89f-406d-ad1a-222c22044e1b,Act on Impulse,Sorcery,{2}{R},"Exile the top three cards of your library. Until end of turn, you may play those cards. (If you cast a spell this way, you still pay its costs. You can play a land this way only if you have an available land play remaining.)",random:sorcery,card_draw,Impulse draw.
+4014f665-08a6-4ae0-b4d7-5a69d043af6a,Telemin Performance,Sorcery,{3}{U}{U},"Target opponent reveals cards from the top of their library until they reveal a creature card. That player puts all noncreature cards revealed this way into their graveyard, then you put the creature card onto the battlefield under your control.",random:sorcery,,REVIEW: steals a creature from an opponent's library; no clean role.
+bf276236-18a6-4a48-b47d-5227832d26e6,Never // Return,Sorcery // Sorcery,{1}{B}{B} // {3}{B},"Destroy target creature or planeswalker.
+//
+Aftermath (Cast this spell only from your graveyard. Then exile it.)
+Exile target card from a graveyard. Create a 2/2 black Zombie creature token.",random:sorcery,removal token_maker,Aftermath half makes a token.
+a7e7cacf-cc2f-45ce-abb1-7b66d1e2fabc,Guild Globe,Artifact,{2},"When this artifact enters, draw a card.
+{2}, {T}, Sacrifice this artifact: Add two mana of different colors.",random:artifact,mana_fixing,"Sacrifice for two colors, one-shot; the draw only replaces itself."
+76678885-3674-443d-b9a2-2a460cf6aac0,Panharmonicon,Artifact,{4},"If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",random:artifact,,
+87c1bd51-6a85-4a14-af7b-a5b02ab69d73,Sequence Engine,Artifact,{2}{G},"{X}, {T}: Exile target creature card with mana value X from a graveyard. Create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it. Activate only as a sorcery.",random:artifact,token_maker,Also graveyard hate.
+4d9554de-c005-41ab-a941-39328ebff9de,Relic of Legends,Artifact,{3},"{T}: Add one mana of any color.
+Tap an untapped legendary creature you control: Add one mana of any color.",random:artifact,ramp mana_fixing,
+7411a8f4-b736-482f-886e-5fa671e94e0d,Witchbane Orb,Artifact,{4},"When this artifact enters, destroy all Curses attached to you.
+You have hexproof. (You can't be the target of spells or abilities your opponents control, including Aura spells.)",random:artifact,protection,Protects the player.
+736892cb-a34b-4bb9-b56c-e26e3db207a2,Mana Vault,Artifact,{1},"This artifact doesn't untap during your untap step.
+At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.
+At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
+{T}: Add {C}{C}{C}.",random:artifact,ramp,
+62320290-ac8e-4f92-bb06-3368f66ae0a9,Keys to the House,Artifact,{1},"{1}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.
+{3}, {T}, Sacrifice this artifact: Lock or unlock a door of target Room you control. Activate only as a sorcery.",random:artifact,mana_fixing,REVIEW: basic land to hand; fixing rather than ramp.
+db0894e1-2644-48d4-8de4-8cc43e940bc1,Debris Field Crusher,Artifact — Spacecraft,{4}{R},"When this Spacecraft enters, it deals 3 damage to any target.
+Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)
+8+ | Flying
+{1}{R}: This Spacecraft gets +2/+0 until end of turn.",random:artifact,removal,3 damage to any target when it enters.
+9b3bec05-441f-4fdf-8b51-69fa8613fcd4,Darksteel Forge,Artifact,{9},"Artifacts you control have indestructible. (Effects that say ""destroy"" don't destroy them. Artifact creatures with indestructible can't be destroyed by damage.)",random:artifact,protection,
+0da104ae-c46c-4106-919f-d975721d42d9,Lunarch Mantle,Enchantment — Aura,{1}{W},"Enchant creature
+Enchanted creature gets +2/+2 and has ""{1}, Sacrifice a permanent: This creature gains flying until end of turn.""",random:enchantment,,
+45bd5e97-f34e-47bc-ad21-da42d3444431,Zektar Shrine Expedition,Enchantment,{1}{R},"Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment.
+Remove three quest counters from this enchantment and sacrifice it: Create a 7/1 red Elemental creature token with trample and haste. Exile it at the beginning of the next end step.",random:enchantment,token_maker,Temporary 7/1 token.
+c1cb870a-8c1f-435c-b678-e456c4d2d627,Banewasp Affliction,Enchantment — Aura,{1}{B},"Enchant creature
+When enchanted creature dies, that creature's controller loses life equal to its toughness.",random:enchantment,,
+1ad83cac-2c85-477b-ab00-1369f9683db5,Armor Wars,Enchantment — Saga,{2}{U}{R},"(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)
+I — You may draw a card for each artifact you control. If you do, each opponent draws a card.
+II — Artifact spells you cast this turn cost {1} less to cast.
+III — This Saga deals X damage to target opponent, where X is the greatest mana value among artifacts you control.",random:enchantment,card_draw,
+f1a2a78c-2794-4bc9-9b06-49306378ef69,Shadow Lance,Enchantment — Aura,{W},"Enchant creature
+Enchanted creature has first strike.
+{1}{B}: Enchanted creature gets +2/+2 until end of turn.",random:enchantment,,
+6e27956e-ba2f-41a9-8e39-ec54424591b6,Monstrous Vortex,Enchantment,{3}{G},"Whenever you cast a creature spell with power 5 or greater, discover X, where X is that spell's mana value. (Exile cards from the top of your library until you exile a nonland card with that mana value or less. Cast it without paying its mana cost or put it into your hand. Put the rest on the bottom in a random order.)",random:enchantment,card_draw,Discover gives card advantage.
+9103f01f-e60b-4cda-9102-edc4aef74cc3,Necromancer's Covenant,Enchantment,{3}{W}{B}{B},"When this enchantment enters, exile all creature cards from target player's graveyard, then create a 2/2 black Zombie creature token for each card exiled this way.
+Zombies you control have lifelink.",random:enchantment,token_maker,Also graveyard hate.
+11132bbe-985d-44fa-a5b4-4b4e0dc3a7cf,Nettlevine Blight,Enchantment — Aura,{4}{B}{B},"Enchant creature or land
+Enchanted permanent has ""At the beginning of your end step, sacrifice this permanent and attach Nettlevine Blight to a creature or land you control.""",random:enchantment,removal,Slow: the creature or land is eventually sacrificed.
+fbffaf9f-40e7-4113-a037-533b733cebce,Sorin the Mirthless,Legendary Planeswalker — Sorin,{2}{B}{B},"+1: Look at the top card of your library. You may reveal that card and put it into your hand. If you do, you lose life equal to its mana value.
+−2: Create a 2/3 black Vampire creature token with flying and lifelink.
+−7: Sorin deals 13 damage to any target. You gain 13 life.",random:planeswalker,card_draw token_maker,
+afc2269c-d3b5-487d-9445-800c7a8e526b,"Domri, Anarch of Bolas",Legendary Planeswalker — Domri,{1}{R}{G},"Creatures you control get +1/+0.
++1: Add {R} or {G}. Creature spells you cast this turn can't be countered.
+−2: Target creature you control fights target creature you don't control.",random:planeswalker,ramp removal,+1 adds mana; -2 fight.
+f4bf8bd1-71b0-4eb1-976c-54677238b2a6,"Oko, the Trickster",Legendary Planeswalker — Oko,{4}{G}{U},"+1: Put two +1/+1 counters on up to one target creature you control.
+0: Until end of turn, Oko becomes a copy of target creature you control. Prevent all damage that would be dealt to him this turn.
+−7: Until end of turn, each creature you control has base power and toughness 10/10 and gains trample.",random:planeswalker,finisher,-7 makes the team 10/10 trample.
+33e85a8a-86df-4cdc-a9cc-8cbabe92c3c0,Urza's Mine,Land — Urza's Mine,,"{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.",random:land,land,"REVIEW: only ramp alongside the other Tron lands, so just land."
+27b047e3-0d41-45e2-98e9-9391d7923a1e,Exotic Orchard,Land,,{T}: Add one mana of any color that a land an opponent controls could produce.,random:land,land mana_fixing,
+c3172c5d-c745-4422-b651-cd414c8da11b,Birnin Zana Plaza,Land,,"This land enters tapped.
+When this land enters, you gain 1 life.
+{T}: Add {G} or {W}.",random:land,land mana_fixing,
+66fa2326-1b5d-41fb-b919-83bf9f383577,Blooming Marsh,Land,,"This land enters tapped unless you control two or fewer other lands.
+{T}: Add {B} or {G}.",random:land,land mana_fixing,
+2c96ab90-155b-4bf4-acc9-65a2f0cd3189,Capital City,Land — Town,,"{T}: Add {C}.
+{1}, {T}: Add one mana of any color.
+Cycling {2} ({2}, Discard this card: Draw a card.)",random:land,land mana_fixing,
+93b91d18-6acf-42e5-9a31-bc6e01f90c1f,Hadana's Climb // Winged Temple of Orazca,Legendary Enchantment // Legendary Land,{1}{G}{U} // ,"At the beginning of combat on your turn, put a +1/+1 counter on target creature you control. Then if that creature has three or more +1/+1 counters on it, transform Hadana's Climb.
+//
+(Transforms from Hadana's Climb.)
+{T}: Add one mana of any color.
+{1}{G}{U}, {T}: Target creature you control gains flying and gets +X/+X until end of turn, where X is its power.",random:land,,REVIEW: an enchantment that transforms into a land with any-color mana and a pump.
+e6e7b5ba-ea10-4f53-8afc-045aa1906c6b,Syphon Essence,Instant,{2}{U},"Counter target creature or planeswalker spell. Create a Blood token. (It's an artifact with ""{1}, {T}, Discard a card, Sacrifice this token: Draw a card."")",targeted:counterspell,counterspell,
+22b7975c-37a5-4895-b209-bdeeec0c6aea,Judge's Familiar,Creature — Bird,{W/U},"Flying
+Sacrifice this creature: Counter target instant or sorcery spell unless its controller pays {1}.",targeted:counterspell,counterspell,
+53015c41-af2d-43e2-a690-d8877537b8dd,Sapphire Dragon // Psionic Pulse,Creature — Dragon // Instant — Adventure,{5}{U}{U} // {2}{U},"Flying
+Whenever this creature attacks or blocks, scry 2.
+//
+Counter target noncreature spell. (Then exile this card. You may cast the creature later from exile.)",targeted:counterspell,counterspell,The adventure half counters.
+f1a16f6d-ea11-485e-8c5b-7f919a731fe0,Mask of the Mimic,Instant,{U},"As an additional cost to cast this spell, sacrifice a creature.
+Search your library for a card with the same name as target nontoken creature, put that card onto the battlefield, then shuffle.",targeted:tutor,tutor,"REVIEW: searches for a same-named card, which is nearly useless in singleton."
+79acdb37-8d52-4bc8-a7be-a7e92b6166e5,Dark Petition,Sorcery,{3}{B}{B},"Search your library for a card, put that card into your hand, then shuffle.
+Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, add {B}{B}{B}.",targeted:tutor,tutor,"The mana is a one-shot ritual, not ramp."
+7f32344f-06d8-4862-bfeb-f90a3e1d7fc2,The Creation of Avacyn,Enchantment — Saga,{1}{B}{B},"(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)
+I — Search your library for a card, exile it face down, then shuffle.
+II — Turn the exiled card face up. If it's a creature card, you lose life equal to its mana value.
+III — You may put the exiled card onto the battlefield if it's a creature card. If you don't put it onto the battlefield, put it into its owner's hand.",targeted:tutor,tutor,
+c2508190-5aca-4511-adc8-2072cd228119,Downdraft,Enchantment,{2}{G},"{G}: Target creature loses flying until end of turn.
+Sacrifice this enchantment: It deals 2 damage to each creature with flying.",targeted:board_wipe,board_wipe,"REVIEW: hits only flyers, for 2 damage."
+944904a4-aab6-4ad9-96d7-6a3e47c118ca,Earthshaker,Creature — Spirit,{4}{R}{R},"Whenever you cast a Spirit or Arcane spell, this creature deals 2 damage to each creature without flying.",targeted:board_wipe,board_wipe,"Repeatable, non-flyers only."
+d057289d-5e28-43d5-8ff3-4a1bc723477d,Day of Judgment,Sorcery,{2}{W}{W},Destroy all creatures.,targeted:board_wipe,board_wipe,
+33747a34-79cc-446f-8718-b499bd497687,Guardian of New Benalia,Creature — Human Soldier,{1}{W},"Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.)
+Whenever this creature enlists a creature, scry 2.
+Discard a card: This creature gains indestructible until end of turn. Tap it.",targeted:protection,protection,Protects only itself.
+49dc3434-2501-4788-84f2-93e55730f67c,Selfless Savior,Creature — Dog,{W},"Sacrifice this creature: Another target creature you control gains indestructible until end of turn. (Damage and effects that say ""destroy"" don't destroy it.)",targeted:protection,protection,
+b9a62c6b-5848-44b1-932b-8d5de2560976,Surge of Salvation,Instant,{W},You and permanents you control gain hexproof until end of turn. Prevent all damage that black and/or red sources would deal to creatures you control this turn.,targeted:protection,protection,
+6858702a-e563-4dcb-a50d-65406cea7c86,Liliana's Contract,Enchantment,{3}{B}{B},"When this enchantment enters, you draw four cards and you lose 4 life.
+At the beginning of your upkeep, if you control four or more Demons with different names, you win the game.",targeted:finisher,card_draw finisher,Alternate win condition.
+e45a1626-d659-4eda-bc6b-bd8119ce7386,Kjeldoran War Cry,Instant,{1}{W},"Creatures you control get +X/+X until end of turn, where X is 1 plus the number of cards named Kjeldoran War Cry in all graveyards.",targeted:finisher,finisher,"REVIEW: a mass pump, but usually only +1/+1."
+f75be4f2-d1a7-40c7-a0e4-ba8b03556ac6,Prismabasher,Creature — Elemental,{4}{G}{G},"Trample
+Vivid — When this creature enters, up to X target creatures you control get +X/+X until end of turn, where X is the number of colors among permanents you control.",targeted:finisher,finisher,Mass pump.
+55bc7f55-f73b-40b5-8912-9bf76c129ccc,"Azlask, the Swelling Scourge",Legendary Creature — Eldrazi,{3},"Whenever Azlask or another colorless creature you control dies, you get an experience counter.
+{W}{U}{B}{R}{G}: Creatures you control get +X/+X until end of turn, where X is the number of experience counters you have. Scions and Spawns you control gain indestructible and annihilator 1 until end of turn.",targeted:finisher,finisher,"Mass pump, needs WUBRG."
+a52a06aa-56fc-4845-bbcd-a54f16369b34,Timeless Witness,Creature — Human Shaman,{2}{G}{G},"When this creature enters, return target card from your graveyard to your hand.
+Eternalize {5}{G}{G} ({5}{G}{G}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Human Shaman with no mana cost. Eternalize only as a sorcery.)",targeted:recursion,recursion,
+55cba59c-932c-4295-87dc-9179fbdfbd53,One Last Job,Sorcery,{2}{W},"Spree (Choose one or more additional costs.)
++ {2} — Return target creature card from your graveyard to the battlefield.
++ {1} — Return target Mount or Vehicle card from your graveyard to the battlefield.
++ {1} — Return target Aura or Equipment card from your graveyard to the battlefield attached to a creature you control.",targeted:recursion,recursion,
+b693c24f-07d9-40fa-aa4a-8f7ba61f3452,Retether,Sorcery,{3}{W},Return each Aura card from your graveyard to the battlefield. Only creatures can be enchanted this way. (Aura cards that can't enchant a creature on the battlefield remain in your graveyard.),targeted:recursion,recursion,
+a699c663-8131-4045-9265-a83e86609374,Thran Dynamo,Artifact,{4},{T}: Add {C}{C}{C}.,targeted:ramp,ramp,
+3adb7681-977f-4a32-9ec8-51481b958268,Rakdos Signet,Artifact,{2},"{1}, {T}: Add {B}{R}.",targeted:ramp,ramp mana_fixing,
+e05c6c80-a91a-45e0-b991-0014fd5a6472,Blood Pet,Creature — Thrull,{B},Sacrifice this creature: Add {B}.,targeted:ramp,,"One-shot mana is a ritual, not ramp."
+692fdca7-0eff-4d2d-b744-213b6f6e18fb,Nacatl War-Pride,Creature — Cat Warrior,{3}{G}{G}{G},"This creature must be blocked by exactly one creature if able.
+Whenever this creature attacks, create X tokens that are copies of it and that are tapped and attacking, where X is the number of creatures defending player controls. Exile the tokens at the beginning of the next end step.",targeted:token_maker,token_maker,Temporary attacking copies.
+2b7c4dab-e432-4b34-b058-3cec5c0d72df,Martial Coup,Sorcery,{X}{W}{W},"Create X 1/1 white Soldier creature tokens. If X is 5 or more, destroy all other creatures.",targeted:token_maker,token_maker board_wipe,
+76a6ddc2-f894-4331-89a9-87ca16efd0c0,Servo Exhibition,Sorcery,{1}{W},Create two 1/1 colorless Servo artifact creature tokens.,targeted:token_maker,token_maker,
+66051196-53ea-4461-b241-205df9395b3b,Infectious Inquiry,Sorcery,{2}{B},You draw two cards and you lose 2 life. Each opponent gets a poison counter.,targeted:card_draw,card_draw,
+72bdc7ba-2906-436d-8405-6a8a3335fdae,Stormsurge Kraken,Creature — Kraken,{3}{U}{U},"Hexproof
+Lieutenant — As long as you control your commander, this creature gets +2/+2 and has ""Whenever this creature becomes blocked, you may draw two cards.""",targeted:card_draw,card_draw,REVIEW: draws only when blocked and you control your commander.
+7f0544e3-965f-4b12-baaf-d7dfea8d4d41,Birth of the Imperium,Enchantment — Saga,{2}{W}{U}{B},"(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)
+I — Create a 2/2 white Astartes Warrior creature token with vigilance for each opponent you have.
+II — Each opponent sacrifices a creature of their choice.
+III — Draw two cards for each opponent who controls fewer creatures than you.",targeted:card_draw,token_maker removal card_draw,Edict on each opponent counts as removal.
+d683d985-9888-4d21-8b5f-69e69ce4a03b,Path to Exile,Instant,{W},"Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.",targeted:removal,removal,
+c0ce7d5a-68fd-41f3-b5ba-a1a178cee9ec,Murderous Cut,Instant,{4}{B},"Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)
+Destroy target creature.",targeted:removal,removal,
