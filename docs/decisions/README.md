@@ -32,3 +32,4 @@ Each ADR is linked from the module docstring of the code it governs, so someone 
 | [0005](0005-http-retries-rate-limits-and-download-cache.md) | HTTP retries, rate limiting and the download cache | `ingestion.downloads`, `ingestion.scryfall` |
 | [0006](0006-content-hashes-and-soft-deletes-for-ingestion.md) | Content hashes over normalised fields, and soft deletes, for ingestion | `ingestion`, `cards` table |
 | [0007](0007-a-pure-commander-validator-that-cites-rules.md) | A pure Commander validator that reports every violation and cites its rule | `guardrails.commander`, `deck` |
+| [0008](0008-one-model-interface-owned-by-the-project.md) | One model interface, owned by the project | `llm` |

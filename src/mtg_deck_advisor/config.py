@@ -20,6 +20,9 @@ class Settings(BaseSettings):
         # .env also holds values for other tools (such as Docker Compose), so
         # unknown keys are ignored rather than rejected.
         extra="ignore",
+        # "NAME=" with no value means unset, so an empty placeholder such as
+        # ANTHROPIC_API_KEY= is no key, not a blank one.
+        env_ignore_empty=True,
     )
 
     # SecretStr keeps the password out of repr() and str(), so a settings
@@ -37,6 +40,17 @@ class Settings(BaseSettings):
     # 0.0.0.0, and Docker's port mapping decides what is exposed.
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+
+    # Model calls (ADR 0008). The provider and model are configuration, so
+    # switching provider is a settings change with no code change (MOD-4).
+    model_provider: Literal["anthropic", "ollama", "replay"] = "anthropic"
+    model_name: str = "claude-opus-5-5"
+    model_timeout_seconds: float = 60
+    # The most one run (a process, or one request through the API) may spend
+    # on model calls. Small by default: a run that needs more must ask for it.
+    run_cost_cap_usd: float = 1.0
+    # Needed only for the anthropic provider. Never logged or shown.
+    anthropic_api_key: SecretStr | None = None
 
     # Where downloaded source files (Scryfall bulk data, the rules file) are
     # cached. Relative paths are relative to the working directory.

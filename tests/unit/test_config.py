@@ -97,3 +97,39 @@ def test_the_rules_source_is_pinned_to_one_version(monkeypatch: pytest.MonkeyPat
 
     # A dated file, so updating the rules is a deliberate change of this setting.
     assert load().rules_url.endswith("MagicCompRules%2020260925.txt")
+
+
+def test_model_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    for name in ("MODEL_PROVIDER", "MODEL_NAME", "MODEL_TIMEOUT_SECONDS", "RUN_COST_CAP_USD"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    settings = load()
+
+    assert settings.model_provider == "anthropic"
+    assert settings.model_name == "claude-opus-5-5"
+    assert settings.model_timeout_seconds == 60
+    # Small by default: a run that needs more must ask for it.
+    assert settings.run_cost_cap_usd == 1.0
+    assert settings.anthropic_api_key is None
+
+
+def test_the_anthropic_api_key_is_never_shown_in_repr(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-secret-value")
+
+    settings = load()
+
+    assert settings.anthropic_api_key is not None
+    assert settings.anthropic_api_key.get_secret_value() == "sk-ant-secret-value"
+    assert "sk-ant-secret-value" not in repr(settings)
+
+
+def test_an_empty_variable_counts_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # .env.example ships "ANTHROPIC_API_KEY=" with no value: that means no key,
+    # not a key that is an empty string.
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+
+    assert load().anthropic_api_key is None

@@ -73,4 +73,5 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "integration: requires real services (e.g. Postgres + pgvector in Docker)",
+    "live: calls a real, possibly paid, external service; skipped unless --live",
 ]
