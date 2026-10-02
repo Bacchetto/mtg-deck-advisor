@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from mtg_deck_advisor.config import Settings
@@ -34,3 +36,32 @@ def test_the_embedder_uses_the_configured_ollama_model() -> None:
     embedder = build_embedder(settings(embedding_model="nomic-embed-text"))
 
     assert embedder.model == "nomic-embed-text"
+
+
+def test_the_replay_provider_is_built_from_settings(tmp_path: Path) -> None:
+    from mtg_deck_advisor.llm.replay import ReplayProvider
+
+    provider = build_provider(settings(model_provider="replay", replay_dir=tmp_path))
+
+    assert isinstance(provider, ReplayProvider)
+
+
+def test_recording_wraps_the_real_provider(tmp_path: Path) -> None:
+    from mtg_deck_advisor.llm.replay import RecordingProvider
+
+    provider = build_provider(
+        settings(
+            model_provider="ollama",
+            model_name="qwen3:14b",
+            record_responses=True,
+            replay_dir=tmp_path,
+        )
+    )
+
+    assert isinstance(provider, RecordingProvider)
+    assert provider.name == "ollama"
+
+
+def test_recording_while_replaying_makes_no_sense() -> None:
+    with pytest.raises(ValueError, match="RECORD_RESPONSES"):
+        build_provider(settings(model_provider="replay", record_responses=True))
