@@ -70,13 +70,13 @@ def test_the_stored_vector_is_the_embedding_of_the_cards_text(loaded: Settings) 
     with connect(loaded) as conn:
         embed_cards(conn, embedder)
         row = conn.execute(
-            "SELECT c.name, c.type_line, c.mana_cost, c.oracle_text, e.embedding::text "
+            "SELECT c.name, c.type_line, c.oracle_text, e.embedding::text "
             "FROM card_embeddings e JOIN cards c USING (oracle_id) WHERE c.name = 'Sol Ring'"
         ).fetchone()
 
     assert row is not None
-    (expected,) = FakeEmbedder().embed([card_text(row[0], row[1], row[2], row[3])])
-    assert json.loads(row[4]) == pytest.approx(expected, abs=1e-6)
+    (expected,) = FakeEmbedder().embed([card_text(row[0], row[1], row[2])])
+    assert json.loads(row[3]) == pytest.approx(expected, abs=1e-6)
 
 
 def test_a_second_run_embeds_nothing(loaded: Settings) -> None:

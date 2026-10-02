@@ -25,31 +25,24 @@ def test_symbols_are_written_out_as_words(text: str, expected: str) -> None:
     assert expand_symbols(text) == expected
 
 
-def test_a_card_is_its_name_type_cost_and_text() -> None:
-    assert card_text("Sol Ring", "Artifact", "{1}", "{T}: Add {C}{C}.") == (
-        "Sol Ring. Artifact. Costs one generic mana. "
-        "tap: Add one colorless mana one colorless mana."
+def test_a_card_is_its_name_type_and_text() -> None:
+    assert card_text("Sol Ring", "Artifact", "{T}: Add {C}{C}.") == (
+        "Sol Ring. Artifact. tap: Add one colorless mana one colorless mana."
     )
 
 
-def test_a_card_without_a_cost_or_text_leaves_them_out() -> None:
-    assert card_text("Plains", "Basic Land — Plains", "", "") == "Plains. Basic Land — Plains."
+def test_a_card_without_text_is_its_name_and_type() -> None:
+    assert card_text("Plains", "Basic Land — Plains", "") == "Plains. Basic Land — Plains."
 
 
-def test_each_face_of_a_two_faced_card_has_its_cost() -> None:
+def test_each_ability_and_face_stays_separated() -> None:
     text = card_text(
         "Bellowing Bruiser // Beat a Path",
         "Creature — Ogre // Sorcery — Adventure",
-        "{4}{R} // {2}{R}",
         "Haste\n//\nUp to two target creatures can't block this turn.",
     )
 
-    assert "Costs four generic mana one red mana or two generic mana one red mana." in text
-    assert text.endswith("Haste / // / Up to two target creatures can't block this turn.")
-
-
-def test_a_back_face_without_a_cost_adds_nothing() -> None:
-    text = card_text("Ajani // Ajani", "Creature // Planeswalker", "{1}{W} // ", "")
-
-    assert "Costs one generic mana one white mana." in text
-    assert " or " not in text
+    assert text == (
+        "Bellowing Bruiser // Beat a Path. Creature — Ogre // Sorcery — Adventure. "
+        "Haste / // / Up to two target creatures can't block this turn."
+    )
