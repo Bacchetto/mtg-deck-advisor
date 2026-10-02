@@ -1,0 +1,46 @@
+# Eval datasets
+
+Labelled data for the evals. Each set is drafted by Claude from checkable sources and reviewed by the project owner. The draft and the owner's corrections are separate commits, so the history shows where a human disagreed.
+
+| File | What it labels | Used by |
+|---|---|---|
+| `role_tagging_gold.csv` | The roles of 100 cards (ramp, removal...) | `scripts/compare_role_taggers.py` |
+| `retrieval_cards.csv` | Card search queries and the cards that answer them | the retrieval eval (Milestone 4) |
+| `retrieval_rules.csv` | Rules questions and the rule numbers that answer them | the retrieval eval (Milestone 4) |
+| `pool_300.txt` | A fixed pool of 300 cards for the in-pool card queries | the retrieval eval |
+
+## Retrieval sets
+
+The labels were written before any search code, so the search can't be tuned to them. Check them against the database with:
+
+```bash
+python -m mtg_deck_advisor.evaluation.retrieval_set
+```
+
+This checks that every card exists and is Commander-legal, that pool queries only label pool cards, that relevant cards pass the query's own filters, and that every rule number exists.
+
+**`retrieval_cards.csv` columns:**
+- `id`: `C..` for catalogue queries, `P..` for pool queries.
+- `kind`, one of:
+  - `paraphrase`: a description in different words from the card
+  - `term`: an exact mechanic name
+  - `name`: a card name, possibly mistyped
+  - `need`: a deck-building need
+- `scope`: `catalogue` searches every Commander-legal card; `pool` searches only `pool_300.txt`.
+- `query`: what's searched for.
+- `filters`: the exact filters the query runs with, such as `identity=G; type=Artifact; mv_min=1; mv_max=3`. Use `identity=C` for colorless.
+- `relevant`: the cards that answer the query, separated by `;`. Use full names for two-faced cards (`Bellowing Bruiser // Beat a Path`).
+- `notes`: why borderline cards were included or left out.
+
+**Which cards count as relevant:**
+- **Catalogue queries** have a few known targets each. Where a query describes an exact effect, an SQL search of the oracle text found every card with it.
+- **Pool queries** were judged against **every** card in the pool, so their relevant lists are complete and recall is exact.
+
+**`retrieval_rules.csv` columns:**
+- `id`
+- `kind`: `commander`, `keyword` or `general`
+- `question`
+- `relevant`: the rule numbers that answer the question, such as `903.5a; 704.6c`
+- `notes`
+
+**`pool_300.txt`:** a random sample of 300 Commander-legal cards. It was drawn once (Postgres `setseed(0.52)`, then `ORDER BY random() LIMIT 300`) and is committed so it never changes.

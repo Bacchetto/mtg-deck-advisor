@@ -1,0 +1,45 @@
+id,kind,scope,query,filters,relevant,notes
+C01,paraphrase,catalogue,an artifact that costs one and taps for two colorless mana,,Sol Ring,Other cards tap for {C}{C} but cost 3 or more.
+C02,paraphrase,catalogue,"one-mana white instant that exiles a creature, and its controller gains life equal to its power",,Swords to Plowshares; Emeritus of Truce // Swords to Plowshares,The second is a two-faced card whose back face is Swords.
+C03,paraphrase,catalogue,"exile a creature, and its controller gets to search for a basic land",,Path to Exile,
+C04,paraphrase,catalogue,"green sorcery that finds two basic lands, one onto the battlefield tapped and one into your hand",,Cultivate; Kodama's Reach; Flare of Cultivation; Peregrination,Navigation Orb and Troop of Ponies do the same but aren't green sorceries.
+C05,paraphrase,catalogue,"four-mana sorcery that destroys all creatures, and they can't be regenerated",,Wrath of God; Damnation,
+C06,paraphrase,catalogue,counter target spell for two blue mana,,Counterspell,Cancel has the same text but costs three.
+C07,paraphrase,catalogue,black sorcery that searches your library for any card and puts it into your hand,,Demonic Tutor; Diabolic Tutor,
+C08,paraphrase,catalogue,equipment that draws two cards when the equipped creature dies,,Skullclamp,
+C09,paraphrase,catalogue,a land that taps for any color in your commander's color identity,,Command Tower; Path of Ancestry; Opal Palace; Hidden Hideout,"Arcane Signet and Commander's Sphere do this too, but aren't lands."
+C10,paraphrase,catalogue,an enchantment that doubles the tokens you create,,Anointed Procession; Doubling Season; Parallel Lives; Primal Vigor,"Primal Vigor doubles everyone's tokens. Creatures that double tokens (Mondrak, Bard) excluded."
+C11,paraphrase,catalogue,sacrifice a creature to add colorless mana,,Ashnod's Altar; Transmogrant Altar,"Phyrexian Altar adds colored mana, so it's excluded."
+C12,paraphrase,catalogue,"every player sacrifices their creatures, then the creatures in graveyards come back",,Living Death; Living End,
+C13,paraphrase,catalogue,equipment that gives a creature haste and stops it being targeted,,Lightning Greaves; Swiftfoot Boots,
+C14,paraphrase,catalogue,"whenever an opponent casts a spell, you draw a card unless they pay one",,Rhystic Study,
+C15,paraphrase,catalogue,"whenever an opponent draws a card, you get a Treasure unless they pay two",,Smothering Tithe,"Tataru Taru is similar but conditional, so it's excluded."
+C16,paraphrase,catalogue,"bounce a nonland permanent you don't control, or overload it to bounce all of them",,Cyclonic Rift,
+C17,paraphrase,catalogue,a land that gives you no maximum hand size,,Reliquary Tower,Sea Gate Restoration's land face doesn't have the ability.
+C18,paraphrase,catalogue,sacrifice a land to put your commander into your hand from the command zone,,Command Beacon,
+C19,term,catalogue,ripple,,Surging Aether; Surging Dementia; Surging Flame; Surging Might; Surging Sentinels,Every legal card with ripple.
+C20,term,catalogue,epic,,Endless Swarm; Enduring Ideal; Eternal Dominion; Neverending Torment; Undying Flames,Every legal card with epic.
+C21,term,catalogue,gravestorm,,Bitter Ordeal; Follow the Bodies; Ominous Harvest,Every legal card with gravestorm.
+C22,name,catalogue,Atraxa,,"Atraxa, Praetors' Voice; Atraxa, Grand Unifier",Atraxa's Fall and Atraxa's Skitterfang share the name but aren't the legend.
+C23,name,catalogue,kodamas reach,,Kodama's Reach,A name typed without its apostrophe.
+P01,need,pool,counterspells,,Confirm Suspicions; Keep Safe; Neutralize; Vex; Voidslime,Mindreaver excluded: it only counters spells sharing a name with exiled cards.
+P02,need,pool,ways to destroy an artifact or enchantment,,Fracture; Loran of the Third Path; Woodfall Primus; Deem Inferior,Deem Inferior tucks rather than destroys; included as it answers any nonland permanent.
+P03,need,pool,cheap ramp,identity=G; mv_max=3,Sanctum Weaver; Return from the Wilds; Bucknard's Everfull Purse; Commander's Sphere; Darksteel Ingot; Luck Bobblehead,"Golden Egg (one-shot), Magic Pot (on death), Vine Gecko and Foundry Inspector (narrow cost reduction) excluded."
+P04,need,pool,repeatable card draw,identity=G,"Triumph of Ferocity; Thickest in the Thicket; Terrasymbiosis; Case of the Locked Hothouse; Level Up; Ginger, Queen of Sweets",Ginger draws through the monarch. Harmonize is one-shot; Gate to the Afterlife only loots.
+P05,need,pool,board wipes that kill every creature,,Game Over; Phyrexian Scriptures; Novablast Wurm; Whipflare; Destructive Force; Decree of Annihilation; Do or Die,"Excluded: Inundate (bounce), Extinction (one type), Worldslayer, Ajani's -4, Noxious Field (1 damage per tap)."
+P06,need,pool,return a creature card from my graveyard to the battlefield,,"Anti-Venom, Horrifying Healer; Obsessive Stitcher; Reunion of the House; Thrilling Encore",Cards that only return themselves are excluded.
+P07,need,pool,get cards back from my graveyard to my hand,,Evolution Charm; Evolution Witness; Invasion of Shandalar // Leyline Surge; Palace Siege; Divergent Equation; Dark Intimations; Maestros Confluence; Kami of the Palace Fields; Dawn-Blessed Pennant,Hua Tuo puts on top of library; Savvy Trader plays from exile; both excluded.
+P08,need,pool,make Treasure tokens,,Bucknard's Everfull Purse; Magic Pot; Luck Bobblehead,
+P09,need,pool,"give my creature hexproof, shroud or ward",,Magic Damper; Ghosthelm Courier; Pemmin's Aura; Crystal Carapace,"Other protection (phasing, protection from opponents, indestructible) is excluded."
+P10,need,pool,cheap burn to kill a creature,identity=R; mv_max=2,Engulfing Flames; Jaya's Greeting; Thundering Rebuke; Wild Slash,
+P11,need,pool,steal an opponent's creature,,Illicit Auction; Might Makes Right; Swooping Pteranodon,The last two take it until end of turn.
+P12,need,pool,tutor: search my library for a creature card,,Survival of the Fittest,Birthing Ritual and Vivien's Invocation dig the top seven cards rather than search.
+P13,need,pool,lands that tap for two colors,type=Land,Floodfarm Verge; Gleaming Bastion; Shivan Oasis; Viridescent Bog,Cactus Preserve and Archaeological Dig make any color; excluded.
+P14,need,pool,mana rocks that tap for any color,type=Artifact,Commander's Sphere; Darksteel Ingot; Luck Bobblehead,Golden Egg is one-shot; excluded.
+P15,need,pool,equipment that gives haste,,Strider Harness; Rocket-Powered Goblin Glider,
+P16,need,pool,stop opposing creatures from blocking,,Abandon the Post; Bellowing Bruiser // Beat a Path; Unearthly Blizzard; Forgehammer Centurion; Nacatl Hunt-Pride; Rumbling Ruin,Evasion for my own creatures (Tezzeret's Gatebreaker) is excluded.
+P17,need,pool,mill an opponent,,Crosstown Courier; Merrow Witsniper; Tenured Oilcaster; Vexing Arcanix,Mindreaver exiles rather than mills; excluded.
+P18,need,pool,tap down opposing creatures,identity=U,Eddymurk Crab; Permafrost Trap; The Wondrous Wasp,
+P19,need,pool,flicker a creature: exile it and return it to the battlefield,,Siren's Ruse; Spaceshift,
+P20,need,pool,take an extra turn,,"Teferi, Master of Time; Twice Upon a Time // Unlikely Meeting",
+P21,need,pool,copy my instant and sorcery spells,,"Resonance Technician; Prismari, the Inspiration","Mirrorwing Dragon copies spells that target it, mostly opponents'; excluded."
