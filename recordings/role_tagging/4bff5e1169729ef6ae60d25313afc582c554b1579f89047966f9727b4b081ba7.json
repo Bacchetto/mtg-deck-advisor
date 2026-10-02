@@ -1,0 +1,90 @@
+{
+  "request_hash": "4bff5e1169729ef6ae60d25313afc582c554b1579f89047966f9727b4b081ba7",
+  "model": "claude-haiku-4-5",
+  "recorded_from": "anthropic",
+  "recorded_at": "2026-10-02T18:52:05+00:00",
+  "request": {
+    "system": "You classify Magic: The Gathering cards by the roles they play in a Commander deck.\nTaxonomy version: roles-v2.\n\nRoles (use exactly these names):\n- ramp: gives extra mana beyond the normal land drop: mana rocks, mana creatures, putting lands onto the battlefield, cost reducers. Treasure-makers count; one-shot rituals don't.\n- card_draw: gives extra cards: drawing, or exiling cards you may play. Looting that discards as much as it draws doesn't count, nor does a cantrip that only replaces itself.\n- removal: deals with one opposing threat: destroy, exile, sacrifice, damage or bounce aimed at a single permanent.\n- board_wipe: deals with many permanents at once: destroy all, mass damage, mass bounce or exile.\n- counterspell: counters spells or abilities.\n- tutor: searches your library for a specific non-land card. Searching for lands is ramp or mana_fixing.\n- recursion: returns cards from a graveyard, to hand or to the battlefield.\n- protection: protects your own permanents or yourself: hexproof, indestructible, shroud, phasing, shield counters, countering spells that target them.\n- token_maker: creates creature tokens. Treasure and other non-creature tokens don't count (Treasure is ramp).\n- finisher: ends games: mass pumps for your team, alternate win conditions, large evasive threats.\n- mana_fixing: produces or finds mana of more than one color: dual lands, any-color mana, searching for basic lands to fix colors.\n- land: is a land card.\n- mill: puts cards from an opponent's library into their graveyard: milling as a win condition or disruption.\n- self_mill: puts cards from your own library into your graveyard, to fuel graveyard strategies: milling yourself, surveil, putting revealed cards into your graveyard.\n\nA card can have several roles, or none (for example a vanilla creature).\nJudge each card by its own text, as a Commander player would.\nFor every card in the list, give its number, its roles, and a one-sentence reason.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Classify these cards:\n1. Practiced Tactics | {W} | Instant | Choose target attacking or blocking creature. Practiced Tactics deals damage to that creature equal to twice the number of creatures in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)\n2. Berserker's Frenzy | {2}{R} | Instant | Cast this spell only before combat or during combat before blockers are declared. / Roll two d20 and ignore the lower roll. / 1—14 | Choose any number of creatures. They block this turn if able. / 15—20 | You choose which creatures block this turn and how those creatures block.\n3. Coat with Venom | {B} | Instant | Target creature gets +1/+2 and gains deathtouch until end of turn. (Any amount of damage it deals to a creature is enough to destroy it.)\n4. March of Reckless Joy | {X}{R} | Instant | As an additional cost to cast this spell, you may exile any number of red cards from your hand. This spell costs {2} less to cast for each card exiled this way. / Exile the top X cards of your library. You may play up to two of those cards until the end of your next turn.\n5. Nexus Mentality | {3}{U} | Instant | Choose one. If you control a commander as you cast this spell, you may choose both instead. / • Move all counters from target nonland permanent you control onto another target nonland permanent you control. / • Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way.\n6. Elspeth's Smite | {W} | Instant | Elspeth's Smite deals 3 damage to target attacking or blocking creature. If that creature would die this turn, exile it instead.\n7. Reward the Faithful | {W} | Instant | Any number of target players each gain life equal to the greatest mana value among permanents you control.\n8. Might of the Old Ways | {1}{G} | Instant | Target creature gets +2/+2 until end of turn. / Coven — Then if you control three or more creatures with different powers, draw a card.\n9. Enhanced Awareness | {4}{U} | Instant | Draw three cards, then discard a card.\n10. Thrash // Threat | {R/G}{R/G} // {2}{R}{G} | Instant // Sorcery | Target creature you control deals damage equal to its power to target creature or planeswalker you don't control. / // / Create a 4/4 red and green Beast creature token with trample.\n11. Random Encounter | {4}{R}{R} | Sorcery | Shuffle your library, then mill four cards. Put each creature card milled this way onto the battlefield. They gain haste. At the beginning of the next end step, return those creatures to their owner's hand. / Flashback {6}{R}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)\n12. Final Act | {4}{B}{B} | Sorcery | Choose one or more — / • Destroy all creatures. / • Destroy all planeswalkers. / • Destroy all battles. / • Exile all graveyards. / • Each opponent loses all counters.\n13. Defeat | {1}{B} | Sorcery | Destroy target creature with power 2 or less.\n14. Grim Bounty | {2}{B}{B} | Sorcery | Destroy target creature or planeswalker. Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\n15. Oust | {W} | Sorcery | Put target creature into its owner's library second from the top. Its controller gains 3 life.\n16. Chain Reaction | {2}{R}{R} | Sorcery | Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.\n17. Act on Impulse | {2}{R} | Sorcery | Exile the top three cards of your library. Until end of turn, you may play those cards. (If you cast a spell this way, you still pay its costs. You can play a land this way only if you have an available land play remaining.)\n18. Telemin Performance | {3}{U}{U} | Sorcery | Target opponent reveals cards from the top of their library until they reveal a creature card. That player puts all noncreature cards revealed this way into their graveyard, then you put the creature card onto the battlefield under your control.\n19. Never // Return | {1}{B}{B} // {3}{B} | Sorcery // Sorcery | Destroy target creature or planeswalker. / // / Aftermath (Cast this spell only from your graveyard. Then exile it.) / Exile target card from a graveyard. Create a 2/2 black Zombie creature token.\n20. Guild Globe | {2} | Artifact | When this artifact enters, draw a card. / {2}, {T}, Sacrifice this artifact: Add two mana of different colors.\n21. Panharmonicon | {4} | Artifact | If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\n22. Sequence Engine | {2}{G} | Artifact | {X}, {T}: Exile target creature card with mana value X from a graveyard. Create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it. Activate only as a sorcery.\n23. Relic of Legends | {3} | Artifact | {T}: Add one mana of any color. / Tap an untapped legendary creature you control: Add one mana of any color.\n24. Witchbane Orb | {4} | Artifact | When this artifact enters, destroy all Curses attached to you. / You have hexproof. (You can't be the target of spells or abilities your opponents control, including Aura spells.)\n25. Mana Vault | {1} | Artifact | This artifact doesn't untap during your untap step. / At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact. / At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you. / {T}: Add {C}{C}{C}."
+      }
+    ],
+    "max_tokens": 3000,
+    "effort": "low",
+    "output_schema": {
+      "$defs": {
+        "TaggedCard": {
+          "description": "The model's answer for one card, by its number in the list.",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "type": "integer"
+            },
+            "roles": {
+              "items": {
+                "enum": [
+                  "ramp",
+                  "card_draw",
+                  "removal",
+                  "board_wipe",
+                  "counterspell",
+                  "tutor",
+                  "recursion",
+                  "protection",
+                  "token_maker",
+                  "finisher",
+                  "mana_fixing",
+                  "land",
+                  "mill",
+                  "self_mill"
+                ],
+                "type": "string"
+              },
+              "title": "Roles",
+              "type": "array"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index",
+            "roles",
+            "reason"
+          ],
+          "title": "TaggedCard",
+          "type": "object"
+        }
+      },
+      "description": "The model's answer for a batch of cards.",
+      "properties": {
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/TaggedCard"
+          },
+          "title": "Cards",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cards"
+      ],
+      "title": "RoleTagging",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"cards\": [{\"index\": 1, \"roles\": [\"removal\"], \"reason\": \"Deals damage to a single creature based on your party composition, functioning as targeted removal.\"},{\"index\": 2, \"roles\": [\"removal\"], \"reason\": \"Forces creatures to block in a specific way, effectively removing them from attacking or controlling their blocking assignments.\"},{\"index\": 3, \"roles\": [\"protection\"], \"reason\": \"Grants a creature +1/+2 and deathtouch, protecting it in combat and making it more lethal.\"},{\"index\": 4, \"roles\": [\"card_draw\"], \"reason\": \"Allows you to exile and play cards from your library, effectively drawing up to two cards over the next turn.\"},{\"index\": 5, \"roles\": [\"card_draw\"], \"reason\": \"The second mode draws a card for each counter removed, providing card advantage.\"},{\"index\": 6, \"roles\": [\"removal\"], \"reason\": \"Deals 3 damage to a single attacking or blocking creature and exiles it if lethal, functioning as targeted removal.\"},{\"index\": 7, \"roles\": [], \"reason\": \"Only provides life gain with no board impact or strategic advantage for Commander.\"},{\"index\": 8, \"roles\": [\"card_draw\"], \"reason\": \"Pumps a creature and draws a card if you control three creatures with different powers, providing conditional card advantage.\"},{\"index\": 9, \"roles\": [\"card_draw\"], \"reason\": \"Draws three cards despite requiring a discard, providing net card advantage.\"},{\"index\": 10, \"roles\": [\"removal\", \"token_maker\"], \"reason\": \"The first half removes a single opposing creature or planeswalker, and the second half creates a 4/4 token.\"},{\"index\": 11, \"roles\": [\"token_maker\"], \"reason\": \"Puts creature cards from your library onto the battlefield as temporary tokens with haste.\"},{\"index\": 12, \"roles\": [\"board_wipe\"], \"reason\": \"Destroys all creatures, planeswalkers, or battles (or exiles graveyards), handling multiple permanent types at once.\"},{\"index\": 13, \"roles\": [\"removal\"], \"reason\": \"Destroys a single creature with power 2 or less, functioning as targeted removal.\"},{\"index\": 14, \"roles\": [\"removal\", \"ramp\"], \"reason\": \"Destroys a single creature or planeswalker and creates a Treasure token for mana acceleration.\"},{\"index\": 15, \"roles\": [\"removal\"], \"reason\": \"Removes a single creature by putting it into the library, functioning as a bounce-like removal effect.\"},{\"index\": 16, \"roles\": [\"board_wipe\"], \"reason\": \"Deals damage to all creatures on the battlefield equally, functioning as mass removal.\"},{\"index\": 17, \"roles\": [\"card_draw\"], \"reason\": \"Allows you to play cards exiled from the top of your library, providing card advantage until end of turn.\"},{\"index\": 18, \"roles\": [\"removal\"], \"reason\": \"Removes a creature card from an opponent's library and puts it under your control, disrupting and acquiring a threat.\"},{\"index\": 19, \"roles\": [\"removal\", \"token_maker\"], \"reason\": \"The first mode destroys a creature or planeswalker, and the second mode creates a 2/2 Zombie token from the graveyard.\"},{\"index\": 20, \"roles\": [\"card_draw\", \"mana_fixing\"], \"reason\": \"Draws a card on entry and provides two mana of different colors when sacrificed.\"},{\"index\": 21, \"roles\": [\"ramp\"], \"reason\": \"Doubles triggered abilities from artifacts and creatures entering, which amplifies mana generation and card advantage from ETB effects.\"},{\"index\": 22, \"roles\": [\"token_maker\"], \"reason\": \"Creates a Fractal token with +1/+1 counters from a creature card in a graveyard.\"},{\"index\": 23, \"roles\": [\"mana_fixing\"], \"reason\": \"Produces mana of any color, fixing your mana base for multicolor decks.\"},{\"index\": 24, \"roles\": [\"protection\"], \"reason\": \"Grants you hexproof, protecting you from targeted spells and abilities.\"},{\"index\": 25, \"roles\": [\"ramp\"], \"reason\": \"Produces three colorless mana per activation, providing significant mana acceleration despite the upkeep cost requirement.\"}]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 2550,
+      "output_tokens": 1014,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "claude-haiku-4-5-20251001"
+  }
+}

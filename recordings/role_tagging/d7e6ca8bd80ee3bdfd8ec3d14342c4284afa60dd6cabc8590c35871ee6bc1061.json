@@ -1,0 +1,90 @@
+{
+  "request_hash": "d7e6ca8bd80ee3bdfd8ec3d14342c4284afa60dd6cabc8590c35871ee6bc1061",
+  "model": "claude-haiku-4-5",
+  "recorded_from": "anthropic",
+  "recorded_at": "2026-10-02T18:52:26+00:00",
+  "request": {
+    "system": "You classify Magic: The Gathering cards by the roles they play in a Commander deck.\nTaxonomy version: roles-v2.\n\nRoles (use exactly these names):\n- ramp: gives extra mana beyond the normal land drop: mana rocks, mana creatures, putting lands onto the battlefield, cost reducers. Treasure-makers count; one-shot rituals don't.\n- card_draw: gives extra cards: drawing, or exiling cards you may play. Looting that discards as much as it draws doesn't count, nor does a cantrip that only replaces itself.\n- removal: deals with one opposing threat: destroy, exile, sacrifice, damage or bounce aimed at a single permanent.\n- board_wipe: deals with many permanents at once: destroy all, mass damage, mass bounce or exile.\n- counterspell: counters spells or abilities.\n- tutor: searches your library for a specific non-land card. Searching for lands is ramp or mana_fixing.\n- recursion: returns cards from a graveyard, to hand or to the battlefield.\n- protection: protects your own permanents or yourself: hexproof, indestructible, shroud, phasing, shield counters, countering spells that target them.\n- token_maker: creates creature tokens. Treasure and other non-creature tokens don't count (Treasure is ramp).\n- finisher: ends games: mass pumps for your team, alternate win conditions, large evasive threats.\n- mana_fixing: produces or finds mana of more than one color: dual lands, any-color mana, searching for basic lands to fix colors.\n- land: is a land card.\n- mill: puts cards from an opponent's library into their graveyard: milling as a win condition or disruption.\n- self_mill: puts cards from your own library into your graveyard, to fuel graveyard strategies: milling yourself, surveil, putting revealed cards into your graveyard.\n\nA card can have several roles, or none (for example a vanilla creature).\nJudge each card by its own text, as a Commander player would.\nFor every card in the list, give its number, its roles, and a one-sentence reason.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Classify these cards:\n1. The Creation of Avacyn | {1}{B}{B} | Enchantment — Saga | (As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.) / I — Search your library for a card, exile it face down, then shuffle. / II — Turn the exiled card face up. If it's a creature card, you lose life equal to its mana value. / III — You may put the exiled card onto the battlefield if it's a creature card. If you don't put it onto the battlefield, put it into its owner's hand.\n2. Downdraft | {2}{G} | Enchantment | {G}: Target creature loses flying until end of turn. / Sacrifice this enchantment: It deals 2 damage to each creature with flying.\n3. Earthshaker | {4}{R}{R} | Creature — Spirit | Whenever you cast a Spirit or Arcane spell, this creature deals 2 damage to each creature without flying.\n4. Day of Judgment | {2}{W}{W} | Sorcery | Destroy all creatures.\n5. Guardian of New Benalia | {1}{W} | Creature — Human Soldier | Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.) / Whenever this creature enlists a creature, scry 2. / Discard a card: This creature gains indestructible until end of turn. Tap it.\n6. Selfless Savior | {W} | Creature — Dog | Sacrifice this creature: Another target creature you control gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)\n7. Surge of Salvation | {W} | Instant | You and permanents you control gain hexproof until end of turn. Prevent all damage that black and/or red sources would deal to creatures you control this turn.\n8. Liliana's Contract | {3}{B}{B} | Enchantment | When this enchantment enters, you draw four cards and you lose 4 life. / At the beginning of your upkeep, if you control four or more Demons with different names, you win the game.\n9. Kjeldoran War Cry | {1}{W} | Instant | Creatures you control get +X/+X until end of turn, where X is 1 plus the number of cards named Kjeldoran War Cry in all graveyards.\n10. Prismabasher | {4}{G}{G} | Creature — Elemental | Trample / Vivid — When this creature enters, up to X target creatures you control get +X/+X until end of turn, where X is the number of colors among permanents you control.\n11. Azlask, the Swelling Scourge | {3} | Legendary Creature — Eldrazi | Whenever Azlask or another colorless creature you control dies, you get an experience counter. / {W}{U}{B}{R}{G}: Creatures you control get +X/+X until end of turn, where X is the number of experience counters you have. Scions and Spawns you control gain indestructible and annihilator 1 until end of turn.\n12. Timeless Witness | {2}{G}{G} | Creature — Human Shaman | When this creature enters, return target card from your graveyard to your hand. / Eternalize {5}{G}{G} ({5}{G}{G}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Human Shaman with no mana cost. Eternalize only as a sorcery.)\n13. One Last Job | {2}{W} | Sorcery | Spree (Choose one or more additional costs.) / + {2} — Return target creature card from your graveyard to the battlefield. / + {1} — Return target Mount or Vehicle card from your graveyard to the battlefield. / + {1} — Return target Aura or Equipment card from your graveyard to the battlefield attached to a creature you control.\n14. Retether | {3}{W} | Sorcery | Return each Aura card from your graveyard to the battlefield. Only creatures can be enchanted this way. (Aura cards that can't enchant a creature on the battlefield remain in your graveyard.)\n15. Thran Dynamo | {4} | Artifact | {T}: Add {C}{C}{C}.\n16. Rakdos Signet | {2} | Artifact | {1}, {T}: Add {B}{R}.\n17. Blood Pet | {B} | Creature — Thrull | Sacrifice this creature: Add {B}.\n18. Nacatl War-Pride | {3}{G}{G}{G} | Creature — Cat Warrior | This creature must be blocked by exactly one creature if able. / Whenever this creature attacks, create X tokens that are copies of it and that are tapped and attacking, where X is the number of creatures defending player controls. Exile the tokens at the beginning of the next end step.\n19. Martial Coup | {X}{W}{W} | Sorcery | Create X 1/1 white Soldier creature tokens. If X is 5 or more, destroy all other creatures.\n20. Servo Exhibition | {1}{W} | Sorcery | Create two 1/1 colorless Servo artifact creature tokens.\n21. Infectious Inquiry | {2}{B} | Sorcery | You draw two cards and you lose 2 life. Each opponent gets a poison counter.\n22. Stormsurge Kraken | {3}{U}{U} | Creature — Kraken | Hexproof / Lieutenant — As long as you control your commander, this creature gets +2/+2 and has \"Whenever this creature becomes blocked, you may draw two cards.\"\n23. Birth of the Imperium | {2}{W}{U}{B} | Enchantment — Saga | (As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.) / I — Create a 2/2 white Astartes Warrior creature token with vigilance for each opponent you have. / II — Each opponent sacrifices a creature of their choice. / III — Draw two cards for each opponent who controls fewer creatures than you.\n24. Path to Exile | {W} | Instant | Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.\n25. Murderous Cut | {4}{B} | Instant | Delve (Each card you exile from your graveyard while casting this spell pays for {1}.) / Destroy target creature."
+      }
+    ],
+    "max_tokens": 3000,
+    "effort": "low",
+    "output_schema": {
+      "$defs": {
+        "TaggedCard": {
+          "description": "The model's answer for one card, by its number in the list.",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "type": "integer"
+            },
+            "roles": {
+              "items": {
+                "enum": [
+                  "ramp",
+                  "card_draw",
+                  "removal",
+                  "board_wipe",
+                  "counterspell",
+                  "tutor",
+                  "recursion",
+                  "protection",
+                  "token_maker",
+                  "finisher",
+                  "mana_fixing",
+                  "land",
+                  "mill",
+                  "self_mill"
+                ],
+                "type": "string"
+              },
+              "title": "Roles",
+              "type": "array"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index",
+            "roles",
+            "reason"
+          ],
+          "title": "TaggedCard",
+          "type": "object"
+        }
+      },
+      "description": "The model's answer for a batch of cards.",
+      "properties": {
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/TaggedCard"
+          },
+          "title": "Cards",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cards"
+      ],
+      "title": "RoleTagging",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"cards\":[{\"index\":1,\"roles\":[\"tutor\",\"recursion\"],\"reason\":\"Searches your library for a card and exiles it, then potentially puts it onto the battlefield or returns it to hand, serving as both tutor and recursion.\"},{\"index\":2,\"roles\":[\"removal\"],\"reason\":\"Removes individual creatures with flying through temporary ability loss or direct damage.\"},{\"index\":3,\"roles\":[\"removal\"],\"reason\":\"Deals damage to multiple creatures without flying whenever you cast Spirit or Arcane spells, functioning as repeated removal.\"},{\"index\":4,\"roles\":[\"board_wipe\"],\"reason\":\"Destroys all creatures on the battlefield simultaneously.\"},{\"index\":5,\"roles\":[\"card_draw\",\"protection\"],\"reason\":\"Scries (card selection) when enlisting and can grant indestructible to protect creatures.\"},{\"index\":6,\"roles\":[\"protection\"],\"reason\":\"Sacrifices to grant another creature indestructible, protecting it from destruction effects and damage.\"},{\"index\":7,\"roles\":[\"protection\"],\"reason\":\"Grants hexproof to you and your permanents, and prevents damage from black and red sources.\"},{\"index\":8,\"roles\":[\"card_draw\",\"finisher\"],\"reason\":\"Draws four cards and provides an alternate win condition through controlling four or more Demons with different names.\"},{\"index\":9,\"roles\":[\"finisher\"],\"reason\":\"Pumps your team with +X/+X based on copies in graveyards, functioning as a mass pump finisher.\"},{\"index\":10,\"roles\":[\"finisher\"],\"reason\":\"Pumps creatures you control based on the number of colors among your permanents, serving as a mass pump finisher.\"},{\"index\":11,\"roles\":[\"finisher\"],\"reason\":\"Gains experience counters and provides a mass pump finisher ability, granting bonuses to creatures based on counters.\"},{\"index\":12,\"roles\":[\"recursion\"],\"reason\":\"Returns a target card from your graveyard to hand when entering, with additional recursion through eternalize.\"},{\"index\":13,\"roles\":[\"recursion\"],\"reason\":\"Returns creatures, Mounts/Vehicles, or Auras/Equipment from your graveyard to the battlefield through spree options.\"},{\"index\":14,\"roles\":[\"recursion\"],\"reason\":\"Returns all Aura cards from your graveyard to the battlefield, enabling recursion of enchantments.\"},{\"index\":15,\"roles\":[\"ramp\"],\"reason\":\"Produces three colorless mana per turn, providing consistent mana acceleration beyond basic land drops.\"},{\"index\":16,\"roles\":[\"mana_fixing\",\"ramp\"],\"reason\":\"Produces two colors of mana and costs two mana, fixing mana and providing some acceleration.\"},{\"index\":17,\"roles\":[\"ramp\"],\"reason\":\"Sacrifices to produce one black mana, serving as a mana source that ramps beyond normal land drops.\"},{\"index\":18,\"roles\":[\"finisher\",\"token_maker\"],\"reason\":\"Creates attacking token copies of itself and must be blocked by one creature, functioning as a large evasive finisher.\"},{\"index\":19,\"roles\":[\"token_maker\",\"board_wipe\"],\"reason\":\"Creates Soldier tokens and destroys all other creatures if X is 5 or more, serving as token maker and conditional board wipe.\"},{\"index\":20,\"roles\":[\"token_maker\"],\"reason\":\"Creates two Servo artifact creature tokens.\"},{\"index\":21,\"roles\":[\"card_draw\"],\"reason\":\"Draws two cards, paying life and giving poison counters as additional effects.\"},{\"index\":22,\"roles\":[\"protection\",\"card_draw\"],\"reason\":\"Has hexproof for protection and draws cards when blocked while your commander is in play.\"},{\"index\":23,\"roles\":[\"token_maker\",\"removal\",\"card_draw\"],\"reason\":\"Creates tokens, forces opponents to sacrifice creatures, and draws cards based on comparative board states.\"},{\"index\":24,\"roles\":[\"removal\"],\"reason\":\"Exiles a target creature, providing removal with a ramp benefit for the opponent.\"},{\"index\":25,\"roles\":[\"removal\"],\"reason\":\"Destroys a target creature with delve cost reduction from your graveyard.\"}]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 2613,
+      "output_tokens": 945,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "claude-haiku-4-5-20251001"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "request_hash": "b5166a8ea72a947f6eed0c20bd723e219e5d7fa63dbcafe1764820f83fd5d71d",
+  "model": "claude-haiku-4-5",
+  "recorded_from": "anthropic",
+  "recorded_at": "2026-10-02T18:52:17+00:00",
+  "request": {
+    "system": "You classify Magic: The Gathering cards by the roles they play in a Commander deck.\nTaxonomy version: roles-v2.\n\nRoles (use exactly these names):\n- ramp: gives extra mana beyond the normal land drop: mana rocks, mana creatures, putting lands onto the battlefield, cost reducers. Treasure-makers count; one-shot rituals don't.\n- card_draw: gives extra cards: drawing, or exiling cards you may play. Looting that discards as much as it draws doesn't count, nor does a cantrip that only replaces itself.\n- removal: deals with one opposing threat: destroy, exile, sacrifice, damage or bounce aimed at a single permanent.\n- board_wipe: deals with many permanents at once: destroy all, mass damage, mass bounce or exile.\n- counterspell: counters spells or abilities.\n- tutor: searches your library for a specific non-land card. Searching for lands is ramp or mana_fixing.\n- recursion: returns cards from a graveyard, to hand or to the battlefield.\n- protection: protects your own permanents or yourself: hexproof, indestructible, shroud, phasing, shield counters, countering spells that target them.\n- token_maker: creates creature tokens. Treasure and other non-creature tokens don't count (Treasure is ramp).\n- finisher: ends games: mass pumps for your team, alternate win conditions, large evasive threats.\n- mana_fixing: produces or finds mana of more than one color: dual lands, any-color mana, searching for basic lands to fix colors.\n- land: is a land card.\n- mill: puts cards from an opponent's library into their graveyard: milling as a win condition or disruption.\n- self_mill: puts cards from your own library into your graveyard, to fuel graveyard strategies: milling yourself, surveil, putting revealed cards into your graveyard.\n\nA card can have several roles, or none (for example a vanilla creature).\nJudge each card by its own text, as a Commander player would.\nFor every card in the list, give its number, its roles, and a one-sentence reason.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Classify these cards:\n1. Keys to the House | {1} | Artifact | {1}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle. / {3}, {T}, Sacrifice this artifact: Lock or unlock a door of target Room you control. Activate only as a sorcery.\n2. Debris Field Crusher | {4}{R} | Artifact — Spacecraft | When this Spacecraft enters, it deals 3 damage to any target. / Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.) / 8+ | Flying / {1}{R}: This Spacecraft gets +2/+0 until end of turn.\n3. Darksteel Forge | {9} | Artifact | Artifacts you control have indestructible. (Effects that say \"destroy\" don't destroy them. Artifact creatures with indestructible can't be destroyed by damage.)\n4. Lunarch Mantle | {1}{W} | Enchantment — Aura | Enchant creature / Enchanted creature gets +2/+2 and has \"{1}, Sacrifice a permanent: This creature gains flying until end of turn.\"\n5. Zektar Shrine Expedition | {1}{R} | Enchantment | Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment. / Remove three quest counters from this enchantment and sacrifice it: Create a 7/1 red Elemental creature token with trample and haste. Exile it at the beginning of the next end step.\n6. Banewasp Affliction | {1}{B} | Enchantment — Aura | Enchant creature / When enchanted creature dies, that creature's controller loses life equal to its toughness.\n7. Armor Wars | {2}{U}{R} | Enchantment — Saga | (As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.) / I — You may draw a card for each artifact you control. If you do, each opponent draws a card. / II — Artifact spells you cast this turn cost {1} less to cast. / III — This Saga deals X damage to target opponent, where X is the greatest mana value among artifacts you control.\n8. Shadow Lance | {W} | Enchantment — Aura | Enchant creature / Enchanted creature has first strike. / {1}{B}: Enchanted creature gets +2/+2 until end of turn.\n9. Monstrous Vortex | {3}{G} | Enchantment | Whenever you cast a creature spell with power 5 or greater, discover X, where X is that spell's mana value. (Exile cards from the top of your library until you exile a nonland card with that mana value or less. Cast it without paying its mana cost or put it into your hand. Put the rest on the bottom in a random order.)\n10. Necromancer's Covenant | {3}{W}{B}{B} | Enchantment | When this enchantment enters, exile all creature cards from target player's graveyard, then create a 2/2 black Zombie creature token for each card exiled this way. / Zombies you control have lifelink.\n11. Nettlevine Blight | {4}{B}{B} | Enchantment — Aura | Enchant creature or land / Enchanted permanent has \"At the beginning of your end step, sacrifice this permanent and attach Nettlevine Blight to a creature or land you control.\"\n12. Sorin the Mirthless | {2}{B}{B} | Legendary Planeswalker — Sorin | +1: Look at the top card of your library. You may reveal that card and put it into your hand. If you do, you lose life equal to its mana value. / −2: Create a 2/3 black Vampire creature token with flying and lifelink. / −7: Sorin deals 13 damage to any target. You gain 13 life.\n13. Domri, Anarch of Bolas | {1}{R}{G} | Legendary Planeswalker — Domri | Creatures you control get +1/+0. / +1: Add {R} or {G}. Creature spells you cast this turn can't be countered. / −2: Target creature you control fights target creature you don't control.\n14. Oko, the Trickster | {4}{G}{U} | Legendary Planeswalker — Oko | +1: Put two +1/+1 counters on up to one target creature you control. / 0: Until end of turn, Oko becomes a copy of target creature you control. Prevent all damage that would be dealt to him this turn. / −7: Until end of turn, each creature you control has base power and toughness 10/10 and gains trample.\n15. Urza's Mine |  | Land — Urza's Mine | {T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.\n16. Exotic Orchard |  | Land | {T}: Add one mana of any color that a land an opponent controls could produce.\n17. Birnin Zana Plaza |  | Land | This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {G} or {W}.\n18. Blooming Marsh |  | Land | This land enters tapped unless you control two or fewer other lands. / {T}: Add {B} or {G}.\n19. Capital City |  | Land — Town | {T}: Add {C}. / {1}, {T}: Add one mana of any color. / Cycling {2} ({2}, Discard this card: Draw a card.)\n20. Hadana's Climb // Winged Temple of Orazca | {1}{G}{U} //  | Legendary Enchantment // Legendary Land | At the beginning of combat on your turn, put a +1/+1 counter on target creature you control. Then if that creature has three or more +1/+1 counters on it, transform Hadana's Climb. / // / (Transforms from Hadana's Climb.) / {T}: Add one mana of any color. / {1}{G}{U}, {T}: Target creature you control gains flying and gets +X/+X until end of turn, where X is its power.\n21. Syphon Essence | {2}{U} | Instant | Counter target creature or planeswalker spell. Create a Blood token. (It's an artifact with \"{1}, {T}, Discard a card, Sacrifice this token: Draw a card.\")\n22. Judge's Familiar | {W/U} | Creature — Bird | Flying / Sacrifice this creature: Counter target instant or sorcery spell unless its controller pays {1}.\n23. Sapphire Dragon // Psionic Pulse | {5}{U}{U} // {2}{U} | Creature — Dragon // Instant — Adventure | Flying / Whenever this creature attacks or blocks, scry 2. / // / Counter target noncreature spell. (Then exile this card. You may cast the creature later from exile.)\n24. Mask of the Mimic | {U} | Instant | As an additional cost to cast this spell, sacrifice a creature. / Search your library for a card with the same name as target nontoken creature, put that card onto the battlefield, then shuffle.\n25. Dark Petition | {3}{B}{B} | Sorcery | Search your library for a card, put that card into your hand, then shuffle. / Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, add {B}{B}{B}."
+      }
+    ],
+    "max_tokens": 3000,
+    "effort": "low",
+    "output_schema": {
+      "$defs": {
+        "TaggedCard": {
+          "description": "The model's answer for one card, by its number in the list.",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "type": "integer"
+            },
+            "roles": {
+              "items": {
+                "enum": [
+                  "ramp",
+                  "card_draw",
+                  "removal",
+                  "board_wipe",
+                  "counterspell",
+                  "tutor",
+                  "recursion",
+                  "protection",
+                  "token_maker",
+                  "finisher",
+                  "mana_fixing",
+                  "land",
+                  "mill",
+                  "self_mill"
+                ],
+                "type": "string"
+              },
+              "title": "Roles",
+              "type": "array"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index",
+            "roles",
+            "reason"
+          ],
+          "title": "TaggedCard",
+          "type": "object"
+        }
+      },
+      "description": "The model's answer for a batch of cards.",
+      "properties": {
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/TaggedCard"
+          },
+          "title": "Cards",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cards"
+      ],
+      "title": "RoleTagging",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"cards\": [{\"index\": 1, \"roles\": [\"mana_fixing\"], \"reason\": \"Sacrifices to search your library for a basic land card, which is a mana fixing effect.\"}, {\"index\": 2, \"roles\": [\"removal\", \"finisher\"], \"reason\": \"Deals 3 damage to any target on entry, and can be pumped to deal additional damage as a finisher threat.\"}, {\"index\": 3, \"roles\": [\"protection\"], \"reason\": \"Grants indestructible to all artifacts you control, protecting them from destruction.\"}, {\"index\": 4, \"roles\": [], \"reason\": \"A simple aura that pumps the enchanted creature with no specific strategic role beyond stats.\"}, {\"index\": 5, \"roles\": [\"token_maker\"], \"reason\": \"Creates a 7/1 red Elemental token as part of its ability.\"}, {\"index\": 6, \"roles\": [], \"reason\": \"A purely passive aura that triggers on death but provides no strategic advantage in Commander.\"}, {\"index\": 7, \"roles\": [\"card_draw\", \"ramp\", \"finisher\"], \"reason\": \"Draws cards via its first chapter, reduces artifact spell costs via ramp, and deals damage as a finisher in the third chapter.\"}, {\"index\": 8, \"roles\": [], \"reason\": \"An aura providing modest power boost and evasion with no specific Commander role.\"}, {\"index\": 9, \"roles\": [\"card_draw\"], \"reason\": \"Discovers cards (exiling until a nonland is found) when you cast large creatures, effectively providing card advantage.\"}, {\"index\": 10, \"roles\": [\"removal\", \"token_maker\"], \"reason\": \"Exiles creature cards from a graveyard (removal effect) and creates Zombie tokens for each card exiled.\"}, {\"index\": 11, \"roles\": [\"recursion\"], \"reason\": \"Causes the enchanted permanent to be sacrificed and the aura reattached to another permanent each turn, enabling recursion.\"}, {\"index\": 12, \"roles\": [\"card_draw\", \"token_maker\", \"finisher\"], \"reason\": \"Draws cards via the first ability, creates flying tokens, and deals 13 damage as a finisher ultimate.\"}, {\"index\": 13, \"roles\": [\"ramp\", \"finisher\", \"removal\"], \"reason\": \"Adds mana as a ramp ability, pumps creatures for finisher damage, and the removal ability allows creatures to fight.\"}, {\"index\": 14, \"roles\": [\"finisher\"], \"reason\": \"Gives creatures +1/+1 counters and the ultimate makes all creatures 10/10 with trample for a finishing blow.\"}, {\"index\": 15, \"roles\": [\"land\", \"mana_fixing\"], \"reason\": \"A land that produces colorless mana, and produces double colorless when combined with other Urza's lands.\"}, {\"index\": 16, \"roles\": [\"land\", \"mana_fixing\"], \"reason\": \"A land that produces any color that an opponent's land could produce, fixing mana colors.\"}, {\"index\": 17, \"roles\": [\"land\", \"mana_fixing\"], \"reason\": \"A dual land that produces green or white mana with incidental life gain.\"}, {\"index\": 18, \"roles\": [\"land\", \"mana_fixing\"], \"reason\": \"A dual land that produces black or green mana, providing color fixing.\"}, {\"index\": 19, \"roles\": [\"land\", \"mana_fixing\"], \"reason\": \"A land that produces colorless or any color, with cycling as an incidental ability.\"}, {\"index\": 20, \"roles\": [\"land\", \"mana_fixing\", \"finisher\"], \"reason\": \"A dual-faced land that provides color fixing and the back side pumps creatures with flying for a finisher effect.\"}, {\"index\": 21, \"roles\": [\"counterspell\"], \"reason\": \"Counters a creature or planeswalker spell while creating a Blood token incidentally.\"}, {\"index\": 22, \"roles\": [\"counterspell\"], \"reason\": \"Can sacrifice itself to counter an instant or sorcery spell unless its controller pays {1}.\"}, {\"index\": 23, \"roles\": [\"card_draw\", \"counterspell\"], \"reason\": \"The creature draws cards via scry on attack/block, and the adventure side counters a noncreature spell.\"}, {\"index\": 24, \"roles\": [\"tutor\"], \"reason\": \"Searches your library for a card with the same name as a nontoken creature and puts it onto the battlefield.\"}, {\"index\": 25, \"roles\": [\"tutor\", \"ramp\"], \"reason\": \"Searches your library for any card (tutoring), and can add three black mana if spell mastery is satisfied (ramp).\"}]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 2880,
+      "output_tokens": 1084,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "claude-haiku-4-5-20251001"
+  }
+}
