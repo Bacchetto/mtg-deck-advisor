@@ -15,6 +15,12 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+# Re-exported so callers can import every model error from the client.
+from mtg_deck_advisor.llm.errors import BudgetExceededError as BudgetExceededError
+from mtg_deck_advisor.llm.errors import InvalidOutputError as InvalidOutputError
+from mtg_deck_advisor.llm.errors import ModelCallError as ModelCallError
+from mtg_deck_advisor.llm.errors import ModelError as ModelError
+from mtg_deck_advisor.llm.errors import RefusalError as RefusalError
 from mtg_deck_advisor.llm.pricing import PRICES, cost_usd, worst_case_cost_usd
 from mtg_deck_advisor.llm.recording import CallRecord, CallRecorder, Outcome
 from mtg_deck_advisor.llm.types import Message, ModelRequest, Provider, ProviderRequest, Usage
@@ -25,26 +31,6 @@ log = structlog.get_logger(__name__)
 # A rough characters-per-token ratio, used only to estimate a call's input
 # size for the budget check before the call is made.
 CHARS_PER_TOKEN = 4
-
-
-class ModelError(Exception):
-    """A model call did not produce a usable result."""
-
-
-class ModelCallError(ModelError):
-    """The provider failed: network, timeout, or an API error."""
-
-
-class RefusalError(ModelError):
-    """The model declined to answer."""
-
-
-class InvalidOutputError(ModelError):
-    """The output did not match the required schema, even after a retry."""
-
-
-class BudgetExceededError(ModelError):
-    """The call could push this run's spending over its cost cap, so it was not made."""
 
 
 class ModelResponse(BaseModel):
@@ -132,12 +118,16 @@ class ModelClient:
         started = self._clock()
         try:
             reply = self._provider.complete(request, self._model)
+        except ModelError as exc:
+            # Already specific (a spend limit, bad credentials): keep its type.
+            self._record(request, attempt, "error", None, error=str(exc))
+            raise
         except Exception as exc:
             self._record(request, attempt, "error", None, error=str(exc))
             raise ModelCallError(f"{self._provider.name} call failed: {exc}") from exc
         latency_ms = (self._clock() - started) * 1000
 
-        cost = cost_usd(reply.model, reply.usage) if self._provider.bills else 0.0
+        cost = self._cost(reply.model, reply.usage) if self._provider.bills else 0.0
         self._spent_usd += cost
         response = ModelResponse(
             text=reply.text,
@@ -152,6 +142,18 @@ class ModelClient:
             self._record(request, attempt, "refusal", response)
             raise RefusalError(f"{request.purpose}: the model declined to answer")
         return response
+
+    def _cost(self, answered_by: str, usage: Usage) -> float:
+        """The call's cost, at the price of the model that actually answered.
+
+        A server-side refusal fallback can answer from a model the price table
+        lacks. The money is already spent, so rather than fail, the call is
+        costed at the requested model's price, with a warning to add the model.
+        """
+        if answered_by in PRICES:
+            return cost_usd(answered_by, usage)
+        log.warning("model_price_unknown", model=answered_by, costed_as=self._model)
+        return cost_usd(self._model, usage)
 
     def _would_exceed_cap(self, request: ProviderRequest) -> bool:
         if self._cost_cap_usd is None or not self._provider.bills:

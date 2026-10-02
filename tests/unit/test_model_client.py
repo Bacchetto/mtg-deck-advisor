@@ -10,6 +10,7 @@ from mtg_deck_advisor.llm.client import (
     ModelClient,
     RefusalError,
 )
+from mtg_deck_advisor.llm.errors import SpendLimitError
 from mtg_deck_advisor.llm.fake import FakeProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
 from mtg_deck_advisor.llm.types import Message, ModelRequest, ProviderResponse, Usage
@@ -182,3 +183,26 @@ def test_spending_accumulates_until_the_cap_stops_further_calls() -> None:
 
     assert len(provider.calls) == 1
     assert client.spent_usd == pytest.approx(0.024)
+
+
+def test_a_provider_error_that_is_already_specific_keeps_its_type() -> None:
+    client, _, recorder = client_with(SpendLimitError("credit balance is too low"))
+
+    with pytest.raises(SpendLimitError):
+        client.generate(request())
+
+    assert recorder.records[0].outcome == "error"
+
+
+def test_a_reply_from_an_unpriced_model_is_costed_at_the_requested_models_price() -> None:
+    # A server-side fallback can answer from a model the price table lacks;
+    # the money is already spent, so the call must not fail on costing it.
+    unknown = reply("Ramp.", input_tokens=1000, output_tokens=100).model_copy(
+        update={"model": "claude-unlisted-1"}
+    )
+    client, _, _ = client_with(unknown)
+
+    response = client.generate(request())
+
+    assert response.model == "claude-unlisted-1"
+    assert response.cost_usd == pytest.approx(1000 * 4 / 1e6 + 100 * 20 / 1e6)
