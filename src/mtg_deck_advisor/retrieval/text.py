@@ -15,6 +15,7 @@ recognised as stale and redone.
 """
 
 import re
+from typing import Literal
 
 CARD_TEXT_VERSION = "cards-v1"
 RULE_TEXT_VERSION = "rules-v1"
@@ -87,3 +88,22 @@ def rule_text(number: str, section: str, text: str, parent: tuple[str, str] | No
     """
     context = f" {parent[0]}: {first_sentence(parent[1])}" if parent else ""
     return f"{section}.{context} {number}: {' '.join(text.split())}"
+
+
+# Qwen3 embedding models expect a query to carry a one-line task instruction
+# (documents carry none). The cards one is what ADR 0009 measured.
+QUERY_INSTRUCTIONS = {
+    "cards": (
+        "Given a description of a card's effect, retrieve the Magic: The Gathering card that has it"
+    ),
+    "rules": (
+        "Given a question about the Magic: The Gathering rules, retrieve the rule that answers it"
+    ),
+}
+
+
+def query_text(model: str, kind: Literal["cards", "rules"], query: str) -> str:
+    """A search query in the form the embedding model expects."""
+    if model.startswith("qwen3-embedding"):
+        return f"Instruct: {QUERY_INSTRUCTIONS[kind]}\nQuery: {query}"
+    return query

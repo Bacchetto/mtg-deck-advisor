@@ -159,6 +159,12 @@ def embed_sources(
             )
         log.debug("embedding_progress", table=table, done=start + len(batch), total=len(stale))
 
+    if stale:
+        # Fresh statistics after a bulk load, so the planner's choices (such as
+        # looking a pool's cards up by ID) rest on the real table sizes.
+        conn.execute(sql.SQL("ANALYZE {table}").format(**names))
+        conn.commit()
+
     report = EmbeddingReport(
         added=added, updated=len(stale) - added, unchanged=len(sources) - len(stale)
     )
