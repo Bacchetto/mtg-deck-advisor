@@ -41,7 +41,7 @@ def card_query(
     return CardQuery(
         id="C01",
         kind="need",
-        scope=scope,  # type: ignore[arg-type]
+        scope=scope,
         query="q",
         filters=filters or QueryFilters(),
         relevant=relevant,
