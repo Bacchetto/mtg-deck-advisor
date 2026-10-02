@@ -20,6 +20,9 @@ class Settings(BaseSettings):
         # .env also holds values for other tools (such as Docker Compose), so
         # unknown keys are ignored rather than rejected.
         extra="ignore",
+        # "NAME=" with no value means unset, so an empty placeholder such as
+        # ANTHROPIC_API_KEY= is no key, not a blank one.
+        env_ignore_empty=True,
     )
 
     # SecretStr keeps the password out of repr() and str(), so a settings

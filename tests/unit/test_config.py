@@ -124,3 +124,12 @@ def test_the_anthropic_api_key_is_never_shown_in_repr(monkeypatch: pytest.Monkey
     assert settings.anthropic_api_key is not None
     assert settings.anthropic_api_key.get_secret_value() == "sk-ant-secret-value"
     assert "sk-ant-secret-value" not in repr(settings)
+
+
+def test_an_empty_variable_counts_as_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # .env.example ships "ANTHROPIC_API_KEY=" with no value: that means no key,
+    # not a key that is an empty string.
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+
+    assert load().anthropic_api_key is None
