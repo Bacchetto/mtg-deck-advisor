@@ -84,6 +84,14 @@ class ModelClient:
         return self._model
 
     @property
+    def remaining_usd(self) -> float | None:
+        """What can still be spent under the cap; None when nothing is capped or billed."""
+        if self._cost_cap_usd is None or not self._provider.bills:
+            return None
+        with self._lock:
+            return self._cost_cap_usd - self._spent_usd - self._reserved_usd
+
+    @property
     def spent_usd(self) -> float:
         """What this client's calls have cost so far."""
         return self._spent_usd

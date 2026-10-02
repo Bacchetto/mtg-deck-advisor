@@ -11,7 +11,7 @@ from mtg_deck_advisor.llm.tagging import TaggingResult
 def card_roles(*roles: str) -> CardRoles:
     return CardRoles(
         oracle_id=uuid4(),
-        roles=list(roles),  # type: ignore[arg-type]
+        roles=list(roles),
         reason="",
         content_hash="h",
         prompt_version="roles-v2",
