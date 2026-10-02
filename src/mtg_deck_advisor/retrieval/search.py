@@ -1,8 +1,18 @@
-"""Semantic search over cards and rules, with exact filters (RAG-1, RAG-2).
+"""Search over cards and rules: vector, keyword or hybrid, with exact filters (RAG-1, 2, 5).
 
-The query is embedded and compared with stored embeddings by cosine distance
-(pgvector's `<=>`). Filters are plain SQL conditions, so they're exact: a
-card outside the commander's colors never appears, however similar it is.
+- **Vector:** the query is embedded and compared with stored embeddings by
+  cosine distance (pgvector's `<=>`). It finds meaning in other words ("taps
+  for two colorless mana" for Sol Ring), but has no sense of exact terms.
+- **Keyword:** Postgres full-text search over names, type lines and rules
+  text (migration 0010). Any of the query's words may match, stemmed, and a
+  card matching more of them ranks higher: `ts_rank_cd`, normalised by text
+  length so long cards don't win by size. It finds exact terms ("ripple"),
+  but not paraphrases.
+- **Hybrid** (the default): each arm's top 50, fused by reciprocal rank
+  (`fusion.py`). The retrieval eval measures whether it beats either arm.
+
+Filters are plain SQL conditions, applied to every arm, so they're exact: a
+card outside the commander's colors never appears, however good a match.
 
 **HNSW and filters.** The approximate (HNSW) index finds the nearest 40
 vectors (`hnsw.ef_search`), and only then does Postgres apply the WHERE
@@ -23,6 +33,7 @@ the embedder's own model: vectors from two models aren't comparable.
 """
 
 import re
+from collections.abc import Hashable, Sequence
 from typing import Any, Literal, Self
 from uuid import UUID
 
@@ -32,11 +43,20 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.retrieval.embeddings import vector_literal
+from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 from mtg_deck_advisor.retrieval.text import query_text
 
 COLORS = "WUBRG"
 TYPE_WORD = re.compile(r"^[A-Za-z'-]+$")
 DEFAULT_K = 10
+# How many results each arm contributes to hybrid search before fusion.
+CANDIDATES = 50
+
+type SearchMode = Literal["vector", "keyword", "hybrid"]
+
+# Any of the query's words, stemmed. plainto_tsquery ANDs them ("artifact &
+# tap & colorless"), which a sentence-long query would almost never match.
+TSQUERY = sql.SQL("replace(plainto_tsquery('english', %s)::text, '&', '|')::tsquery")
 
 
 class CardFilters(BaseModel):
@@ -84,8 +104,9 @@ class CardHit(BaseModel):
     type_line: str
     mana_cost: str
     oracle_text: str
-    # Cosine similarity to the query, from -1 to 1; higher is closer.
-    similarity: float
+    # Higher is better. The scale depends on the mode: cosine similarity
+    # (vector), text rank (keyword), or fused reciprocal rank (hybrid).
+    score: float
 
 
 class RuleHit(BaseModel):
@@ -94,7 +115,7 @@ class RuleHit(BaseModel):
     number: str
     section: str
     text: str
-    similarity: float
+    score: float  # as for CardHit
 
 
 def card_conditions(filters: CardFilters) -> tuple[sql.Composable, list[Any]]:
@@ -125,16 +146,26 @@ def _embed_query(embedder: Embedder, kind: Literal["cards", "rules"], query: str
     return vector_literal(vector)
 
 
-def search_cards(
+def _combine[K: Hashable](
+    vector: Sequence[tuple[K, float]],
+    keyword: Sequence[tuple[K, float]],
+    mode: SearchMode,
+    k: int,
+) -> list[tuple[K, float]]:
+    """The top k (key, score) pairs: one arm's own ranking, or both fused."""
+    if mode == "hybrid":
+        return reciprocal_rank_fusion([[key for key, _ in vector], [key for key, _ in keyword]])[:k]
+    return list(vector if mode == "vector" else keyword)[:k]
+
+
+def _card_vector_ranking(
     conn: psycopg.Connection,
     embedder: Embedder,
     query: str,
-    filters: CardFilters | None = None,
-    *,
-    k: int = DEFAULT_K,
-) -> list[CardHit]:
-    """The k cards closest in meaning to the query, among those the filters allow."""
-    conditions, params = card_conditions(filters or CardFilters())
+    conditions: sql.Composable,
+    params: list[Any],
+    limit: int,
+) -> list[tuple[UUID, float]]:
     statement = sql.SQL(
         """
         WITH nearest AS MATERIALIZED (
@@ -144,41 +175,119 @@ def search_cards(
             ORDER BY distance
             LIMIT %s
         )
-        SELECT c.oracle_id, c.name, c.type_line, c.mana_cost, c.oracle_text, 1 - n.distance
-        FROM nearest n JOIN cards c USING (oracle_id)
-        ORDER BY n.distance
+        SELECT oracle_id, 1 - distance FROM nearest ORDER BY distance
         """
     ).format(conditions=conditions)
     vector = _embed_query(embedder, "cards", query)
     with conn.transaction():
         conn.execute("SET LOCAL hnsw.iterative_scan = relaxed_order")
-        rows = conn.execute(statement, [vector, embedder.model, *params, k]).fetchall()
+        rows = conn.execute(statement, [vector, embedder.model, *params, limit]).fetchall()
+    return [(row[0], row[1]) for row in rows]
+
+
+def _card_keyword_ranking(
+    conn: psycopg.Connection,
+    query: str,
+    conditions: sql.Composable,
+    params: list[Any],
+    limit: int,
+) -> list[tuple[UUID, float]]:
+    statement = sql.SQL(
+        """
+        SELECT c.oracle_id, ts_rank_cd(c.search_vector, q.query, 1) AS rank
+        FROM cards c, (SELECT {tsquery} AS query) q
+        WHERE c.search_vector @@ q.query AND {conditions}
+        ORDER BY rank DESC, c.name
+        LIMIT %s
+        """
+    ).format(tsquery=TSQUERY, conditions=conditions)
+    rows = conn.execute(statement, [query, *params, limit]).fetchall()
+    return [(row[0], row[1]) for row in rows]
+
+
+def search_cards(
+    conn: psycopg.Connection,
+    embedder: Embedder,
+    query: str,
+    filters: CardFilters | None = None,
+    *,
+    k: int = DEFAULT_K,
+    mode: SearchMode = "hybrid",
+) -> list[CardHit]:
+    """The k best cards for the query, among those the filters allow."""
+    conditions, params = card_conditions(filters or CardFilters())
+    limit = CANDIDATES if mode == "hybrid" else k
+    vector: list[tuple[UUID, float]] = []
+    keyword: list[tuple[UUID, float]] = []
+    if mode != "keyword":
+        vector = _card_vector_ranking(conn, embedder, query, conditions, params, limit)
+    if mode != "vector":
+        keyword = _card_keyword_ranking(conn, query, conditions, params, limit)
+    ranked = _combine(vector, keyword, mode, k)
+
+    rows = conn.execute(
+        "SELECT oracle_id, name, type_line, mana_cost, oracle_text FROM cards "
+        "WHERE oracle_id = ANY(%s)",
+        ([oracle_id for oracle_id, _ in ranked],),
+    ).fetchall()
+    cards = {row[0]: row for row in rows}
     return [
         CardHit(
-            oracle_id=row[0],
-            name=row[1],
-            type_line=row[2],
-            mana_cost=row[3],
-            oracle_text=row[4],
-            similarity=row[5],
+            oracle_id=oracle_id,
+            name=cards[oracle_id][1],
+            type_line=cards[oracle_id][2],
+            mana_cost=cards[oracle_id][3],
+            oracle_text=cards[oracle_id][4],
+            score=score,
         )
-        for row in rows
+        for oracle_id, score in ranked
     ]
 
 
 def search_rules(
-    conn: psycopg.Connection, embedder: Embedder, query: str, *, k: int = DEFAULT_K
+    conn: psycopg.Connection,
+    embedder: Embedder,
+    query: str,
+    *,
+    k: int = DEFAULT_K,
+    mode: SearchMode = "hybrid",
 ) -> list[RuleHit]:
-    """The k rules closest in meaning to the query."""
-    vector = _embed_query(embedder, "rules", query)
+    """The k best rules for the query."""
+    limit = CANDIDATES if mode == "hybrid" else k
+    vector: list[tuple[str, float]] = []
+    keyword: list[tuple[str, float]] = []
+    if mode != "keyword":
+        embedded = _embed_query(embedder, "rules", query)
+        rows = conn.execute(
+            """
+            SELECT e.number, 1 - (e.embedding <=> %s::vector)
+            FROM rule_embeddings e JOIN rules r USING (number)
+            WHERE e.model = %s AND r.removed_at IS NULL
+            ORDER BY e.embedding <=> %s::vector
+            LIMIT %s
+            """,
+            (embedded, embedder.model, embedded, limit),
+        ).fetchall()
+        vector = [(row[0], row[1]) for row in rows]
+    if mode != "vector":
+        statement = sql.SQL(
+            """
+            SELECT r.number, ts_rank_cd(r.search_vector, q.query, 1) AS rank
+            FROM rules r, (SELECT {tsquery} AS query) q
+            WHERE r.search_vector @@ q.query AND r.removed_at IS NULL
+            ORDER BY rank DESC, r.number
+            LIMIT %s
+            """
+        ).format(tsquery=TSQUERY)
+        keyword = [(row[0], row[1]) for row in conn.execute(statement, [query, limit]).fetchall()]
+    ranked = _combine(vector, keyword, mode, k)
+
     rows = conn.execute(
-        """
-        SELECT r.number, r.section, r.text, 1 - (e.embedding <=> %s::vector) AS similarity
-        FROM rule_embeddings e JOIN rules r USING (number)
-        WHERE e.model = %s AND r.removed_at IS NULL
-        ORDER BY e.embedding <=> %s::vector
-        LIMIT %s
-        """,
-        (vector, embedder.model, vector, k),
+        "SELECT number, section, text FROM rules WHERE number = ANY(%s)",
+        ([number for number, _ in ranked],),
     ).fetchall()
-    return [RuleHit(number=row[0], section=row[1], text=row[2], similarity=row[3]) for row in rows]
+    rules = {row[0]: row for row in rows}
+    return [
+        RuleHit(number=number, section=rules[number][1], text=rules[number][2], score=score)
+        for number, score in ranked
+    ]
