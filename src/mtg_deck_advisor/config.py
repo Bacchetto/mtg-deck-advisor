@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     # Needed only for the anthropic provider. Never logged or shown.
     anthropic_api_key: SecretStr | None = None
 
+    # The local model server (ADR 0009). Ollama runs natively on the host so it
+    # can use the GPU; containers reach it as host.docker.internal.
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    # Generous: loading a large model into memory the first time takes a while.
+    ollama_timeout_seconds: float = 300
+    # The local chat model, when MODEL_PROVIDER is ollama or for comparisons.
+    ollama_chat_model: str = "qwen3:14b"
+    # The embedding model for retrieval (Milestone 4).
+    embedding_model: str = "qwen3-embedding:0.6b"
+
     # Where downloaded source files (Scryfall bulk data, the rules file) are
     # cached. Relative paths are relative to the working directory.
     cache_dir: Path = Path("data/cache")

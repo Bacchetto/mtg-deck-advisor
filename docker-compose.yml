@@ -65,6 +65,12 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-mtg}:${POSTGRES_PASSWORD:-mtg}@db:5432/${POSTGRES_DB:-mtg_deck_advisor}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENVIRONMENT: development
+      # Ollama runs natively on the host, for the GPU (ADR 0009). Rancher
+      # Desktop maps host.docker.internal to the Windows host.
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      MODEL_PROVIDER: ${MODEL_PROVIDER:-anthropic}
+      MODEL_NAME: ${MODEL_NAME:-claude-opus-5-5}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       db:
         # Wait for Postgres to accept connections, not merely to start.
