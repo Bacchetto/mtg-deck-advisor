@@ -13,7 +13,6 @@ issue #51.
 
 import argparse
 import math
-import re
 import statistics
 import sys
 import time
@@ -30,6 +29,7 @@ from mtg_deck_advisor.llm.ollama import OllamaEmbedder, OllamaProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
 from mtg_deck_advisor.llm.types import Message, ModelRequest
 from mtg_deck_advisor.observability.logging import configure_logging
+from mtg_deck_advisor.retrieval.text import expand_symbols
 
 EMBEDDING_CANDIDATES = {
     # model: (query prefix, document prefix), as each model's card documents.
@@ -110,36 +110,6 @@ SYSTEM = (
     "Choose every role that applies from: ramp, card_draw, removal, board_wipe, counterspell, "
     "tutor, recursion, protection, token_maker, finisher, mana_fixing, land."
 )
-
-
-SYMBOL_WORDS = {
-    "T": "tap",
-    "Q": "untap",
-    "C": "one colorless mana",
-    "W": "one white mana",
-    "U": "one blue mana",
-    "B": "one black mana",
-    "R": "one red mana",
-    "G": "one green mana",
-    "S": "one snow mana",
-    "X": "X mana",
-    "E": "one energy",
-}
-NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
-
-
-def expand_symbols(text: str) -> str:
-    """Rules text with mana and tap symbols written out as words, for embedding."""
-
-    def word(match: re.Match[str]) -> str:
-        symbol = match[1]
-        if symbol.isdigit():
-            number = int(symbol)
-            amount = NUMBER_WORDS[number] if number < len(NUMBER_WORDS) else symbol
-            return f" {amount} generic mana "
-        return f" {SYMBOL_WORDS.get(symbol, symbol)} "
-
-    return re.sub(r"\s+", " ", re.sub(r"\{([^}]+)\}", word, text)).strip()
 
 
 EXPAND = False

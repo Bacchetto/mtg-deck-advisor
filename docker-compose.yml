@@ -8,6 +8,9 @@
 #   docker compose run --rm ingest cards
 #                                  load Scryfall's card data (safe to repeat:
 #                                  a run with nothing new changes nothing)
+#   docker compose run --rm embed cards
+#                                  embed the cards for search, through Ollama
+#                                  on the host (only missing or stale ones)
 #   docker compose down            stop everything; data survives in the volume
 #   docker compose down -v         stop everything and delete all data
 #
@@ -108,6 +111,21 @@ services:
       # Downloaded source files, kept between runs so an unchanged source is
       # never downloaded twice.
       - cache:/var/cache/mtg-deck-advisor
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
+  embed:
+    # Embedding for semantic search, run on demand after ingestion, like
+    # ingest. It reaches Ollama on the host (OLLAMA_BASE_URL above).
+    profiles: ["tools"]
+    build: .
+    image: mtg-deck-advisor:local
+    entrypoint: ["python", "-m", "mtg_deck_advisor.retrieval.embed"]
+    command: ["cards"]
+    environment: *app-environment
     depends_on:
       migrate:
         condition: service_completed_successfully
