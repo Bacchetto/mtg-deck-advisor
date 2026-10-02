@@ -1,4 +1,4 @@
-"""Embed for semantic search: `python -m mtg_deck_advisor.retrieval.embed cards`.
+"""Embed for semantic search: `python -m mtg_deck_advisor.retrieval.embed cards|rules|all`.
 
 A separate step after ingestion (like migrations, ADR 0003): ingestion never
 needs a model, and embedding can be rerun on its own. It uses the local
@@ -17,9 +17,10 @@ from mtg_deck_advisor.llm.errors import ModelError
 from mtg_deck_advisor.llm.ollama import OllamaEmbedder
 from mtg_deck_advisor.observability.logging import configure_logging
 from mtg_deck_advisor.observability.tracing import traced
-from mtg_deck_advisor.retrieval.embeddings import EmbeddingReport, embed_cards
+from mtg_deck_advisor.retrieval.embeddings import EmbeddingReport, embed_cards, embed_rules
 
-COMMANDS = ("cards",)
+COMMANDS = ("cards", "rules", "all")
+JOBS = {"cards": embed_cards, "rules": embed_rules}
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -44,14 +45,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         model=settings.embedding_model,
         timeout_seconds=settings.ollama_timeout_seconds,
     )
+    names = list(JOBS) if args.what == "all" else [args.what]
     with traced(), connect(settings) as conn:
-        started = time.perf_counter()
-        try:
-            report = embed_cards(conn, embedder)
-        except ModelError as exc:
-            print(f"embedding stopped: {exc}", file=sys.stderr)
-            return 1
-        print(summary(args.what, report, time.perf_counter() - started))
+        for name in names:
+            started = time.perf_counter()
+            try:
+                report = JOBS[name](conn, embedder)
+            except ModelError as exc:
+                print(f"embedding stopped: {exc}", file=sys.stderr)
+                return 1
+            print(summary(name, report, time.perf_counter() - started))
     return 0
 
 

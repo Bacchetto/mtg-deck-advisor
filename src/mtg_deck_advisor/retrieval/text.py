@@ -1,4 +1,4 @@
-"""The text that gets embedded for each card.
+"""The text that gets embedded for each card and each rule.
 
 Rules text is full of symbols: `{T}: Add {C}{C}.` No embedding model connects
 that to "taps for two colorless mana", and in the model selection Sol Ring
@@ -8,13 +8,16 @@ selection measured: name, type line and rules text. Adding the mana cost
 looked useful but wasn't measured, and a spot check showed it pulling cards
 away from descriptions of their effects; the retrieval eval decides it.
 
-Change CARD_TEXT_VERSION whenever the text changes, so stored embeddings are
+Rules are chunked one per rule number, as ADR 0010 explains.
+
+Change CARD_TEXT_VERSION or RULE_TEXT_VERSION whenever the text changes, so stored embeddings are
 recognised as stale and redone.
 """
 
 import re
 
 CARD_TEXT_VERSION = "cards-v1"
+RULE_TEXT_VERSION = "rules-v1"
 
 COLOR_WORDS = {"W": "white", "U": "blue", "B": "black", "R": "red", "G": "green"}
 SYMBOL_WORDS = {
@@ -63,3 +66,24 @@ def card_text(name: str, type_line: str, oracle_text: str) -> str:
         lines = (expand_symbols(line) for line in oracle_text.splitlines())
         text += " " + " / ".join(line for line in lines if line)
     return text
+
+
+# The end of a sentence: a full stop, then a capital. Rule numbers ("rule
+# 604.3") have no space after their dot, so they never end a sentence.
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+
+def first_sentence(text: str) -> str:
+    return SENTENCE_END.split(" ".join(text.split()), maxsplit=1)[0]
+
+
+def rule_text(number: str, section: str, text: str, parent: tuple[str, str] | None = None) -> str:
+    """`Section. [Parent: first sentence.] Number: text`, for one rule (see ADR 0010).
+
+    A lettered rule often doesn't say what it's about ("Reminder text is
+    ignored..." is about color identity only because of 903.4), so its
+    parent's opening sentence comes first. The chunk that's stored and cited
+    is still the single rule; this is only the text that gets embedded.
+    """
+    context = f" {parent[0]}: {first_sentence(parent[1])}" if parent else ""
+    return f"{section}.{context} {number}: {' '.join(text.split())}"
