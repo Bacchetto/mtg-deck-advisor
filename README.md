@@ -88,18 +88,21 @@ cards: 0 added, 0 updated, 34664 unchanged, 0 removed      # second run
 rules: 0 added, 0 updated, 3166 unchanged, 0 removed
 ```
 
-Then embed the cards for semantic search. This uses the local embedding model through Ollama
+Then embed the cards and rules for semantic search. This uses the local embedding model through Ollama
 (see [Local models with Ollama](#local-models-with-ollama)), so it's free. The first run takes
-about 7.5 minutes on the development machine (RX 9070 XT), and later runs only embed cards whose
+about 8 minutes on the development machine (RX 9070 XT), and later runs only embed cards and rules whose
 text has changed:
 
 ```bash
-docker compose run --rm embed cards
+docker compose run --rm embed all       # or `cards`, or `rules`
 ```
 
 ```text
 cards: 32,116 added, 0 updated, 0 unchanged; 449.6 s     # first run
+rules: 3,166 added, 0 updated, 0 unchanged; 42.9 s
+
 cards: 0 added, 0 updated, 32,116 unchanged; 0.9 s        # second run
+rules: 0 added, 0 updated, 3,166 unchanged; 0.1 s
 ```
 
 `docker compose down` stops everything. `docker compose down -v` also deletes the data.
