@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # Needed only for the anthropic provider. Never logged or shown.
     anthropic_api_key: SecretStr | None = None
 
+    # The model that tags card roles, chosen by comparison against the
+    # owner-reviewed gold sample (evals/reports/2026-10-02-role-tagging-comparison.md):
+    # best F1 (0.93) and exact match (0.90), about $1.19 per 1,000 newly seen cards.
+    role_tagging_model: str = "claude-opus-5-5"
+
     # Recorded model responses (llm.replay). MODEL_PROVIDER=replay serves them
     # with no network or key; RECORD_RESPONSES=true saves every response a real
     # provider returns. The directory is committed, so a clean clone can replay.
