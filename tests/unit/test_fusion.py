@@ -8,7 +8,8 @@ from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 def test_one_list_keeps_its_order_with_scores_of_one_over_k_plus_rank() -> None:
     fused = reciprocal_rank_fusion([["a", "b"]])
 
-    assert fused == [("a", pytest.approx(1 / 61)), ("b", pytest.approx(1 / 62))]
+    assert [item for item, _ in fused] == ["a", "b"]
+    assert [score for _, score in fused] == pytest.approx([1 / 61, 1 / 62])
 
 
 def test_items_ranked_well_in_both_lists_come_first() -> None:
@@ -33,10 +34,10 @@ def test_ties_keep_the_order_items_were_first_seen() -> None:
 
 
 def test_a_smaller_k_weights_the_top_ranks_more() -> None:
-    (top, top_score), (_, second_score) = reciprocal_rank_fusion([["a", "b"]], k=1)
+    fused = reciprocal_rank_fusion([["a", "b"]], k=1)
 
-    assert top == "a"
-    assert (top_score, second_score) == (pytest.approx(1 / 2), pytest.approx(1 / 3))
+    assert fused[0][0] == "a"
+    assert [score for _, score in fused] == pytest.approx([1 / 2, 1 / 3])
 
 
 def test_nothing_to_fuse_gives_nothing() -> None:
