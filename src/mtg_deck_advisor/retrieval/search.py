@@ -10,8 +10,13 @@ clause. A filter that matches few cards ("mono-blue", measured on the real
 catalogue) leaves fewer than k results: 4 instead of 10. pgvector 0.8's
 iterative scan keeps scanning the index until k rows pass the filter; its
 `relaxed_order` mode can return them slightly out of order, so they're
-re-sorted by exact distance afterwards. For a small set of cards, such as a
-pool, the planner looks them up by ID and sorts them exactly instead.
+re-sorted by exact distance afterwards.
+
+The planner doesn't always use the index, and that's fine. For a small set
+of cards, such as a pool, it looks them up by ID and sorts them exactly
+(about 50 ms for 300 cards). For an unfiltered search of all 32,116 cards it
+also prefers an exact scan (about 90 ms, measured), over the index (about
+1 ms): slower, but exact, and well within an interactive budget.
 
 Only Commander-legal, current cards are searched, and only embeddings from
 the embedder's own model: vectors from two models aren't comparable.

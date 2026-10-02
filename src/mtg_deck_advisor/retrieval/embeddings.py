@@ -160,9 +160,8 @@ def embed_sources(
         log.debug("embedding_progress", table=table, done=start + len(batch), total=len(stale))
 
     if stale:
-        # Fresh statistics after a bulk load, so the planner picks the HNSW
-        # index for nearest-neighbour queries (measured on 32,116 cards: 1.3 ms
-        # with it, 91 ms for an exact scan).
+        # Fresh statistics after a bulk load, so the planner's choices (such as
+        # looking a pool's cards up by ID) rest on the real table sizes.
         conn.execute(sql.SQL("ANALYZE {table}").format(**names))
         conn.commit()
 
