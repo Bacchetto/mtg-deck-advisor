@@ -8,8 +8,8 @@
 #   docker compose run --rm ingest cards
 #                                  load Scryfall's card data (safe to repeat:
 #                                  a run with nothing new changes nothing)
-#   docker compose run --rm embed cards
-#                                  embed the cards for search, through Ollama
+#   docker compose run --rm embed all
+#                                  embed cards and rules for search, through Ollama
 #                                  on the host (only missing or stale ones)
 #   docker compose down            stop everything; data survives in the volume
 #   docker compose down -v         stop everything and delete all data

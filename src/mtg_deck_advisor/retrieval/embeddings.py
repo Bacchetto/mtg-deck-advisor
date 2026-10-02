@@ -1,12 +1,14 @@
-"""Storing embeddings for semantic search, redoing only what's stale (RAG-1, ING-3).
+"""Storing embeddings for semantic search, redoing only what's stale (RAG-1, RAG-2, ING-3).
 
-Every Commander-legal card is embedded once. A stored embedding is redone only
+Every Commander-legal card, and every rule (one chunk per rule, ADR 0010), is
+embedded once. A stored embedding is redone only
 when it's stale: the card's content hash has changed, or it came from another
 model or text version. So the first run embeds everything (about 32,000 cards)
 and a rerun embeds nothing. Each batch is committed as it's done, so an
 interrupted run keeps its progress.
 """
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -17,7 +19,12 @@ from psycopg import sql
 from pydantic import BaseModel
 
 from mtg_deck_advisor.llm.ollama import Embedder
-from mtg_deck_advisor.retrieval.text import CARD_TEXT_VERSION, card_text
+from mtg_deck_advisor.retrieval.text import (
+    CARD_TEXT_VERSION,
+    RULE_TEXT_VERSION,
+    card_text,
+    rule_text,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -60,6 +67,35 @@ def embed_cards(
     sources = [Source(key=row[0], content_hash=row[1], text=card_text(*row[2:])) for row in rows]
     return embed_sources(
         conn, embedder, "card_embeddings", "oracle_id", sources, CARD_TEXT_VERSION, batch_size
+    )
+
+
+def embed_rules(
+    conn: psycopg.Connection, embedder: Embedder, *, batch_size: int = DEFAULT_BATCH_SIZE
+) -> EmbeddingReport:
+    """Embed every current rule whose stored embedding is missing or stale (ADR 0010).
+
+    A lettered rule's embedded text includes its parent's first sentence, so
+    the rule's own content hash isn't enough to spot a stale embedding: the
+    stored hash is of the whole embedded text, and changing a parent redoes
+    its lettered rules too.
+    """
+    rows = conn.execute(
+        """
+        SELECT r.number, r.section, r.text, p.number, p.text
+        FROM rules r LEFT JOIN rules p ON p.number = r.parent AND p.removed_at IS NULL
+        WHERE r.removed_at IS NULL
+        ORDER BY r.number
+        """
+    ).fetchall()
+    sources = []
+    for number, section, text, parent_number, parent_text in rows:
+        parent = (parent_number, parent_text) if parent_number is not None else None
+        embedded = rule_text(number, section, text, parent=parent)
+        digest = hashlib.sha256(embedded.encode()).hexdigest()
+        sources.append(Source(key=number, content_hash=digest, text=embedded))
+    return embed_sources(
+        conn, embedder, "rule_embeddings", "number", sources, RULE_TEXT_VERSION, batch_size
     )
 
 

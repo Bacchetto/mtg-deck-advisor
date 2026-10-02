@@ -1,0 +1,81 @@
+"""Embedding the Comprehensive Rules as citable chunks, one rule each."""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from mtg_deck_advisor.config import Settings
+from mtg_deck_advisor.db.connection import connect
+from mtg_deck_advisor.db.migrate import upgrade
+from mtg_deck_advisor.ingestion.rules import parse_rules
+from mtg_deck_advisor.ingestion.rules_ingestion import apply_rules
+from mtg_deck_advisor.llm.fake import FakeEmbedder
+from mtg_deck_advisor.retrieval.embeddings import embed_rules
+from mtg_deck_advisor.retrieval.text import rule_text
+
+EXCERPT = Path(__file__).parent.parent / "fixtures" / "rules" / "comprehensive_rules_excerpt.txt"
+
+
+@pytest.fixture
+def loaded(settings: Settings) -> Settings:
+    upgrade(settings)
+    with connect(settings) as conn:
+        apply_rules(conn, parse_rules(EXCERPT.read_text(encoding="utf-8")).rules)
+    return settings
+
+
+def test_every_rule_is_embedded_and_a_rerun_embeds_nothing(loaded: Settings) -> None:
+    with connect(loaded) as conn:
+        first = embed_rules(conn, FakeEmbedder(), batch_size=3)
+        again = FakeEmbedder()
+        second = embed_rules(conn, again)
+        stored = conn.execute("SELECT count(*) FROM rule_embeddings").fetchone()
+
+    assert (first.added, first.updated, first.unchanged) == (10, 0, 0)
+    assert (second.added, second.updated, second.unchanged) == (0, 0, 10)
+    assert again.calls == []
+    assert stored == (10,)
+
+
+def test_a_lettered_rule_is_embedded_with_its_parents_context(loaded: Settings) -> None:
+    with connect(loaded) as conn:
+        embed_rules(conn, FakeEmbedder())
+        child = conn.execute("SELECT section, text FROM rules WHERE number = '903.4c'").fetchone()
+        parent = conn.execute("SELECT text FROM rules WHERE number = '903.4'").fetchone()
+        stored = conn.execute(
+            "SELECT embedding::text FROM rule_embeddings WHERE number = '903.4c'"
+        ).fetchone()
+
+    assert child is not None and parent is not None and stored is not None
+    expected_text = rule_text("903.4c", child[0], child[1], parent=("903.4", parent[0]))
+    (expected,) = FakeEmbedder().embed([expected_text])
+    assert json.loads(stored[0]) == pytest.approx(expected, abs=1e-6)
+
+
+def test_changing_a_parent_rule_embeds_its_lettered_rules_again(loaded: Settings) -> None:
+    with connect(loaded) as conn:
+        embed_rules(conn, FakeEmbedder())
+        conn.execute(
+            "UPDATE rules SET text = 'Commander decks use color identity. More.' "
+            "WHERE number = '903.4'"
+        )
+        conn.commit()
+        again = FakeEmbedder()
+        report = embed_rules(conn, again)
+
+    texts = [text for call in again.calls for text in call]
+    assert report.updated == 4  # 903.4 itself, and 903.4a, 903.4b, 903.4c
+    assert all("Commander decks use color identity." in text for text in texts)
+
+
+def test_removed_rules_are_not_embedded(loaded: Settings) -> None:
+    with connect(loaded) as conn:
+        conn.execute("UPDATE rules SET removed_at = now() WHERE number = '100.2'")
+        conn.commit()
+        embedder = FakeEmbedder()
+        report = embed_rules(conn, embedder)
+
+    texts = [text for call in embedder.calls for text in call]
+    assert report.added == 9
+    assert not any("100.2:" in text for text in texts)
