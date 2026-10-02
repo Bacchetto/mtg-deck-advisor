@@ -9,21 +9,33 @@ from mtg_deck_advisor.llm.anthropic import AnthropicProvider
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder, OllamaProvider
 from mtg_deck_advisor.llm.recording import DatabaseRecorder
+from mtg_deck_advisor.llm.replay import RecordingProvider, ReplayProvider
 from mtg_deck_advisor.llm.types import Provider
 
 
 def build_provider(settings: Settings) -> Provider:
+    """The configured provider, wrapped to record its responses if RECORD_RESPONSES is set."""
+    if settings.model_provider == "replay":
+        if settings.record_responses:
+            raise ValueError(
+                "RECORD_RESPONSES needs a real MODEL_PROVIDER (anthropic or ollama) to record from"
+            )
+        return ReplayProvider(settings.replay_dir)
+
+    provider: Provider
     if settings.model_provider == "anthropic":
         key = settings.anthropic_api_key
-        return AnthropicProvider(
+        provider = AnthropicProvider(
             api_key=key.get_secret_value() if key else None,
             timeout_seconds=settings.model_timeout_seconds,
         )
-    if settings.model_provider == "ollama":
-        return OllamaProvider(
+    else:
+        provider = OllamaProvider(
             base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
         )
-    raise NotImplementedError(f"the {settings.model_provider} provider is not available yet")
+    if settings.record_responses:
+        return RecordingProvider(provider, settings.replay_dir)
+    return provider
 
 
 def build_embedder(settings: Settings) -> Embedder:
