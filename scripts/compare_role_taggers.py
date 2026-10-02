@@ -55,6 +55,8 @@ THINKING_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5"}
 def load_gold() -> tuple[list[CardToTag], list[set[str]]]:
     with GOLD.open(encoding="utf-8", newline="") as file:
         rows = list(csv.DictReader(file))
+    # Spreadsheet editors may save line breaks inside rules text as CRLF.
+    rows = [{k: v.replace("\r\n", "\n") for k, v in row.items()} for row in rows]
     cards = [
         CardToTag(
             oracle_id=UUID(row["oracle_id"]),

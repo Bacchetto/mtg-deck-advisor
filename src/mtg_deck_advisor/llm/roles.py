@@ -21,7 +21,7 @@ from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.errors import InvalidOutputError
 from mtg_deck_advisor.llm.types import Message, ModelRequest
 
-PROMPT_VERSION = "roles-v1"
+PROMPT_VERSION = "roles-v2"
 
 Role = Literal[
     "ramp",
@@ -36,11 +36,14 @@ Role = Literal[
     "finisher",
     "mana_fixing",
     "land",
+    "mill",
+    "self_mill",
 ]
 
-# The taxonomy agreed with the owner (2026-10-02): each role's meaning and its
-# edge-case rules. These definitions are what every model, and the human-labelled
-# gold sample, follow.
+# The taxonomy agreed with the owner (2026-10-02; mill and self_mill added in the
+# owner's review of the gold labels): each role's meaning and its edge-case
+# rules. These definitions are what every model, and the human-labelled gold
+# sample, follow.
 ROLE_DEFINITIONS: dict[Role, str] = {
     "ramp": (
         "gives extra mana beyond the normal land drop: mana rocks, mana creatures, putting "
@@ -80,6 +83,14 @@ ROLE_DEFINITIONS: dict[Role, str] = {
         "for basic lands to fix colors."
     ),
     "land": "is a land card.",
+    "mill": (
+        "puts cards from an opponent's library into their graveyard: milling as a win "
+        "condition or disruption."
+    ),
+    "self_mill": (
+        "puts cards from your own library into your graveyard, to fuel graveyard strategies: "
+        "milling yourself, surveil, putting revealed cards into your graveyard."
+    ),
 }
 
 SYSTEM_PROMPT = "\n".join(
