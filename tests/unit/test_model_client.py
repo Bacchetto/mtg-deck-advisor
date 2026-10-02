@@ -1,5 +1,9 @@
 """The model interface, with a scripted fake provider: no network, no paid calls."""
 
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 from pydantic import BaseModel
 
@@ -206,3 +210,55 @@ def test_a_reply_from_an_unpriced_model_is_costed_at_the_requested_models_price(
 
     assert response.model == "claude-unlisted-1"
     assert response.cost_usd == pytest.approx(1000 * 4 / 1e6 + 100 * 20 / 1e6)
+
+
+# --- concurrency -----------------------------------------------------------
+
+
+class SlowProvider:
+    """A provider whose calls take a moment, so concurrent calls overlap."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self._lock = threading.Lock()
+
+    @property
+    def name(self) -> str:
+        return "slow"
+
+    @property
+    def bills(self) -> bool:
+        return True
+
+    def complete(self, request: object, model: str) -> ProviderResponse:
+        with self._lock:
+            self.calls += 1
+        time.sleep(0.05)
+        return reply("Ramp.", input_tokens=10, output_tokens=100)  # $0.00204
+
+
+def test_concurrent_calls_cannot_jointly_overshoot_the_cap() -> None:
+    provider = SlowProvider()
+    # Each call's worst case is about $0.0021 (max_tokens 100 of output), so a
+    # $0.005 cap fits two calls. Checked separately and at the same moment, all
+    # eight would pass; reserved under a lock, only two can.
+    client = ModelClient(provider, OPUS, recorder=MemoryRecorder(), cost_cap_usd=0.005)
+
+    def call() -> str:
+        try:
+            client.generate(request(max_tokens=100))
+            return "ok"
+        except BudgetExceededError:
+            return "refused"
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        outcomes = list(pool.map(lambda _: call(), range(8)))
+
+    assert outcomes.count("ok") == provider.calls == 2
+    assert client.spent_usd <= 0.005
+
+
+def test_the_model_name_is_available() -> None:
+    client, _, _ = client_with(reply("Ramp."))
+
+    assert client.model == OPUS

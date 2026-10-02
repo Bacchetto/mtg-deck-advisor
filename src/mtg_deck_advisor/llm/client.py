@@ -7,6 +7,7 @@ It wraps whichever provider is configured and adds what every call needs:
 - a record of every provider call: tokens, cost, latency, outcome, trace ID (OBS-1)
 """
 
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -72,6 +73,23 @@ class ModelClient:
         self._cost_cap_usd = cost_cap_usd
         self._clock = clock
         self._spent_usd = 0.0
+        # Worst-case cost of calls in flight. A call's worst case is reserved
+        # before it is made and released when it finishes, all under one lock,
+        # so concurrent calls can't each pass the cap check and jointly break it.
+        self._reserved_usd = 0.0
+        self._lock = threading.Lock()
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def remaining_usd(self) -> float | None:
+        """What can still be spent under the cap; None when nothing is capped or billed."""
+        if self._cost_cap_usd is None or not self._provider.bills:
+            return None
+        with self._lock:
+            return self._cost_cap_usd - self._spent_usd - self._reserved_usd
 
     @property
     def spent_usd(self) -> float:
@@ -108,7 +126,8 @@ class ModelClient:
 
     def _invoke(self, request: ProviderRequest, attempt: int) -> ModelResponse:
         """One provider call, with the budget check before it and cost accounting after."""
-        if self._would_exceed_cap(request):
+        reservation = self._reserve(request)
+        if reservation is None:
             self._record(request, attempt, "budget_exceeded", None)
             raise BudgetExceededError(
                 f"{request.purpose}: could exceed the ${self._cost_cap_usd:.2f} cost cap "
@@ -120,15 +139,17 @@ class ModelClient:
             reply = self._provider.complete(request, self._model)
         except ModelError as exc:
             # Already specific (a spend limit, bad credentials): keep its type.
+            self._settle(reservation, 0.0)
             self._record(request, attempt, "error", None, error=str(exc))
             raise
         except Exception as exc:
+            self._settle(reservation, 0.0)
             self._record(request, attempt, "error", None, error=str(exc))
             raise ModelCallError(f"{self._provider.name} call failed: {exc}") from exc
         latency_ms = (self._clock() - started) * 1000
 
         cost = self._cost(reply.model, reply.usage) if self._provider.bills else 0.0
-        self._spent_usd += cost
+        self._settle(reservation, cost)
         response = ModelResponse(
             text=reply.text,
             stop_reason=reply.stop_reason,
@@ -155,14 +176,28 @@ class ModelClient:
         log.warning("model_price_unknown", model=answered_by, costed_as=self._model)
         return cost_usd(self._model, usage)
 
-    def _would_exceed_cap(self, request: ProviderRequest) -> bool:
-        if self._cost_cap_usd is None or not self._provider.bills:
-            return False
+    def _worst_case_usd(self, request: ProviderRequest) -> float:
         chars = len(request.system) + sum(len(m.content) for m in request.messages)
         if request.output_schema is not None:
             chars += len(str(request.output_schema))
-        worst = worst_case_cost_usd(self._model, chars // CHARS_PER_TOKEN, request.max_tokens)
-        return self._spent_usd + worst > self._cost_cap_usd
+        return worst_case_cost_usd(self._model, chars // CHARS_PER_TOKEN, request.max_tokens)
+
+    def _reserve(self, request: ProviderRequest) -> float | None:
+        """Reserve the call's worst case against the cap, or None if it doesn't fit."""
+        if self._cost_cap_usd is None or not self._provider.bills:
+            return 0.0
+        worst = self._worst_case_usd(request)
+        with self._lock:
+            if self._spent_usd + self._reserved_usd + worst > self._cost_cap_usd:
+                return None
+            self._reserved_usd += worst
+            return worst
+
+    def _settle(self, reservation: float, cost: float) -> None:
+        """Replace a call's reservation with what it actually cost."""
+        with self._lock:
+            self._reserved_usd -= reservation
+            self._spent_usd += cost
 
     def _record(
         self,

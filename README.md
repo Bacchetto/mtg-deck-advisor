@@ -114,6 +114,23 @@ ollama pull qwen3:14b              # local chat model (9.3 GB)
 The app reaches Ollama at `http://127.0.0.1:11434`; containers use
 `http://host.docker.internal:11434` (set in Compose).
 
+### Card roles
+
+Each card's roles (ramp, removal, card draw...) are tagged by a model, on demand: only
+cards in pools that are actually submitted, and only once. Tags are stored and reused
+until a card's text or the role prompt changes. `ROLE_TAGGING_MODEL` picks the model
+(Claude Opus 5.5, chosen by measurement:
+[report](evals/reports/2026-10-02-role-tagging-comparison.md)). To tag a pool from the
+command line:
+
+```bash
+python -m mtg_deck_advisor.llm.tag_roles --pool my-pool.txt   # or a .csv export
+```
+
+A new 300-card pool costs about $0.37 and takes about 35 seconds. Tagging it again costs
+nothing, because the tags are already stored. The run's projected cost is checked against
+`RUN_COST_CAP_USD` before any call is made.
+
 ## Development
 
 ```bash
