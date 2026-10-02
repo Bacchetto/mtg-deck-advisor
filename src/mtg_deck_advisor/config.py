@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # Needed only for the anthropic provider. Never logged or shown.
     anthropic_api_key: SecretStr | None = None
 
+    # Recorded model responses (llm.replay). MODEL_PROVIDER=replay serves them
+    # with no network or key; RECORD_RESPONSES=true saves every response a real
+    # provider returns. The directory is committed, so a clean clone can replay.
+    replay_dir: Path = Path("recordings")
+    record_responses: bool = False
+
     # The local model server (ADR 0009). Ollama runs natively on the host so it
     # can use the GPU; containers reach it as host.docker.internal.
     ollama_base_url: str = "http://127.0.0.1:11434"
