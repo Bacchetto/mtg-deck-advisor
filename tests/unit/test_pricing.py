@@ -12,6 +12,10 @@ from mtg_deck_advisor.llm.types import Usage
         ("claude-opus-5-5", 4.00, 20.00),
         ("claude-sonnet-5-5", 2.00, 10.00),
         ("claude-haiku-4-5", 1.00, 5.00),
+        # Models a server-side refusal fallback can answer from.
+        ("claude-opus-5", 5.00, 25.00),
+        ("claude-opus-4-8", 5.00, 25.00),
+        ("claude-sonnet-5", 2.00, 10.00),
     ],
 )
 def test_prices_per_million_tokens(model: str, input_price: float, output_price: float) -> None:
