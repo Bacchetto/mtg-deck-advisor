@@ -174,7 +174,7 @@ def test_a_call_that_could_exceed_the_cost_cap_is_refused_before_it_is_made() ->
 
 def test_spending_accumulates_until_the_cap_stops_further_calls() -> None:
     expensive = reply("Ramp.", input_tokens=1000, output_tokens=1000)  # $0.024
-    client, provider, _ = client_with(expensive, expensive, cap=0.03)
+    client, provider, _ = client_with(expensive, expensive, cap=0.025)
 
     client.generate(request(max_tokens=50))
     with pytest.raises(BudgetExceededError):
