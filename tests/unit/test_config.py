@@ -133,3 +133,13 @@ def test_an_empty_variable_counts_as_unset(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
 
     assert load().anthropic_api_key is None
+
+
+def test_role_tagging_uses_the_model_chosen_by_the_comparison(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # evals/reports/2026-10-02-role-tagging-comparison.md: best F1 and exact match.
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.delenv("ROLE_TAGGING_MODEL", raising=False)
+
+    assert load().role_tagging_model == "claude-opus-5-5"
