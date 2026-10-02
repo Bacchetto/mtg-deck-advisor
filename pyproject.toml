@@ -18,6 +18,8 @@ dependencies = [
     # TestClient (from Starlette) is built on.
     "httpx2>=2.13",
     "tenacity>=9.1",
+    # The official Claude SDK. 1.x is built on httpx2, like the rest of the project.
+    "anthropic>=1.11",
 ]
 
 [project.optional-dependencies]
