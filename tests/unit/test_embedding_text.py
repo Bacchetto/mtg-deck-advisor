@@ -2,7 +2,7 @@
 
 import pytest
 
-from mtg_deck_advisor.retrieval.text import card_text, expand_symbols, rule_text
+from mtg_deck_advisor.retrieval.text import card_text, expand_symbols, query_text, rule_text
 
 
 @pytest.mark.parametrize(
@@ -78,3 +78,17 @@ def test_a_rules_examples_stay_on_one_line() -> None:
     text = rule_text("100.1", "100. General", "A rule.\nExample: An example.")
 
     assert text == "100. General. 100.1: A rule. Example: An example."
+
+
+def test_queries_to_a_qwen3_embedding_model_carry_its_instruction() -> None:
+    text = query_text("qwen3-embedding:0.6b", "cards", "taps for two colorless mana")
+
+    assert text.startswith("Instruct: ")
+    assert text.endswith("\nQuery: taps for two colorless mana")
+    assert query_text("qwen3-embedding:0.6b", "rules", "q") != query_text(
+        "qwen3-embedding:0.6b", "cards", "q"
+    )
+
+
+def test_queries_to_other_models_are_sent_as_they_are() -> None:
+    assert query_text("fake-embedder", "rules", "How big is a deck?") == "How big is a deck?"
