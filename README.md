@@ -91,6 +91,29 @@ rules: 0 added, 0 updated, 3166 unchanged, 0 removed
 `docker compose down` stops everything. `docker compose down -v` also deletes the data.
 The application image is 273 MB.
 
+## Models
+
+Model calls go through one interface ([ADR 0008](docs/decisions/0008-one-model-interface-owned-by-the-project.md)),
+and the provider is configuration (`MODEL_PROVIDER` in `.env`):
+
+- **`anthropic`** (default): Claude. Needs `ANTHROPIC_API_KEY` in `.env`. Every call is
+  costed and logged, and a run stops before it could exceed `RUN_COST_CAP_USD`.
+- **`ollama`**: a local model, free. Also used for embeddings.
+
+### Local models with Ollama
+
+Ollama runs natively (not in Docker), so it can use the GPU
+([ADR 0009](docs/decisions/0009-local-models-chosen-by-measurement.md)). Install
+[Ollama](https://ollama.com), then pull the models this project uses:
+
+```bash
+ollama pull qwen3-embedding:0.6b   # embeddings (0.6 GB)
+ollama pull qwen3:14b              # local chat model (9.3 GB)
+```
+
+The app reaches Ollama at `http://127.0.0.1:11434`; containers use
+`http://host.docker.internal:11434` (set in Compose).
+
 ## Development
 
 ```bash
