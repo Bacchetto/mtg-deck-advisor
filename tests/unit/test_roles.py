@@ -113,3 +113,15 @@ def test_an_answer_that_skips_or_repeats_a_card_is_rejected() -> None:
 
 def test_the_prompt_version_is_recorded_with_the_request() -> None:
     assert PROMPT_VERSION in build_request([SOL_RING]).system
+
+
+def test_mill_and_self_mill_are_separate_roles() -> None:
+    # Added in the owner's review: milling opponents and filling your own
+    # graveyard serve different strategies.
+    assert "opponent" in ROLE_DEFINITIONS["mill"]
+    assert "your own library" in ROLE_DEFINITIONS["self_mill"]
+
+
+def test_the_taxonomy_change_bumped_the_prompt_version() -> None:
+    # Tags made under an older version mean something different and are stale.
+    assert PROMPT_VERSION == "roles-v2"
