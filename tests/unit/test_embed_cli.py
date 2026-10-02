@@ -6,8 +6,9 @@ from mtg_deck_advisor.retrieval import embed as cli
 from mtg_deck_advisor.retrieval.embeddings import EmbeddingReport
 
 
-def test_it_takes_what_to_embed() -> None:
-    assert cli.parse_args(["cards"]).what == "cards"
+@pytest.mark.parametrize("what", ["cards", "rules", "all"])
+def test_it_takes_what_to_embed(what: str) -> None:
+    assert cli.parse_args([what]).what == what
 
 
 def test_what_to_embed_is_required(capsys: pytest.CaptureFixture[str]) -> None:

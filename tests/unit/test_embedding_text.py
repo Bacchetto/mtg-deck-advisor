@@ -2,7 +2,7 @@
 
 import pytest
 
-from mtg_deck_advisor.retrieval.text import card_text, expand_symbols
+from mtg_deck_advisor.retrieval.text import card_text, expand_symbols, rule_text
 
 
 @pytest.mark.parametrize(
@@ -46,3 +46,35 @@ def test_each_ability_and_face_stays_separated() -> None:
         "Bellowing Bruiser // Beat a Path. Creature — Ogre // Sorcery — Adventure. "
         "Haste / // / Up to two target creatures can't block this turn."
     )
+
+
+def test_a_top_level_rule_is_its_section_number_and_text() -> None:
+    text = rule_text("903.8", "903. Commander", "A player may cast a commander they own.")
+
+    assert text == "903. Commander. 903.8: A player may cast a commander they own."
+
+
+def test_a_lettered_rule_is_introduced_by_its_parents_first_sentence() -> None:
+    text = rule_text(
+        "903.4c",
+        "903. Commander",
+        "Reminder text is ignored when determining a card's color identity. See rule 207.2.",
+        parent=(
+            "903.4",
+            "The Commander variant uses color identity to determine what cards can be in a "
+            "deck. The color identity of a card is the color or colors of any mana symbols "
+            "(see rule 604.3).",
+        ),
+    )
+
+    assert text == (
+        "903. Commander. 903.4: The Commander variant uses color identity to determine what "
+        "cards can be in a deck. 903.4c: Reminder text is ignored when determining a card's "
+        "color identity. See rule 207.2."
+    )
+
+
+def test_a_rules_examples_stay_on_one_line() -> None:
+    text = rule_text("100.1", "100. General", "A rule.\nExample: An example.")
+
+    assert text == "100. General. 100.1: A rule. Example: An example."
