@@ -107,6 +107,10 @@ def test_a_recording_is_a_readable_json_file_named_by_its_key(tmp_path: Path) ->
     [file] = list(tmp_path.glob("*.json"))
     data = json.loads(file.read_text(encoding="utf-8"))
     assert file.stem == request_key(provider_request(), MODEL)
+    # Named request_hash, not "key": secret scanners read a high-entropy value
+    # in a field called "key" as a leaked credential.
+    assert data["request_hash"] == file.stem
+    assert "key" not in data
     assert data["model"] == MODEL
     assert data["request"]["system"] == "You tag Magic cards."
     assert data["response"]["text"] == '{"roles": ["ramp"]}'
