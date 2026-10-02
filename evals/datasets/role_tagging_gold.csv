@@ -10,13 +10,13 @@ Cycling {2} ({2}, Discard this card: Draw a card.)",random:creature,,"Cycling re
 2edf106d-f504-430e-ad9c-50fc95b0ad9c,Bone Picker,Creature — Bird,{3}{B},"This spell costs {3} less to cast if a creature died this turn.
 Flying, deathtouch",random:creature,,
 30b03dda-409f-4615-b392-477d66eb49f4,Maelstrom Muse,Creature — Djinn Wizard,{1}{U}{U/R}{R},"Flying
-Whenever this creature attacks, the next instant or sorcery spell you cast this turn costs {X} less to cast, where X is this creature's power as this ability resolves.",random:creature,ramp,REVIEW: cost reduction on attack only; counts as ramp under the cost-reducer rule.
+Whenever this creature attacks, the next instant or sorcery spell you cast this turn costs {X} less to cast, where X is this creature's power as this ability resolves.",random:creature,ramp,REVIEW: no changes
 5863c67b-a47c-4466-8bd1-210ab26e0d3f,Inspired Insurgent,Creature — Human Peasant Ally,{1}{W},"{1}, Sacrifice this creature: Destroy target artifact or enchantment.",random:creature,removal,
 7904dd02-f231-4538-b1bb-81bce69309b1,Rubblebelt Raiders,Creature — Human Warrior,{1}{R/G}{R/G}{R/G},"Whenever this creature attacks, put a +1/+1 counter on it for each attacking creature you control.",random:creature,,
 9369f131-3356-4926-9a9f-88a636305bd0,Goblin Psychopath,Creature — Goblin Mutant,{3}{R},"Whenever this creature attacks or blocks, flip a coin. If you lose the flip, the next time it would deal combat damage this turn, it deals that damage to you instead.",random:creature,,
 a05bcc3e-25d5-4111-820e-a097189afb7e,Weldfast Wingsmith,Creature — Human Artificer,{3}{U},"Whenever an artifact you control enters, this creature gains flying until end of turn.",random:creature,,
 f96f1a94-6226-4e1f-a7fb-a43a276b3c3a,Deathless Knight,Creature — Skeleton Knight,{B/G}{B/G}{B/G}{B/G},"Haste
-When you gain life for the first time each turn, return this card from your graveyard to your hand.",random:creature,recursion,REVIEW: returns only itself from the graveyard.
+When you gain life for the first time each turn, return this card from your graveyard to your hand.",random:creature,recursion,REVIEW: no changes.
 e1c49bdb-cfd1-4ebf-90f7-73bd5009f75e,Looming Hoverguard,Creature — Drone,{4}{U}{U},"Flying
 When this creature enters, put target artifact on top of its owner's library.",random:creature,removal,Puts an artifact on top of its owner's library (like a bounce).
 b2d4ce3c-00b1-4a72-b652-4c129475080f,"Kasla, the Broken Halo",Legendary Creature — Angel Ally,{3}{U}{R}{W},"Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)
@@ -28,11 +28,11 @@ Whenever you gain or lose life during your turn, Bats you control get +1/+0 and 
 9c975fda-471a-4d41-9bb6-ea42edc6a0e6,Blood Burglar,Creature — Vampire Rogue,{1}{B},"During your turn, this creature has lifelink.(Damage dealt by this creature also causes you to gain that much life.)",random:creature,,
 b2252471-01ca-4d58-aa99-4ab0aa5eae12,Stormcatch Mentor,Creature — Otter Wizard,{U}{R},"Haste
 Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)
-Instant and sorcery spells you cast cost {1} less to cast.",random:creature,ramp,REVIEW: reduces instant and sorcery costs; ramp under the cost-reducer rule.
+Instant and sorcery spells you cast cost {1} less to cast.",random:creature,ramp,REVIEW: no changes
 0432e07d-baf6-4c20-8646-08338c7dc950,Desperate Castaways,Creature — Human Pirate,{1}{B},This creature can't attack unless you control an artifact.,random:creature,,
 feee1926-0b63-404f-9b01-df965de26b5f,Brokers Veteran,Creature — Human Soldier,{1}{U},"When this creature dies, put a shield counter on target creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)",random:creature,protection,Shield counter on your creature when it dies.
 9b5cfbb7-21ed-491d-b77d-547e4d30a7da,Phyrexian Vindicator,Creature — Phyrexian Horror,{W}{W}{W}{W},"Flying
-If damage would be dealt to this creature, prevent that damage. When damage is prevented this way, this creature deals that much damage to any other target.",random:creature,,REVIEW: damage redirection is conditional; not counted as removal.
+If damage would be dealt to this creature, prevent that damage. When damage is prevented this way, this creature deals that much damage to any other target.",random:creature,,REVIEW: no changes
 97489ef7-98c3-4700-bbe6-185215d41b25,Aloe Alchemist,Creature — Plant Warlock,{1}{G},"Trample
 When this card becomes plotted, target creature gets +3/+2 and gains trample until end of turn.
 Plot {1}{G} (You may pay {1}{G} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)",random:creature,,
@@ -41,7 +41,7 @@ f5430b0e-e77f-47b8-ae6d-30bcff4d7e35,Midnight Guard,Creature — Human Soldier,{
 When this creature enters, you gain 2 life for each creature in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)",random:creature,,Life gain isn't a role in this taxonomy.
 26f6cc1e-d85e-45a3-a1ed-7f09d7cfc7df,Gaea's Revenge,Creature — Elemental,{5}{G}{G},"This spell can't be countered.
 Haste
-This creature can't be the target of nongreen spells or abilities from nongreen sources.",random:creature,,"REVIEW: large and hard to remove, but not evasive, so not finisher."
+This creature can't be the target of nongreen spells or abilities from nongreen sources.",random:creature,,REVIEW: no changes
 88dadc31-dfac-41b3-bf2a-65fa89e3c16d,"Linvala, Keeper of Silence",Legendary Creature — Angel,{2}{W}{W},"Flying
 Activated abilities of creatures your opponents control can't be activated.",random:creature,,Stax-like; no role in this taxonomy.
 612c9079-adae-4fe5-9a72-8efc09ddfe5c,Practiced Tactics,Instant,{W},"Choose target attacking or blocking creature. Practiced Tactics deals damage to that creature equal to twice the number of creatures in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)",random:instant,removal,
@@ -64,7 +64,7 @@ Coven — Then if you control three or more creatures with different powers, dra
 //
 Create a 4/4 red and green Beast creature token with trample.",random:instant,removal token_maker,Split card: both halves.
 324493fc-a205-4177-aa94-cf4672844c81,Random Encounter,Sorcery,{4}{R}{R},"Shuffle your library, then mill four cards. Put each creature card milled this way onto the battlefield. They gain haste. At the beginning of the next end step, return those creatures to their owner's hand.
-Flashback {6}{R}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",random:sorcery,,Creatures return to hand: not recursion or ramp.
+Flashback {6}{R}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",random:sorcery,self_mill,Creatures return to hand: not recursion or ramp. Resolved: new role self_mill (cards from your own library into your graveyard).
 335a6c6a-030f-45d4-806c-467a22962eed,Final Act,Sorcery,{4}{B}{B},"Choose one or more —
 • Destroy all creatures.
 • Destroy all planeswalkers.
@@ -76,7 +76,7 @@ Flashback {6}{R}{R} (You may cast this card from your graveyard for its flashbac
 efc12fda-054b-466a-a863-06cf54878172,Oust,Sorcery,{W},Put target creature into its owner's library second from the top. Its controller gains 3 life.,random:sorcery,removal,
 086b2564-9114-4ba2-94fd-b490f98f38a7,Chain Reaction,Sorcery,{2}{R}{R},"Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.",random:sorcery,board_wipe,
 19ad338a-c89f-406d-ad1a-222c22044e1b,Act on Impulse,Sorcery,{2}{R},"Exile the top three cards of your library. Until end of turn, you may play those cards. (If you cast a spell this way, you still pay its costs. You can play a land this way only if you have an available land play remaining.)",random:sorcery,card_draw,Impulse draw.
-4014f665-08a6-4ae0-b4d7-5a69d043af6a,Telemin Performance,Sorcery,{3}{U}{U},"Target opponent reveals cards from the top of their library until they reveal a creature card. That player puts all noncreature cards revealed this way into their graveyard, then you put the creature card onto the battlefield under your control.",random:sorcery,,REVIEW: steals a creature from an opponent's library; no clean role.
+4014f665-08a6-4ae0-b4d7-5a69d043af6a,Telemin Performance,Sorcery,{3}{U}{U},"Target opponent reveals cards from the top of their library until they reveal a creature card. That player puts all noncreature cards revealed this way into their graveyard, then you put the creature card onto the battlefield under your control.",random:sorcery,mill,REVIEW: this should be captured under a new role called mill read about mill here https://mtg.fandom.com/wiki/Mill Resolved: new role mill (cards from an opponent's library into their graveyard).
 bf276236-18a6-4a48-b47d-5227832d26e6,Never // Return,Sorcery // Sorcery,{1}{B}{B} // {3}{B},"Destroy target creature or planeswalker.
 //
 Aftermath (Cast this spell only from your graveyard. Then exile it.)
@@ -94,7 +94,7 @@ At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact
 At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.
 {T}: Add {C}{C}{C}.",random:artifact,ramp,
 62320290-ac8e-4f92-bb06-3368f66ae0a9,Keys to the House,Artifact,{1},"{1}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.
-{3}, {T}, Sacrifice this artifact: Lock or unlock a door of target Room you control. Activate only as a sorcery.",random:artifact,mana_fixing,REVIEW: basic land to hand; fixing rather than ramp.
+{3}, {T}, Sacrifice this artifact: Lock or unlock a door of target Room you control. Activate only as a sorcery.",random:artifact,mana_fixing,REVIEW: no changes
 db0894e1-2644-48d4-8de4-8cc43e940bc1,Debris Field Crusher,Artifact — Spacecraft,{4}{R},"When this Spacecraft enters, it deals 3 damage to any target.
 Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)
 8+ | Flying
@@ -127,7 +127,7 @@ afc2269c-d3b5-487d-9445-800c7a8e526b,"Domri, Anarch of Bolas",Legendary Planeswa
 f4bf8bd1-71b0-4eb1-976c-54677238b2a6,"Oko, the Trickster",Legendary Planeswalker — Oko,{4}{G}{U},"+1: Put two +1/+1 counters on up to one target creature you control.
 0: Until end of turn, Oko becomes a copy of target creature you control. Prevent all damage that would be dealt to him this turn.
 −7: Until end of turn, each creature you control has base power and toughness 10/10 and gains trample.",random:planeswalker,finisher,-7 makes the team 10/10 trample.
-33e85a8a-86df-4cdc-a9cc-8cbabe92c3c0,Urza's Mine,Land — Urza's Mine,,"{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.",random:land,land,"REVIEW: only ramp alongside the other Tron lands, so just land."
+33e85a8a-86df-4cdc-a9cc-8cbabe92c3c0,Urza's Mine,Land — Urza's Mine,,"{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead.",random:land,land,REVIEW: no changes
 27b047e3-0d41-45e2-98e9-9391d7923a1e,Exotic Orchard,Land,,{T}: Add one mana of any color that a land an opponent controls could produce.,random:land,land mana_fixing,
 c3172c5d-c745-4422-b651-cd414c8da11b,Birnin Zana Plaza,Land,,"This land enters tapped.
 When this land enters, you gain 1 life.
@@ -141,7 +141,7 @@ Cycling {2} ({2}, Discard this card: Draw a card.)",random:land,land mana_fixing
 //
 (Transforms from Hadana's Climb.)
 {T}: Add one mana of any color.
-{1}{G}{U}, {T}: Target creature you control gains flying and gets +X/+X until end of turn, where X is its power.",random:land,,REVIEW: an enchantment that transforms into a land with any-color mana and a pump.
+{1}{G}{U}, {T}: Target creature you control gains flying and gets +X/+X until end of turn, where X is its power.",random:land,mana_fixing,"REVIEW: this isn't a land this is mana fixing because the creature can be tapped to add mana of any color. Resolved: mana_fixing, as the owner's review says."
 e6e7b5ba-ea10-4f53-8afc-045aa1906c6b,Syphon Essence,Instant,{2}{U},"Counter target creature or planeswalker spell. Create a Blood token. (It's an artifact with ""{1}, {T}, Discard a card, Sacrifice this token: Draw a card."")",targeted:counterspell,counterspell,
 22b7975c-37a5-4895-b209-bdeeec0c6aea,Judge's Familiar,Creature — Bird,{W/U},"Flying
 Sacrifice this creature: Counter target instant or sorcery spell unless its controller pays {1}.",targeted:counterspell,counterspell,
@@ -150,7 +150,7 @@ Whenever this creature attacks or blocks, scry 2.
 //
 Counter target noncreature spell. (Then exile this card. You may cast the creature later from exile.)",targeted:counterspell,counterspell,The adventure half counters.
 f1a16f6d-ea11-485e-8c5b-7f919a731fe0,Mask of the Mimic,Instant,{U},"As an additional cost to cast this spell, sacrifice a creature.
-Search your library for a card with the same name as target nontoken creature, put that card onto the battlefield, then shuffle.",targeted:tutor,tutor,"REVIEW: searches for a same-named card, which is nearly useless in singleton."
+Search your library for a card with the same name as target nontoken creature, put that card onto the battlefield, then shuffle.",targeted:tutor,tutor,"REVIEW: searches for a same-named card, which is nearly useless in singleton. True but the role is still correct."
 79acdb37-8d52-4bc8-a7be-a7e92b6166e5,Dark Petition,Sorcery,{3}{B}{B},"Search your library for a card, put that card into your hand, then shuffle.
 Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, add {B}{B}{B}.",targeted:tutor,tutor,"The mana is a one-shot ritual, not ramp."
 7f32344f-06d8-4862-bfeb-f90a3e1d7fc2,The Creation of Avacyn,Enchantment — Saga,{1}{B}{B},"(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)
@@ -158,7 +158,7 @@ I — Search your library for a card, exile it face down, then shuffle.
 II — Turn the exiled card face up. If it's a creature card, you lose life equal to its mana value.
 III — You may put the exiled card onto the battlefield if it's a creature card. If you don't put it onto the battlefield, put it into its owner's hand.",targeted:tutor,tutor,
 c2508190-5aca-4511-adc8-2072cd228119,Downdraft,Enchantment,{2}{G},"{G}: Target creature loses flying until end of turn.
-Sacrifice this enchantment: It deals 2 damage to each creature with flying.",targeted:board_wipe,board_wipe,"REVIEW: hits only flyers, for 2 damage."
+Sacrifice this enchantment: It deals 2 damage to each creature with flying.",targeted:board_wipe,removal,REVIEW: I changed this to removal from board_wipe
 944904a4-aab6-4ad9-96d7-6a3e47c118ca,Earthshaker,Creature — Spirit,{4}{R}{R},"Whenever you cast a Spirit or Arcane spell, this creature deals 2 damage to each creature without flying.",targeted:board_wipe,board_wipe,"Repeatable, non-flyers only."
 d057289d-5e28-43d5-8ff3-4a1bc723477d,Day of Judgment,Sorcery,{2}{W}{W},Destroy all creatures.,targeted:board_wipe,board_wipe,
 33747a34-79cc-446f-8718-b499bd497687,Guardian of New Benalia,Creature — Human Soldier,{1}{W},"Enlist (As this creature attacks, you may tap a nonattacking creature you control without summoning sickness. When you do, add its power to this creature's until end of turn.)
@@ -189,7 +189,7 @@ Whenever this creature attacks, create X tokens that are copies of it and that a
 76a6ddc2-f894-4331-89a9-87ca16efd0c0,Servo Exhibition,Sorcery,{1}{W},Create two 1/1 colorless Servo artifact creature tokens.,targeted:token_maker,token_maker,
 66051196-53ea-4461-b241-205df9395b3b,Infectious Inquiry,Sorcery,{2}{B},You draw two cards and you lose 2 life. Each opponent gets a poison counter.,targeted:card_draw,card_draw,
 72bdc7ba-2906-436d-8405-6a8a3335fdae,Stormsurge Kraken,Creature — Kraken,{3}{U}{U},"Hexproof
-Lieutenant — As long as you control your commander, this creature gets +2/+2 and has ""Whenever this creature becomes blocked, you may draw two cards.""",targeted:card_draw,card_draw,REVIEW: draws only when blocked and you control your commander.
+Lieutenant — As long as you control your commander, this creature gets +2/+2 and has ""Whenever this creature becomes blocked, you may draw two cards.""",targeted:card_draw,card_draw,REVIEW: correct role.
 7f0544e3-965f-4b12-baaf-d7dfea8d4d41,Birth of the Imperium,Enchantment — Saga,{2}{W}{U}{B},"(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)
 I — Create a 2/2 white Astartes Warrior creature token with vigilance for each opponent you have.
 II — Each opponent sacrifices a creature of their choice.
