@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -28,11 +29,12 @@ def loaded(settings: Settings) -> Settings:
     return settings
 
 
-def sol_ring_id(settings: Settings) -> object:
+def sol_ring_id(settings: Settings) -> UUID:
     with connect(settings) as conn:
         row = conn.execute("SELECT oracle_id FROM cards WHERE name = 'Sol Ring'").fetchone()
     assert row is not None
-    return row[0]
+    oracle_id: UUID = row[0]
+    return oracle_id
 
 
 def test_saved_roles_are_read_back_with_their_provenance(loaded: Settings) -> None:
