@@ -23,6 +23,10 @@ PRICES: dict[str, ModelPrice] = {
     "claude-opus-5-5": ModelPrice(input=4.00, output=20.00, cache_read=0.20, cache_write=5.00),
     "claude-sonnet-5-5": ModelPrice(input=2.00, output=10.00, cache_read=0.20, cache_write=2.50),
     "claude-haiku-4-5": ModelPrice(input=1.00, output=5.00, cache_read=0.10, cache_write=1.25),
+    # The dated name the API reports in responses to claude-haiku-4-5 requests.
+    "claude-haiku-4-5-20251001": ModelPrice(
+        input=1.00, output=5.00, cache_read=0.10, cache_write=1.25
+    ),
     # Models a server-side refusal fallback can answer from, which bill at
     # their own rates. Cache rates are the standard 0.1x (read) and 1.25x
     # (write) of input.

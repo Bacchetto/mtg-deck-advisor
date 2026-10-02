@@ -64,7 +64,7 @@ class RecordingProvider:
         response = self._inner.complete(request, model)
         self._directory.mkdir(parents=True, exist_ok=True)
         recording = {
-            "key": request_key(request, model),
+            "request_hash": request_key(request, model),
             "model": model,
             "recorded_from": self._inner.name,
             "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),

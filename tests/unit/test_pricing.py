@@ -34,3 +34,8 @@ def test_cost_counts_every_kind_of_token() -> None:
     assert cost_usd("claude-sonnet-5-5", usage) == pytest.approx(
         price.input + price.output + price.cache_read + price.cache_write
     )
+
+
+def test_a_dated_model_alias_is_priced_like_its_model() -> None:
+    # The API answered Haiku 4.5 requests as claude-haiku-4-5-20251001.
+    assert PRICES["claude-haiku-4-5-20251001"] == PRICES["claude-haiku-4-5"]

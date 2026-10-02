@@ -1,0 +1,90 @@
+{
+  "request_hash": "0963c1e7a415e4ab4fad0c72ec7512e64ffb43ec18851dc5e127c39c99176e2b",
+  "model": "claude-haiku-4-5",
+  "recorded_from": "anthropic",
+  "recorded_at": "2026-10-02T18:51:55+00:00",
+  "request": {
+    "system": "You classify Magic: The Gathering cards by the roles they play in a Commander deck.\nTaxonomy version: roles-v2.\n\nRoles (use exactly these names):\n- ramp: gives extra mana beyond the normal land drop: mana rocks, mana creatures, putting lands onto the battlefield, cost reducers. Treasure-makers count; one-shot rituals don't.\n- card_draw: gives extra cards: drawing, or exiling cards you may play. Looting that discards as much as it draws doesn't count, nor does a cantrip that only replaces itself.\n- removal: deals with one opposing threat: destroy, exile, sacrifice, damage or bounce aimed at a single permanent.\n- board_wipe: deals with many permanents at once: destroy all, mass damage, mass bounce or exile.\n- counterspell: counters spells or abilities.\n- tutor: searches your library for a specific non-land card. Searching for lands is ramp or mana_fixing.\n- recursion: returns cards from a graveyard, to hand or to the battlefield.\n- protection: protects your own permanents or yourself: hexproof, indestructible, shroud, phasing, shield counters, countering spells that target them.\n- token_maker: creates creature tokens. Treasure and other non-creature tokens don't count (Treasure is ramp).\n- finisher: ends games: mass pumps for your team, alternate win conditions, large evasive threats.\n- mana_fixing: produces or finds mana of more than one color: dual lands, any-color mana, searching for basic lands to fix colors.\n- land: is a land card.\n- mill: puts cards from an opponent's library into their graveyard: milling as a win condition or disruption.\n- self_mill: puts cards from your own library into your graveyard, to fuel graveyard strategies: milling yourself, surveil, putting revealed cards into your graveyard.\n\nA card can have several roles, or none (for example a vanilla creature).\nJudge each card by its own text, as a Commander player would.\nFor every card in the list, give its number, its roles, and a one-sentence reason.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Classify these cards:\n1. Kiki-Jiki, Mirror Breaker | {2}{R}{R}{R} | Legendary Creature — Goblin Shaman | Haste / {T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.\n2. Damia, Sage of Stone | {4}{B}{G}{U} | Legendary Creature — Gorgon Wizard | Deathtouch / Skip your draw step. / At the beginning of your upkeep, if you have fewer than seven cards in hand, draw cards equal to the difference.\n3. Wasp Lancer | {U/B}{U/B}{U/B} | Creature — Faerie Soldier | Flying\n4. Granitic Titan | {4}{R}{R} | Creature — Elemental | Menace / Cycling {2} ({2}, Discard this card: Draw a card.)\n5. Bone Picker | {3}{B} | Creature — Bird | This spell costs {3} less to cast if a creature died this turn. / Flying, deathtouch\n6. Maelstrom Muse | {1}{U}{U/R}{R} | Creature — Djinn Wizard | Flying / Whenever this creature attacks, the next instant or sorcery spell you cast this turn costs {X} less to cast, where X is this creature's power as this ability resolves.\n7. Inspired Insurgent | {1}{W} | Creature — Human Peasant Ally | {1}, Sacrifice this creature: Destroy target artifact or enchantment.\n8. Rubblebelt Raiders | {1}{R/G}{R/G}{R/G} | Creature — Human Warrior | Whenever this creature attacks, put a +1/+1 counter on it for each attacking creature you control.\n9. Goblin Psychopath | {3}{R} | Creature — Goblin Mutant | Whenever this creature attacks or blocks, flip a coin. If you lose the flip, the next time it would deal combat damage this turn, it deals that damage to you instead.\n10. Weldfast Wingsmith | {3}{U} | Creature — Human Artificer | Whenever an artifact you control enters, this creature gains flying until end of turn.\n11. Deathless Knight | {B/G}{B/G}{B/G}{B/G} | Creature — Skeleton Knight | Haste / When you gain life for the first time each turn, return this card from your graveyard to your hand.\n12. Looming Hoverguard | {4}{U}{U} | Creature — Drone | Flying / When this creature enters, put target artifact on top of its owner's library.\n13. Kasla, the Broken Halo | {3}{U}{R}{W} | Legendary Creature — Angel Ally | Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.) / Flying, vigilance, haste / Whenever you cast another spell that has convoke, scry 2, then draw a card.\n14. Moonstone Harbinger | {2}{B} | Creature — Bat Warrior | Flying, deathtouch / Whenever you gain or lose life during your turn, Bats you control get +1/+0 and gain deathtouch until end of turn. This ability triggers only once each turn.\n15. Arbalest Elite | {2}{W}{W} | Creature — Human Archer | {2}{W}, {T}: This creature deals 3 damage to target attacking or blocking creature. This creature doesn't untap during your next untap step.\n16. Blood Burglar | {1}{B} | Creature — Vampire Rogue | During your turn, this creature has lifelink.(Damage dealt by this creature also causes you to gain that much life.)\n17. Stormcatch Mentor | {U}{R} | Creature — Otter Wizard | Haste / Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.) / Instant and sorcery spells you cast cost {1} less to cast.\n18. Desperate Castaways | {1}{B} | Creature — Human Pirate | This creature can't attack unless you control an artifact.\n19. Brokers Veteran | {1}{U} | Creature — Human Soldier | When this creature dies, put a shield counter on target creature you control. (If it would be dealt damage or destroyed, remove a shield counter from it instead.)\n20. Phyrexian Vindicator | {W}{W}{W}{W} | Creature — Phyrexian Horror | Flying / If damage would be dealt to this creature, prevent that damage. When damage is prevented this way, this creature deals that much damage to any other target.\n21. Aloe Alchemist | {1}{G} | Creature — Plant Warlock | Trample / When this card becomes plotted, target creature gets +3/+2 and gains trample until end of turn. / Plot {1}{G} (You may pay {1}{G} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)\n22. Midnight Guard | {2}{W} | Creature — Human Soldier | Whenever another creature enters, untap this creature.\n23. Shepherd of Heroes | {4}{W} | Creature — Angel Cleric | Flying / When this creature enters, you gain 2 life for each creature in your party. (Your party consists of up to one each of Cleric, Rogue, Warrior, and Wizard.)\n24. Gaea's Revenge | {5}{G}{G} | Creature — Elemental | This spell can't be countered. / Haste / This creature can't be the target of nongreen spells or abilities from nongreen sources.\n25. Linvala, Keeper of Silence | {2}{W}{W} | Legendary Creature — Angel | Flying / Activated abilities of creatures your opponents control can't be activated."
+      }
+    ],
+    "max_tokens": 3000,
+    "effort": "low",
+    "output_schema": {
+      "$defs": {
+        "TaggedCard": {
+          "description": "The model's answer for one card, by its number in the list.",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "type": "integer"
+            },
+            "roles": {
+              "items": {
+                "enum": [
+                  "ramp",
+                  "card_draw",
+                  "removal",
+                  "board_wipe",
+                  "counterspell",
+                  "tutor",
+                  "recursion",
+                  "protection",
+                  "token_maker",
+                  "finisher",
+                  "mana_fixing",
+                  "land",
+                  "mill",
+                  "self_mill"
+                ],
+                "type": "string"
+              },
+              "title": "Roles",
+              "type": "array"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "index",
+            "roles",
+            "reason"
+          ],
+          "title": "TaggedCard",
+          "type": "object"
+        }
+      },
+      "description": "The model's answer for a batch of cards.",
+      "properties": {
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/TaggedCard"
+          },
+          "title": "Cards",
+          "type": "array"
+        }
+      },
+      "required": [
+        "cards"
+      ],
+      "title": "RoleTagging",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"cards\": [{\"index\": 1, \"roles\": [\"token_maker\", \"finisher\"], \"reason\": \"Creates copies of creatures with haste for token generation and can form infinite loops for game-ending damage.\"}, {\"index\": 2, \"roles\": [\"card_draw\"], \"reason\": \"Replaces your draw step with a conditional draw effect that fills your hand to seven cards.\"}, {\"index\": 3, \"roles\": [], \"reason\": \"A vanilla flyer with no special abilities or roles.\"}, {\"index\": 4, \"roles\": [\"card_draw\"], \"reason\": \"Cycling provides card draw in exchange for discarding the card.\"}, {\"index\": 5, \"roles\": [], \"reason\": \"A conditional creature with flying and deathtouch that doesn't provide a meaningful role beyond evasion.\"}, {\"index\": 6, \"roles\": [], \"reason\": \"A flying creature that reduces spell costs but doesn't fit a core Commander role.\"}, {\"index\": 7, \"roles\": [\"removal\"], \"reason\": \"Sacrificing it destroys target artifact or enchantment, providing removal.\"}, {\"index\": 8, \"roles\": [], \"reason\": \"A creature that grows with combat but lacks meaningful strategic impact for typical Commander roles.\"}, {\"index\": 9, \"roles\": [], \"reason\": \"A creature with random coin-flip effects that don't provide consistent value.\"}, {\"index\": 10, \"roles\": [], \"reason\": \"Gains flying conditionally when artifacts enter but doesn't provide a core Commander role.\"}, {\"index\": 11, \"roles\": [\"recursion\"], \"reason\": \"Returns itself from the graveyard to hand when you gain life, providing recursion.\"}, {\"index\": 12, \"roles\": [\"removal\"], \"reason\": \"Bounces target artifact to the top of library, which disrupts and partially removes threats.\"}, {\"index\": 13, \"roles\": [\"card_draw\", \"finisher\"], \"reason\": \"Draws cards when casting convoke spells and provides evasive threats with flying, vigilance, and haste.\"}, {\"index\": 14, \"roles\": [], \"reason\": \"A creature with conditional pump that requires life gain triggers but lacks a clear Commander role.\"}, {\"index\": 15, \"roles\": [\"removal\"], \"reason\": \"Can deal 3 damage to target attacking or blocking creature, providing removal.\"}, {\"index\": 16, \"roles\": [], \"reason\": \"A small creature with lifelink that doesn't fill a significant Commander role.\"}, {\"index\": 17, \"roles\": [\"ramp\"], \"reason\": \"Reduces the cost of instant and sorcery spells by one, effectively ramping mana.\"}, {\"index\": 18, \"roles\": [], \"reason\": \"A creature with a conditional attack restriction that lacks a meaningful role.\"}, {\"index\": 19, \"roles\": [\"protection\"], \"reason\": \"Places a shield counter on another creature when it dies, protecting your permanents.\"}, {\"index\": 20, \"roles\": [\"protection\"], \"reason\": \"Prevents damage to itself and redirects it to other targets, providing protection and offense.\"}, {\"index\": 21, \"roles\": [], \"reason\": \"A creature with a one-time pump effect when plotted that doesn't establish a core Commander role.\"}, {\"index\": 22, \"roles\": [\"protection\"], \"reason\": \"Untaps whenever another creature enters, protecting itself from removal and enabling multiple activations.\"}, {\"index\": 23, \"roles\": [\"finisher\"], \"reason\": \"Provides life gain scaling with party size and evasion, serving as a finisher with flying.\"}, {\"index\": 24, \"roles\": [\"finisher\"], \"reason\": \"Large evasive threat with built-in protection from non-green removal and haste.\"}, {\"index\": 25, \"roles\": [\"protection\"], \"reason\": \"Shuts down opponent creature abilities, providing disruption and protection for your strategy.\"}]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 2480,
+      "output_tokens": 874,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "claude-haiku-4-5-20251001"
+  }
+}
