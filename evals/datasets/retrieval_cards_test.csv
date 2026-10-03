@@ -1,0 +1,42 @@
+id,kind,scope,query,filters,relevant,notes
+TC01,paraphrase,catalogue,a one-mana green elf that taps for green mana,,Elvish Mystic; Fyndhorn Elves; Llanowar Elves,Every legal one-mana creature whose only text is {T}: Add {G}.
+TC02,paraphrase,catalogue,an instant that counters a spell unless its controller pays three,,Mana Leak; Geistlight Snare; Metallic Rebuke; Mystical Dispute,"Soratami Savant and Spiketail Drake do it too, but are creatures, not instants."
+TC03,paraphrase,catalogue,a land that exiles a player's graveyard when it enters,,Bojuka Bog,"Boggart Trawler // Boggart Bog: the creature face does it, not the land face; excluded."
+TC04,paraphrase,catalogue,give every permanent I control hexproof and indestructible until end of turn,,Heroic Intervention; Restoration Magic,
+TC05,paraphrase,catalogue,until my next turn my life total can't change and my permanents phase out,,Teferi's Protection,Flare of Fortitude and Perch Protection stop life changes but don't phase out.
+TC06,paraphrase,catalogue,win the game instead of losing when drawing from an empty library,,"Laboratory Maniac; Jace, Wielder of Mysteries",
+TC07,paraphrase,catalogue,an enchantment that draws an extra card every upkeep at the cost of one life,,Phyrexian Arena,
+TC08,paraphrase,catalogue,"bring back a creature from any graveyard, losing life equal to its mana value",,Reanimate,
+TC09,paraphrase,catalogue,pay X life to give every creature -X/-X,,Toxic Deluge,
+TC10,paraphrase,catalogue,an artifact that makes enter-the-battlefield triggers happen twice,,Panharmonicon,
+TC11,paraphrase,catalogue,each opponent loses X life and I gain that much,,Exsanguinate; Stensian Sanguinist // Exsanguinate,The second is a two-faced card whose back face is Exsanguinate.
+TC12,paraphrase,catalogue,a two-mana artifact that taps for colorless and can be sacrificed to draw a card,,Mind Stone,
+TC13,term,catalogue,recover,,Controvert; Garza's Assassin; Grim Harvest; Icefall; Krovikan Rot; Resize; Sun's Bounty,Every legal card with recover.
+TC14,term,catalogue,dethrone,,"Enraged Revolutionary; Grenzo's Cutthroat; Marchesa's Emissary; Marchesa's Infiltrator; Marchesa's Smuggler; Marchesa, the Black Rose; Park Heights Maverick; Scourge of the Throne; Treasonous Ogre",Every legal card with dethrone.
+TC15,term,catalogue,transfigure,,Fleshwrither,The only legal card with transfigure.
+TC16,name,catalogue,the returned king,,"Kenrith, the Returned King",A name searched by its epithet.
+TC17,name,catalogue,ur dragon,,The Ur-Dragon,Scion of the Ur-Dragon shares the name but is a different card.
+TC18,name,catalogue,yuriko tigers shadow,,"Yuriko, the Tiger's Shadow",Typed without punctuation. Other Yurikos excluded.
+TC19,name,catalogue,thassas oracle,,Thassa's Oracle,Typed without the apostrophe.
+TP01,need,pool,counter a spell or ability,,Counterlash; Preemptive Strike; Trickbind,Trickbind counters abilities only; included because the query says 'or ability'.
+TP02,need,pool,sweepers that hit every creature,,Catastrophe; Burn Down the House,Bone Flute (-1/-0) and Wind Shear (attacking flyers) don't sweep; excluded.
+TP03,need,pool,exile an opponent's creature,,Bring to Trial; Expel; Conclave Tribunal; Celebrate the Mountain-king,The Mighty Thor exiles and returns at once; excluded.
+TP04,need,pool,burn that can kill a creature,identity=R,Combustion Technique; Shredded Sails; Shower of Sparks; Jaya's Immolating Inferno; Burn Down the House; Knollspine Invocation; Pyromania,"Damage to players only (Blood Oath, Pyroclastic Elemental) excluded."
+TP05,need,pool,answers to an artifact or enchantment,,Invoke the Divine; Atraxa's Fall; Shredded Sails; Rust Scarab; Urn of Godfire; Conclave Tribunal; Celebrate the Mountain-king,"Exile effects included, as they answer any nonland permanent. Geistwave (bounce) excluded as temporary."
+TP06,need,pool,draw cards over and over,,"Enchantress's Presence; Season of Growth; Elrond, Moon-Reader; Soulknife Spy; Ant-Man, Reformed Rogue; Robot Domination; Third Path Savant; Senator Peacock; The Mighty Thor, Jane Foster; Thrasios, Triton Hero",Repeatable draw. Anvil of Bogardan loots (net zero); excluded.
+TP07,need,pool,creatures that tap for mana,,"Great Divide Guide; Runadi, Behemoth Caller; Omen Hawker; Rosheen, Roaring Prophet","Omen Hawker and Rosheen's mana is restricted, but they still tap for mana."
+TP08,need,pool,mana rocks,type=Artifact,Obsidian Obelisk; The Mind Stone,Urn of Godfire filters mana rather than adding it; excluded.
+TP09,need,pool,make creature tokens,identity=G,Ayula's Influence; Feral Incarnation; Formless Genesis; Lys Alana Huntmaster; Nightpack Ambusher; Saproling Cluster; Spore Burst; March of the World Ooze,
+TP10,need,pool,graveyard hate,,Arashin Sunshield; Weathered Runestone,"Containment Priest stops creatures entering uncast, which hits reanimation; excluded as not about graveyards."
+TP11,need,pool,make opponents discard,,Ashiok's Adept; Specter's Wail; Herald of Anguish; Liliana Vess; Scroll of Griselbrand; Demogorgon's Clutches; Unhinge; Whispering Madness,Whispering Madness makes every player discard.
+TP12,need,pool,drain opponents' life,,Nocturnal Feeder; Syphon Soul; Polluted Bonds; Curse of Fool's Wisdom; Gonti's Machinations,Each makes opponents lose life and gains you life.
+TP13,need,pool,search my library for a creature,,Recruiter of the Guard; Shared Summons; General Tazri; Bring to Light,"Searches for a named card (Behemoth's Herald, Growth-Chamber Guardian) excluded."
+TP14,need,pool,put a creature from my graveyard onto the battlefield,,"Unearth; Tyvar, Jubilant Brawler; Liliana Vess; Underworld Sentinel",
+TP15,need,pool,protect my other creatures from removal,,Selfless Safewright; Foot Elite; Pale Wayfarer; Umbra Mystic,Creatures that only protect themselves are excluded.
+TP16,need,pool,return a creature to its owner's hand,,"Just the Wind; Word of Undoing; Escape Detection; Geistwave; Murk Strider; Renet, Temporal Apprentice",
+TP17,need,pool,tap an opponent's creature,,Arashin Sunshield; Grappling Kraken; Glaring Aegis; Janjeet Sentry; Artful Takedown,Kitsune Diviner taps only Spirits; excluded.
+TP18,need,pool,copy instants and sorceries,,Bonus Round; Sigil Tracer; Spellweaver Volute,
+TP19,need,pool,dual lands,type=Land,Luxury Suite; Pine Barrens; Underground River,Lands that make one of two colors.
+TP20,need,pool,take control of an opponent's permanent,,Word of Seizing; Midnight Crusader Shuttle,Both until end of turn.
+TP21,need,pool,no maximum hand size,,Anvil of Bogardan; Spellbook,
+TP22,need,pool,generate Treasure,,Prosperous Thief; Revel in Riches; Trove of Temptation,

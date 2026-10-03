@@ -1,0 +1,300 @@
+1 Chandra, Fire Artisan
+1 Omen Hawker
+1 Demogorgon's Clutches
+1 Aven Fisher
+1 Killian's Confidence
+1 Burn Down the House
+1 Grappling Kraken
+1 Behemoth's Herald
+1 Whispering Madness
+1 Timberwatch Elf
+1 Monstrous Emergence
+1 Tyvar, Jubilant Brawler
+1 Just the Wind
+1 Darkwatch Elves
+1 Worldsoul's Rage
+1 Atraxa's Fall
+1 Kami of the Waning Moon
+1 Roadside Reliquary
+1 Great Divide Guide
+1 Quill-Slinger Boggart
+1 Sage of the Fang
+1 Vivien's Arkbow
+1 Spellbook
+1 Providence
+1 Lifecraft Cavalry
+1 Inspiring Cleric
+1 Celestial Flare
+1 Iron-Fist Pulverizer
+1 Tel-Jilad Stylus
+1 Invoke the Divine
+1 Reckless Detective
+1 Rushblade Commander
+1 Weathered Runestone
+1 Elrond, Moon-Reader
+1 Kindred Charge
+1 Pyroclastic Elemental
+1 Stampede Rider
+1 Feral Ferocity
+1 Bring to Light
+1 Firestorm Hellkite
+1 Trickbind
+1 Unhinge
+1 Twisted Landscape
+1 Cenn's Enlistment
+1 Walking Sarcophagus
+1 Lignify
+1 Frostpyre Arcanist
+1 Fangblade Brigand // Fangblade Eviscerator
+1 Feather of Flight
+1 Redcap Heelslasher
+1 Roiling Regrowth
+1 Lammastide Weave
+1 Land's Edge
+1 As Foretold
+1 Ayula's Influence
+1 War Elemental
+1 Mana Matrix
+1 Umbra Mystic
+1 Burning Prophet
+1 Recruiter of the Guard
+1 Moriok Rigger
+1 Swooping Protector
+1 Slagstone Refinery
+1 Nested Ghoul
+1 Wandering Troubadour
+1 Desperate Castaways
+1 Shared Summons
+1 Tyvar the Bellicose
+1 Locthwain Paladin
+1 The Astonishing Ant-Man
+1 Spellweaver Volute
+1 Candlelight Vigil
+1 Gateway Shade
+1 Rampaging Soulrager
+1 Shadow of the Second Sun
+1 Rally the Peasants
+1 Lys Alana Huntmaster
+1 Rust Scarab
+1 Coral Commando
+1 Capashen Templar
+1 Third Path Savant
+1 Skyrider Elf
+1 Janjeet Sentry
+1 Foot Elite
+1 Smoldering Spires
+1 All-Seeing Arbiter
+1 The Mighty Thor, Jane Foster
+1 Vexing Sphinx
+1 Screeching Bat // Stalking Vampire
+1 Scheming Symmetry
+1 War Balloon
+1 Word of Seizing
+1 Preemptive Strike
+1 Nightpack Ambusher
+1 Frantic Inventory
+1 Lord of the Accursed
+1 Monk of the Open Hand
+1 Gossamer Chains
+1 Koma, World-Eater
+1 Old Thrush
+1 Celebrate the Mountain-king
+1 Urn of Godfire
+1 Knight of the Skyward Eye
+1 Jaya's Immolating Inferno
+1 Steelclaw Lance
+1 Dread
+1 Specter's Wail
+1 Arashin Sunshield
+1 Relic Bane
+1 Sigil Tracer
+1 Underworld Sentinel
+1 Syphon Soul
+1 Sorcerous Spyglass
+1 Igneous Golem
+1 Geist-Fueled Scarecrow
+1 Bloodstoke Howler
+1 Trove of Temptation
+1 Valakut Fireboar
+1 Artful Takedown
+1 Zhur-Taa Ancient
+1 Sokenzan Renegade
+1 Knollspine Invocation
+1 Angelic Overseer
+1 Pine Barrens
+1 Sculpting Steel
+1 Enchantress's Presence
+1 Telim'Tor's Darts
+1 Braidwood Cup
+1 Basilica Skullbomb
+1 Senator Peacock
+1 Wall of Wonder
+1 Dream Pillager
+1 Underworld Charger
+1 Robot Domination
+1 Icatian Store
+1 Orysa, Tide Choreographer
+1 Shredded Sails
+1 Riverwise Augur
+1 Builder's Blessing
+1 Pyromania
+1 Word of Undoing
+1 Sentinel
+1 Formless Genesis
+1 Conclave Tribunal
+1 Feral Incarnation
+1 Ant-Man, Reformed Rogue
+1 Chandra, Dressed to Kill
+1 Containment Priest
+1 Enraged Giant
+1 Mantle of the Ancients
+1 Opal Palace
+1 Shu Defender
+1 Temur Runemark
+1 Unearth
+1 Pale Wayfarer
+1 Swift Maneuver
+1 Goblin Coward Parade
+1 Mardu Monument
+1 Exquisite Archangel
+1 Targ Nar, Demon-Fang Gnoll
+1 Cutthroat Maneuver
+1 Flying Men
+1 Shower of Sparks
+1 Polluted Bonds
+1 Unholy Officiant
+1 Kormus Bell
+1 Skystreamer
+1 Blood Oath
+1 The Mind Stone
+1 Adaptive Snapjaw
+1 Curse of Fool's Wisdom
+1 Emerald Dragonfly
+1 Renet, Temporal Apprentice
+1 Cut Your Losses
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Prosperous Thief
+1 Geistwave
+1 Soulknife Spy
+1 General Tazri
+1 Hidden Path
+1 Goblin Researcher
+1 Luxury Suite
+1 Midnight Crusader Shuttle
+1 Samut, the Driving Force
+1 Cloudshredder Sliver
+1 Sky Theater Strix
+1 Stoic Ephemera
+1 Rosheen, Roaring Prophet
+1 Wind Shear
+1 Murk Strider
+1 Vengeance
+1 Bring to Trial
+1 Herald of Anguish
+1 Ajani, Mentor of Heroes
+1 Lead by Example
+1 Drunau Corpse Trawler
+1 Termination Facilitator
+1 Immobilizing Ink
+1 Revel in Riches
+1 Nightshade Stinger
+1 The Shire
+1 Undulating Witness
+1 Saprazzan Legate
+1 Death Bomb
+1 Lagac Lizard
+1 Tuktuk Rubblefort
+1 Nova Chaser
+1 Mirran Mettle
+1 Titans' Nest
+1 Isengard Unleashed
+1 Thraben Purebloods
+1 Monumental Corruption
+1 Mordor Muster
+1 Michelangelo, the Heart
+1 Obsidian Obelisk
+1 Feral Deceiver
+1 Hidden Predators
+1 Giant Scorpion
+1 Anvil of Bogardan
+1 Ashiok's Adept
+1 Runic Shot
+1 Mystic Redaction
+1 Merry-Go-Round
+1 Gale Swooper
+1 Nocturnal Feeder
+1 Savai Sabertooth
+1 Shu Elite Infantry
+1 Might of the Masses
+1 Land Equilibrium
+1 Owen Grady, Raptor Trainer
+1 Underground River
+1 Gonti's Machinations
+1 Saproling Cluster
+1 Growth-Chamber Guardian
+1 Blight Titan
+1 Hot Springs
+1 Keeper of Progenitus
+1 Seasoned Hallowblade
+1 Thrasios, Triton Hero
+1 Reaper from the Abyss
+1 March of the World Ooze
+1 Escape Detection
+1 Shabraz, the Skyshark
+1 Liliana Vess
+1 Sting, Bilbo's Sword
+1 H.E.R.B.I.E. Scout Unit
+1 Sacred White Deer
+1 Strata Scythe
+1 Sandstorm Crasher
+1 Glaring Aegis
+1 Locket of Yesterdays
+1 Lymph Sliver
+1 Mercenary Knight
+1 Selfless Safewright
+1 Polymorph
+1 Spore Burst
+1 Kitsune Diviner
+1 Unburied Earthcarver
+1 Lagonna-Band Storyteller
+1 Nacre Talisman
+1 Expel
+1 Queen Brahne
+1 Sigarda's Vanguard
+1 Samurai Enforcers
+1 Ardent Dustspeaker
+1 Bone Flute
+1 Reprocess
+1 Soul Warden
+1 Scroll of Griselbrand
+1 Enhanced Surveillance
+1 Naya Panorama
+1 Fortune, Loyal Steed
+1 Basic Conjuration
+1 Counterlash
+1 Phantom Wurm
+1 Quicksand
+1 Season of Growth
+1 Parallax Inhibitor
+1 Sandals of Abdallah
+1 Viscera Dragger
+1 Rishadan Port
+1 Fleeting Effigy
+1 Krovikan Horror
+1 Szarekh, the Silent King
+1 Runadi, Behemoth Caller
+1 Anikthea, Hand of Erebos
+1 Stalwart Shield-Bearers
+1 Aboleth Spawn
+1 Combustion Technique
+1 Stonecoil Serpent
+1 Bonus Round
+1 Catastrophe
+1 Talons of Wildwood
+1 Coast Watcher
+1 Jolrael, Empress of Beasts
+1 Kuro, Pitlord
+1 Agony Warp
+1 Shieldmage Advocate
+1 Resupply
+1 Chimeric Coils
