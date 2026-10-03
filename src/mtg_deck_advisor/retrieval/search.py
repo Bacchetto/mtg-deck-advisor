@@ -8,8 +8,12 @@
   card matching more of them ranks higher: `ts_rank_cd`, normalised by text
   length so long cards don't win by size. It finds exact terms ("ripple"),
   but not paraphrases.
-- **Hybrid** (the default): each arm's top 50, fused by reciprocal rank
-  (`fusion.py`). The retrieval eval measures whether it beats either arm.
+- **Hybrid:** each arm's top 50, fused by reciprocal rank (`fusion.py`).
+
+The defaults follow the retrieval eval (evals/reports/2026-10-02-retrieval.md):
+hybrid for cards, where it rescues exact names and terms that vector search
+misses (recall@10 0.58 against 0.53, a small margin), and vector for rules,
+where keyword matching on common words was a clear loss.
 
 Filters are plain SQL conditions, applied to every arm, so they're exact: a
 card outside the commander's colors never appears, however good a match.
@@ -250,9 +254,14 @@ def search_rules(
     query: str,
     *,
     k: int = DEFAULT_K,
-    mode: SearchMode = "hybrid",
+    mode: SearchMode = "vector",
 ) -> list[RuleHit]:
-    """The k best rules for the query."""
+    """The k best rules for the query.
+
+    Vector by default: on the eval's rules questions, which are sentences of
+    common words ("player", "creature"), the keyword arm only added noise
+    (recall@10 0.89 vector, 0.68 hybrid).
+    """
     limit = CANDIDATES if mode == "hybrid" else k
     vector: list[tuple[str, float]] = []
     keyword: list[tuple[str, float]] = []
