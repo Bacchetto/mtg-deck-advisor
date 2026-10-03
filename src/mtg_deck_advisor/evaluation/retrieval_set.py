@@ -6,11 +6,16 @@ a fixed 300-card pool, and every card in it was judged, so their relevant
 lists are complete and recall is exact. Rules questions list the rule numbers
 that answer them.
 
-The labels were written before the search code, so the search can't have been
-tuned to them. `python -m mtg_deck_advisor.evaluation.retrieval_set` checks
-them against the database.
+There are two sets. **dev** (the first, written before any search code) is
+what retrieval is tuned on. **test** is held out: written before any tuning,
+frozen, and scored only for a baseline and for the final configuration, so the
+reported gain isn't flattered by tuning on the same queries (#71).
+
+`python -m mtg_deck_advisor.evaluation.retrieval_set [--set dev|test]` checks
+a set against the database, and the test set against the dev set.
 """
 
+import argparse
 import csv
 import re
 import sys
@@ -28,6 +33,42 @@ DATASETS = Path(__file__).parents[3] / "evals" / "datasets"
 CARD_QUERIES = DATASETS / "retrieval_cards.csv"
 RULE_QUESTIONS = DATASETS / "retrieval_rules.csv"
 POOL = DATASETS / "pool_300.txt"
+SET_FILES = {
+    "dev": (CARD_QUERIES, RULE_QUESTIONS, POOL),
+    "test": (
+        DATASETS / "retrieval_cards_test.csv",
+        DATASETS / "retrieval_rules_test.csv",
+        DATASETS / "pool_300_test.txt",
+    ),
+}
+type SetName = Literal["dev", "test"]
+
+# The cards the embedding model was chosen on (ADR 0009). A held-out set
+# leaves them out, so the model choice can't flatter the test results.
+MODEL_SELECTION_CARDS = frozenset(
+    {
+        "Sol Ring",
+        "Lightning Bolt",
+        "Wrath of God",
+        "Counterspell",
+        "Demonic Tutor",
+        "Harmonize",
+        "Animate Dead",
+        "Rampant Growth",
+        "Swords to Plowshares",
+        "Glorious Anthem",
+        "Raise the Alarm",
+        "Lightning Greaves",
+        "Craterhoof Behemoth",
+        "Command Tower",
+        "Control Magic",
+        "Cultivate",
+        "Eternal Witness",
+        "Beast Within",
+        "Rhystic Study",
+        "Smothering Tithe",
+    }
+)
 
 CARD_KINDS = ("paraphrase", "term", "name", "need")
 RULE_KINDS = ("commander", "keyword", "general")
@@ -66,6 +107,13 @@ class RuleQuestion(BaseModel):
     # Rule numbers, such as "903.5a".
     relevant: list[str]
     notes: str
+
+
+class EvalSet(BaseModel):
+    name: str
+    card_queries: list[CardQuery]
+    rule_questions: list[RuleQuestion]
+    pool: list[str]
 
 
 def parse_filters(text: str) -> QueryFilters:
@@ -150,6 +198,45 @@ def load_pool(path: Path = POOL) -> list[str]:
     return [entry.name for entry in parsed.entries]
 
 
+def load_set(name: SetName) -> EvalSet:
+    cards, rules, pool = SET_FILES[name]
+    return EvalSet(
+        name=name,
+        card_queries=load_card_queries(cards),
+        rule_questions=load_rule_questions(rules),
+        pool=load_pool(pool),
+    )
+
+
+def held_out_problems(dev: EvalSet, test: EvalSet) -> list[str]:
+    """Every way the test set overlaps the dev set or the model selection; empty if none."""
+    problems = [
+        f"pool: {name} is also in the dev pool" for name in test.pool if name in set(dev.pool)
+    ]
+    dev_cards = {name for query in dev.card_queries for name in query.relevant}
+    dev_rules = {number for question in dev.rule_questions for number in question.relevant}
+    dev_texts = {query.query.casefold() for query in dev.card_queries} | {
+        question.question.casefold() for question in dev.rule_questions
+    }
+    for query in test.card_queries:
+        if query.query.casefold() in dev_texts:
+            problems.append(f"{query.id}: {query.query!r} repeats a dev query")
+        for name in query.relevant:
+            if name in dev_cards:
+                problems.append(f"{query.id}: {name} is labelled in the dev set")
+            if name in MODEL_SELECTION_CARDS:
+                problems.append(f"{query.id}: the embedding model was chosen on {name} (ADR 0009)")
+    for question in test.rule_questions:
+        if question.question.casefold() in dev_texts:
+            problems.append(f"{question.id}: {question.question!r} repeats a dev question")
+        problems += [
+            f"{question.id}: rule {number} answers a dev question"
+            for number in question.relevant
+            if number in dev_rules
+        ]
+    return problems
+
+
 def _filter_problem(
     filters: QueryFilters, identity: list[str], type_line: str, mana_value: float
 ) -> str | None:
@@ -215,20 +302,25 @@ def check_against_db(
     return problems
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     from mtg_deck_advisor.config import get_settings
     from mtg_deck_advisor.db.connection import connect
 
-    card_queries = load_card_queries()
-    rule_questions = load_rule_questions()
-    pool = load_pool()
+    parser = argparse.ArgumentParser(prog="python -m mtg_deck_advisor.evaluation.retrieval_set")
+    parser.add_argument("--set", choices=list(SET_FILES), default="dev", dest="name")
+    eval_set = load_set(parser.parse_args(argv).name)
     with connect(get_settings()) as conn:
-        problems = check_against_db(conn, card_queries, rule_questions, pool)
+        problems = check_against_db(
+            conn, eval_set.card_queries, eval_set.rule_questions, eval_set.pool
+        )
+    if eval_set.name == "test":
+        problems += held_out_problems(load_set("dev"), eval_set)
     for problem in problems:
         print(problem)
     print(
-        f"{len(card_queries)} card queries, {len(rule_questions)} rules questions, "
-        f"{len(pool)} pool cards: {len(problems)} problems"
+        f"{eval_set.name}: {len(eval_set.card_queries)} card queries, "
+        f"{len(eval_set.rule_questions)} rules questions, {len(eval_set.pool)} pool cards: "
+        f"{len(problems)} problems"
     )
     return 1 if problems else 0
 
