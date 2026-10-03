@@ -41,6 +41,8 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     RuleQuestion,
     SetName,
     load_set,
+    resolve_names,
+    search_filters,
 )
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder
 from mtg_deck_advisor.observability.logging import configure_logging
@@ -78,28 +80,6 @@ class Run:
     def recall(self, query_id: str) -> float:
         ranked, relevant = self.results[query_id]
         return recall_at_k(ranked, relevant, K)
-
-
-def card_filters(query: CardQuery, pool_ids: list[UUID]) -> CardFilters:
-    return CardFilters(
-        color_identity_within=query.filters.identity,
-        types=query.filters.types,
-        mana_value_min=query.filters.mv_min,
-        mana_value_max=query.filters.mv_max,
-        oracle_ids=pool_ids if query.scope == "pool" else None,
-    )
-
-
-def resolve_names(conn: psycopg.Connection, names: set[str]) -> dict[str, UUID]:
-    rows = conn.execute(
-        "SELECT name, oracle_id FROM cards WHERE removed_at IS NULL "
-        "AND commander_legality = 'legal' AND name = ANY(%s)",
-        (sorted(names),),
-    ).fetchall()
-    found = dict(rows)
-    if missing := names - set(found):
-        raise SystemExit(f"labels name unknown cards: {sorted(missing)}")
-    return found
 
 
 # ---------------------------------------------------------------- variants
@@ -238,7 +218,7 @@ def main() -> int:
         card_runs = {mode: Run() for mode in MODES}
         for query in card_queries:
             relevant = {ids[name] for name in query.relevant}
-            filters = card_filters(query, pool_ids)
+            filters = search_filters(query, pool_ids)
             for mode in MODES:
                 started = time.perf_counter()
                 hits = search_cards(conn, embedder, query.query, filters, k=K, mode=mode)
@@ -302,7 +282,7 @@ def main() -> int:
             cards_with_cost = {"vector": Run(), "hybrid": Run()}
             for query in card_queries:
                 relevant = {ids[name] for name in query.relevant}
-                filters = card_filters(query, pool_ids)
+                filters = search_filters(query, pool_ids)
                 ranked = variant_card_ranking(conn, embedder, query, filters, CANDIDATES)
                 cards_with_cost["vector"].add(query.id, ranked[:K], relevant, 0)
                 keyword = [
