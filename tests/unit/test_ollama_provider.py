@@ -211,3 +211,88 @@ def test_a_mismatched_embedding_count_is_an_error() -> None:
 
     with pytest.raises(ModelCallError, match="2 texts"):
         embedder.embed(["Sol Ring", "Lightning Bolt"])
+
+
+def test_vectors_are_truncated_to_the_configured_size_and_renormalised() -> None:
+    server = Server(httpx2.Response(200, json={"embeddings": [[3.0, 4.0, 12.0]]}))
+    embedder = OllamaEmbedder(
+        base_url=BASE_URL,
+        model="qwen3-embedding:8b",
+        timeout_seconds=30,
+        dimensions=2,
+        http_client=http(server),
+    )
+
+    (vector,) = embedder.embed(["Sol Ring"])
+
+    assert vector == pytest.approx([0.6, 0.8])
+
+
+def test_vectors_shorter_than_the_configured_size_are_an_error() -> None:
+    server = Server(httpx2.Response(200, json={"embeddings": [[0.6, 0.8]]}))
+    embedder = OllamaEmbedder(
+        base_url=BASE_URL,
+        model="nomic-embed-text",
+        timeout_seconds=30,
+        dimensions=1024,
+        http_client=http(server),
+    )
+
+    with pytest.raises(ModelCallError, match="1024"):
+        embedder.embed(["Sol Ring"])
+
+
+PORTS_EXHAUSTED = (
+    '{"error":"Post \\"http://127.0.0.1:57652/tokenize\\": dial tcp 127.0.0.1:57652: bind: '
+    "An operation on a socket could not be performed because the system lacked sufficient "
+    'buffer space or because a queue was full."}'
+)
+
+
+def test_running_out_of_network_ports_is_waited_out_and_retried() -> None:
+    replies = [
+        httpx2.Response(400, text=PORTS_EXHAUSTED),
+        httpx2.Response(200, json={"embeddings": [[0.6, 0.8]]}),
+    ]
+    waits: list[float] = []
+    embedder = OllamaEmbedder(
+        base_url=BASE_URL,
+        model="qwen3-embedding:8b",
+        timeout_seconds=30,
+        http_client=httpx2.Client(transport=httpx2.MockTransport(lambda _: replies.pop(0))),
+        sleep=waits.append,
+    )
+
+    assert embedder.embed(["Sol Ring"]) == [[0.6, 0.8]]
+    assert len(waits) == 1 and waits[0] >= 30
+
+
+def test_other_errors_are_not_retried() -> None:
+    server = Server(httpx2.Response(400, text='{"error":"input too long"}'))
+    waits: list[float] = []
+    embedder = OllamaEmbedder(
+        base_url=BASE_URL,
+        model="qwen3-embedding:8b",
+        timeout_seconds=30,
+        http_client=http(server),
+        sleep=waits.append,
+    )
+
+    with pytest.raises(ModelCallError, match="input too long"):
+        embedder.embed(["Sol Ring"])
+    assert waits == [] and len(server.requests) == 1
+
+
+def test_port_exhaustion_that_persists_is_reported() -> None:
+    server = Server(httpx2.Response(400, text=PORTS_EXHAUSTED))
+    embedder = OllamaEmbedder(
+        base_url=BASE_URL,
+        model="qwen3-embedding:8b",
+        timeout_seconds=30,
+        http_client=http(server),
+        sleep=lambda _: None,
+    )
+
+    with pytest.raises(ModelCallError, match="network ports"):
+        embedder.embed(["Sol Ring"])
+    assert len(server.requests) > 1
