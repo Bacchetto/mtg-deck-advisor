@@ -77,3 +77,6 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# --- Eval runs (per-query results; reports are committed, runs are not) ---
+evals/runs/
