@@ -8,14 +8,25 @@ Labelled data for the evals. Each set is drafted by Claude from checkable source
 | `retrieval_cards.csv` | Card search queries and the cards that answer them | the retrieval eval (Milestone 4) |
 | `retrieval_rules.csv` | Rules questions and the rule numbers that answer them | the retrieval eval (Milestone 4) |
 | `pool_300.txt` | A fixed pool of 300 cards for the in-pool card queries | the retrieval eval |
+| `retrieval_cards_test.csv`, `retrieval_rules_test.csv`, `pool_300_test.txt` | The same, held out | the retrieval eval's baseline and final runs only |
 
 ## Retrieval sets
 
-The labels were written before any search code, so the search can't be tuned to them. Check them against the database with:
+There are two sets with the same format:
+
+- **dev** (`retrieval_cards.csv`, `retrieval_rules.csv`, `pool_300.txt`): written before any search code. Retrieval is tuned on this set, so its scores for the chosen configuration are somewhat optimistic.
+- **test** (the `_test` files): written before any tuning, then frozen. It's scored twice, once for the baseline and once for the final configuration, so the reported gain is honest.
+  - Query IDs start with `T`.
+  - It shares no pool cards, labelled cards, answering rules or query wording with dev.
+  - It avoids the 20 cards the embedding model was chosen on (ADR 0009).
+
+Check a set against the database with:
 
 ```bash
-python -m mtg_deck_advisor.evaluation.retrieval_set
+python -m mtg_deck_advisor.evaluation.retrieval_set --set dev    # or --set test
 ```
+
+For the test set, this also checks that it's held out from dev.
 
 This checks that every card exists and is Commander-legal, that pool queries only label pool cards, that relevant cards pass the query's own filters, and that every rule number exists.
 
@@ -44,3 +55,5 @@ This checks that every card exists and is Commander-legal, that pool queries onl
 - `notes`
 
 **`pool_300.txt`:** a random sample of 300 Commander-legal cards. It was drawn once (Postgres `setseed(0.52)`, then `ORDER BY random() LIMIT 300`) and is committed so it never changes.
+
+**`pool_300_test.txt`:** drawn the same way with `setseed(0.71)`, excluding the dev pool. One drawn card, Surging Flame, was already labelled in the dev set. It was swapped for one more random draw (`setseed(0.72)`, Michelangelo, the Heart), which was judged against every pool query and answers none of them.

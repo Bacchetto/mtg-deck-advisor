@@ -1,7 +1,8 @@
 """Measure retrieval against the owner-reviewed eval set (EVL-1, EVL-6, RAG-5).
 
-    python scripts/evaluate_retrieval.py                  # all modes, rule chunk variants
+    python scripts/evaluate_retrieval.py                  # the dev set: all modes, rule variants
     python scripts/evaluate_retrieval.py --card-variants  # also card text with mana cost (~8 min)
+    python scripts/evaluate_retrieval.py --set test       # held out: baseline and final only
 
 Every labelled query (evals/datasets/retrieval_*.csv) runs through vector,
 keyword and hybrid search, the same code the app uses, and is scored on
@@ -35,11 +36,11 @@ from mtg_deck_advisor.config import get_settings
 from mtg_deck_advisor.db.connection import connect
 from mtg_deck_advisor.evaluation.retrieval import RetrievalScore, recall_at_k, score
 from mtg_deck_advisor.evaluation.retrieval_set import (
+    SET_FILES,
     CardQuery,
     RuleQuestion,
-    load_card_queries,
-    load_pool,
-    load_rule_questions,
+    SetName,
+    load_set,
 )
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder
 from mtg_deck_advisor.observability.logging import configure_logging
@@ -207,6 +208,13 @@ def main() -> int:
         action="store_true",
         help="also compare card text with the mana cost (embeds every card again, ~8 min)",
     )
+    parser.add_argument(
+        "--set",
+        choices=list(SET_FILES),
+        default="dev",
+        dest="set_name",
+        help="dev (tuned on) or test (held out: run only for the baseline and the final)",
+    )
     args = parser.parse_args()
     settings = get_settings()
     configure_logging(settings)
@@ -215,9 +223,10 @@ def main() -> int:
         model=settings.embedding_model,
         timeout_seconds=settings.ollama_timeout_seconds,
     )
-    card_queries = load_card_queries()
-    rule_questions = load_rule_questions()
-    pool_names = load_pool()
+    eval_set = load_set(args.set_name)
+    card_queries = eval_set.card_queries
+    rule_questions = eval_set.rule_questions
+    pool_names = eval_set.pool
     embedder.embed(["warm-up"])  # load the model before timing anything
 
     with connect(settings) as conn:
@@ -308,6 +317,7 @@ def main() -> int:
 
     names_by_id = {oracle_id: name for name, oracle_id in ids.items()}
     report = render(
+        args.set_name,
         settings.embedding_model,
         card_queries,
         rule_questions,
@@ -318,7 +328,8 @@ def main() -> int:
         names_by_id,
     )
     REPORTS.mkdir(parents=True, exist_ok=True)
-    path = REPORTS / f"{date.today().isoformat()}-retrieval.md"
+    suffix = "" if args.set_name == "dev" else f"-{args.set_name}"
+    path = REPORTS / f"{date.today().isoformat()}-retrieval{suffix}.md"
     path.write_text(report, encoding="utf-8")
     print(report)
     print(f"saved {path}")
@@ -326,6 +337,7 @@ def main() -> int:
 
 
 def render(
+    set_name: SetName,
     model: str,
     card_queries: list[CardQuery],
     rule_questions: list[RuleQuestion],
@@ -342,11 +354,11 @@ def render(
     header = "| Set | queries | recall@5 | recall@10 | MRR@10 |\n|---|---|---|---|---|"
 
     lines = [
-        f"# Retrieval eval, {date.today().isoformat()}",
+        f"# Retrieval eval ({set_name} set), {date.today().isoformat()}",
         "",
-        f"Eval set: `evals/datasets/retrieval_cards.csv` ({len(card_queries)} card queries) and "
-        f"`evals/datasets/retrieval_rules.csv` ({len(rule_questions)} rules questions), "
-        "owner-reviewed, written before the search code. Embedding model: "
+        f"Eval set: **{set_name}**, `{SET_FILES[set_name][0].name}` ({len(card_queries)} card "
+        f"queries) and `{SET_FILES[set_name][1].name}` ({len(rule_questions)} rules questions), "
+        "owner-reviewed. Embedding model: "
         f"`{model}`. Script: `scripts/evaluate_retrieval.py`. Each search returns its top "
         f"{K}; MRR counts 0 when nothing relevant is in them.",
         "",
@@ -458,11 +470,17 @@ def render(
         "who made no corrections. Catalogue queries list known targets, not every "
         "relevant card in 32,000, so their recall can understate a search that finds "
         "other good answers. Pool queries were judged against all 300 pool cards.",
-        "- **Overlap with model selection.** Several catalogue queries describe cards the "
-        "embedding model was chosen on (ADR 0009: Sol Ring, Command Tower, Rhystic Study, "
-        "Smothering Tithe, Cultivate, Swords to Plowshares, Lightning Greaves, Demonic "
-        "Tutor, Wrath of God, Counterspell), in different words. The model choice may "
-        "flatter vector search on those.",
+        (
+            "- **Overlap with model selection.** Several catalogue queries describe cards the "
+            "embedding model was chosen on (ADR 0009: Sol Ring, Command Tower, Rhystic Study, "
+            "Smothering Tithe, Cultivate, Swords to Plowshares, Lightning Greaves, Demonic "
+            "Tutor, Wrath of God, Counterspell), in different words. The model choice may "
+            "flatter vector search on those."
+            if set_name == "dev"
+            else "- **Held out.** This set shares no pool cards, labelled cards, answering "
+            "rules or queries with the dev set, and avoids the cards the embedding model was "
+            "chosen on. It is scored only for the baseline and the final configuration."
+        ),
         "- **Variant search path.** Variants are embedded into a temporary table and "
         "searched exactly; the shipped configuration goes through the app's real search "
         "path. If anything, that favours the variants.",
