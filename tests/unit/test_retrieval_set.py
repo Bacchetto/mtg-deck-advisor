@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -17,6 +18,7 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     load_card_queries,
     load_rule_questions,
     load_set,
+    search_filters,
 )
 
 CARD_HEADER = "id,kind,scope,query,filters,relevant,notes\n"
@@ -203,3 +205,37 @@ def test_a_query_repeated_from_the_dev_set_is_reported() -> None:
 
     (problem,) = held_out_problems(dev, test)
     assert "cheap ramp" in problem.lower()
+
+
+def test_a_querys_filters_become_search_filters() -> None:
+    query = CardQuery(
+        id="P01",
+        kind="need",
+        scope="pool",
+        query="cheap ramp",
+        filters=QueryFilters(identity="G", types=["Artifact"], mv_min=1, mv_max=3),
+        relevant=["Arcane Signet"],
+        notes="",
+    )
+    pool = [UUID(int=1), UUID(int=2)]
+
+    filters = search_filters(query, pool)
+
+    assert filters.color_identity_within == "G"
+    assert filters.types == ["Artifact"]
+    assert (filters.mana_value_min, filters.mana_value_max) == (1, 3)
+    assert filters.oracle_ids == pool
+
+
+def test_a_catalogue_query_is_not_limited_to_the_pool() -> None:
+    query = CardQuery(
+        id="C01",
+        kind="name",
+        scope="catalogue",
+        query="sol ring",
+        filters=QueryFilters(),
+        relevant=["Sol Ring"],
+        notes="",
+    )
+
+    assert search_filters(query, [UUID(int=1)]).oracle_ids is None

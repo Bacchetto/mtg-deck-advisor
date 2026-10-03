@@ -22,11 +22,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
+from uuid import UUID
 
 import psycopg
 from pydantic import BaseModel, ConfigDict
 
 from mtg_deck_advisor.ingestion.pool import parse_text
+from mtg_deck_advisor.retrieval.search import CardFilters
 
 # The repository's evals/datasets, wherever the command is run from.
 DATASETS = Path(__file__).parents[3] / "evals" / "datasets"
@@ -206,6 +208,30 @@ def load_set(name: SetName) -> EvalSet:
         rule_questions=load_rule_questions(rules),
         pool=load_pool(pool),
     )
+
+
+def search_filters(query: CardQuery, pool_ids: list[UUID]) -> CardFilters:
+    """The search filters a query runs with: its own, plus the pool for pool queries."""
+    return CardFilters(
+        color_identity_within=query.filters.identity,
+        types=query.filters.types,
+        mana_value_min=query.filters.mv_min,
+        mana_value_max=query.filters.mv_max,
+        oracle_ids=pool_ids if query.scope == "pool" else None,
+    )
+
+
+def resolve_names(conn: psycopg.Connection, names: set[str]) -> dict[str, UUID]:
+    """Oracle IDs for labelled card names (current, Commander-legal cards)."""
+    rows = conn.execute(
+        "SELECT name, oracle_id FROM cards WHERE removed_at IS NULL "
+        "AND commander_legality = 'legal' AND name = ANY(%s)",
+        (sorted(names),),
+    ).fetchall()
+    found: dict[str, UUID] = dict(rows)
+    if missing := names - set(found):
+        raise ValueError(f"labels name unknown cards: {sorted(missing)}")
+    return found
 
 
 def held_out_problems(dev: EvalSet, test: EvalSet) -> list[str]:
