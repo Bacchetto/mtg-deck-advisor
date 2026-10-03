@@ -65,7 +65,7 @@ from mtg_deck_advisor.retrieval.search import (
     search_cards,
     search_rules,
 )
-from mtg_deck_advisor.retrieval.text import card_text, query_text, rule_text
+from mtg_deck_advisor.retrieval.text import card_text, expand_symbols, query_text, rule_text
 
 RUNS = Path("evals/runs")
 REPORTS = Path("evals/reports/retrieval-experiments")
@@ -591,6 +591,200 @@ def cards_with_summaries(how: str, everywhere: bool = False) -> CardSearch:
     return search
 
 
+# ------------------------------------------- an LLM at search time (#75)
+
+SEARCH_LLM = "qwen3:14b"
+RERANK_DEPTH = 20
+RERANK_SYSTEM = (
+    "You rank search results for a Magic: The Gathering deck-building assistant. Given a "
+    "search and numbered candidates (cards or Comprehensive Rules), return the numbers of the "
+    "10 candidates that best answer the search, best first. Judge by what each candidate "
+    "actually does or says, not by shared words."
+)
+HYDE_SYSTEM = {
+    "cards": (
+        "Write the rules text of a Magic: The Gathering card that would be a perfect answer to "
+        "the search, in real card templating (for example '{T}: Add {G}.' or 'Destroy target "
+        "creature.'). Only the rules text, no name, at most three lines."
+    ),
+    "rules": (
+        "Write the Magic: The Gathering Comprehensive Rules passage that answers the question, "
+        "in the rules' own style. Only the rule text, at most three sentences."
+    ),
+}
+
+
+class Reranking(BaseModel):
+    ranking: list[int]
+
+
+class Hypothetical(BaseModel):
+    text: str = Field(min_length=5, max_length=600)
+
+
+def search_llm(model: str = SEARCH_LLM) -> ModelClient:
+    settings = get_settings()
+    provider = OllamaProvider(
+        base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
+    )
+    return ModelClient(provider, model, recorder=MemoryRecorder())
+
+
+def rerank(client: ModelClient, query: str, candidates: Sequence[tuple[str, str]]) -> list[str]:
+    """Reorder (key, text) candidates with the LLM; on any invalid answer, keep the order."""
+    listing = "\n".join(
+        f"{number}. {text.replace(chr(10), ' / ')}"
+        for number, (_, text) in enumerate(candidates, start=1)
+    )
+    request = ModelRequest(
+        purpose="rerank",
+        system=RERANK_SYSTEM,
+        messages=(Message(role="user", content=f"Search: {query}\n\nCandidates:\n{listing}"),),
+        max_tokens=200,
+        effort="low",
+    )
+    keys = [key for key, _ in candidates]
+    try:
+        ranking = client.generate_structured(request, Reranking).value.ranking
+    except ModelError:
+        return keys[:K]
+    chosen = list(dict.fromkeys(n for n in ranking if 1 <= n <= len(keys)))
+    ordered = [keys[n - 1] for n in chosen]
+    return (ordered + [key for key in keys if key not in ordered])[:K]
+
+
+def card_texts(ctx: Context, names: Sequence[str]) -> dict[str, str]:
+    rows = ctx.conn.execute(
+        "SELECT name, type_line, oracle_text FROM cards WHERE removed_at IS NULL "
+        "AND commander_legality = 'legal' AND name = ANY(%s)",
+        (list(names),),
+    ).fetchall()
+    return {row[0]: f"{row[0]} | {row[1]} | {row[2]}" for row in rows}
+
+
+def rule_texts(ctx: Context, numbers: Sequence[str]) -> dict[str, str]:
+    rows = ctx.conn.execute(
+        "SELECT number, text FROM rules WHERE number = ANY(%s)", (list(numbers),)
+    ).fetchall()
+    return {row[0]: f"{row[0]}: {row[1]}" for row in rows}
+
+
+def best_cards_search(depth: int) -> CardSearch:
+    """The best configuration so far (#74), returning its top `depth` instead of 10."""
+
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        conditions, params = card_conditions(filters)
+        keyword = arm(ctx, query, filters, "keyword", CANDIDATES)
+
+        def vectors(label: str) -> list[str]:
+            return other_model_vector_arm(
+                ctx, BEST_EMBEDDER, query.query, "card", conditions, params, CANDIDATES, label
+            )
+
+        if query.scope == "pool":
+            arms = [vectors(BEST_EMBEDDER), vectors(f"{BEST_EMBEDDER}|summary-only"), keyword]
+            return weighted_rrf(arms, [1.0, 1.0, 0.5])[:depth]
+        return weighted_rrf([vectors(BEST_EMBEDDER), keyword], [1.0, 0.5])[:depth]
+
+    return search
+
+
+def cards_reranked(model: str = SEARCH_LLM) -> CardSearch:
+    first_stage = best_cards_search(RERANK_DEPTH)
+    client = search_llm(model)
+
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        names = first_stage(ctx, query, filters)
+        texts = card_texts(ctx, names)
+        return rerank(client, query.query, [(name, texts[name]) for name in names])
+
+    return search
+
+
+def rules_reranked(model: str = SEARCH_LLM) -> RuleSearch:
+    client = search_llm(model)
+
+    def search(ctx: Context, question: RuleQuestion) -> list[str]:
+        numbers = other_model_vector_arm(
+            ctx, BEST_EMBEDDER, question.question, "rule", None, [], RERANK_DEPTH
+        )
+        texts = rule_texts(ctx, numbers)
+        return rerank(client, question.question, [(n, texts[n]) for n in numbers])
+
+    return search
+
+
+def hypothetical(client: ModelClient, kind: str, query: str) -> str | None:
+    request = ModelRequest(
+        purpose="hyde",
+        system=HYDE_SYSTEM[kind],
+        messages=(Message(role="user", content=query),),
+        max_tokens=250,
+        effort="low",
+    )
+    try:
+        return client.generate_structured(request, Hypothetical).value.text
+    except ModelError:
+        return None
+
+
+def hyde_vector_arm(
+    ctx: Context, text: str, kind: str, conditions: Any, params: list[Any], n: int, label: str
+) -> list[str]:
+    """Nearest neighbours of a hypothetical document: embedded as a document, no instruction."""
+    (vector,) = ollama_embedder(BEST_EMBEDDER).embed([text])
+    if kind == "rule":
+        rows = ctx.conn.execute(
+            "SELECT key FROM experiments.embeddings WHERE model = %s AND kind = 'rule' "
+            "ORDER BY embedding <=> %s::vector LIMIT %s",
+            (label, vector_literal(vector), n),
+        ).fetchall()
+        return [row[0] for row in rows]
+    rows = ctx.conn.execute(
+        sql.SQL(
+            "SELECT c.name FROM experiments.embeddings e JOIN cards c ON c.oracle_id::text = e.key "
+            "WHERE e.model = %s AND e.kind = 'card' AND {conditions} "
+            "ORDER BY e.embedding <=> %s::vector LIMIT %s"
+        ).format(conditions=conditions),
+        [label, *params, vector_literal(vector), n],
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+def cards_hyde() -> CardSearch:
+    first_stage = best_cards_search(CANDIDATES)
+    client = search_llm()
+
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        base = first_stage(ctx, query, filters)
+        text = hypothetical(client, "cards", query.query)
+        if text is None:
+            return base[:K]
+        conditions, params = card_conditions(filters)
+        hyde = hyde_vector_arm(
+            ctx, expand_symbols(text), "card", conditions, params, CANDIDATES, BEST_EMBEDDER
+        )
+        return weighted_rrf([base, hyde], [1.0, 1.0])[:K]
+
+    return search
+
+
+def rules_hyde() -> RuleSearch:
+    client = search_llm()
+
+    def search(ctx: Context, question: RuleQuestion) -> list[str]:
+        base = other_model_vector_arm(
+            ctx, BEST_EMBEDDER, question.question, "rule", None, [], CANDIDATES
+        )
+        text = hypothetical(client, "rules", question.question)
+        if text is None:
+            return base[:K]
+        hyde = hyde_vector_arm(ctx, text, "rule", None, [], CANDIDATES, BEST_EMBEDDER)
+        return weighted_rrf([base, hyde], [1.0, 1.0])[:K]
+
+    return search
+
+
 # The instruction ADR 0009 measured, and alternatives. Many queries are
 # deck-building needs or names, not descriptions of one card's effect.
 CARD_INSTRUCTIONS = {
@@ -729,6 +923,36 @@ VARIANTS: dict[str, Variant] = {
             "card vector and the keyword arm (weights 1, 1, 0.5), for all card queries.",
             cards_with_summaries("vector", everywhere=True),
             rules_with_model(BEST_EMBEDDER),
+            model=BEST_EMBEDDER,
+        ),
+        Variant(
+            "rerank-14b",
+            f"The best so far (summary-vector), with {SEARCH_LLM} reranking the top "
+            f"{RERANK_DEPTH} cards or rules into the final 10.",
+            cards_reranked(),
+            rules_reranked(),
+            model=BEST_EMBEDDER,
+        ),
+        Variant(
+            "rerank-8b",
+            "As rerank-14b, with qwen3:8b reranking: it fits beside the 8b embedder in VRAM.",
+            cards_reranked("qwen3:8b"),
+            rules_reranked("qwen3:8b"),
+            model=BEST_EMBEDDER,
+        ),
+        Variant(
+            "rerank-4b",
+            "As rerank-14b, with qwen3:4b reranking.",
+            cards_reranked("qwen3:4b"),
+            rules_reranked("qwen3:4b"),
+            model=BEST_EMBEDDER,
+        ),
+        Variant(
+            "hyde-14b",
+            f"The best so far, fused with a search for the card or rule text {SEARCH_LLM} "
+            "writes for the query (HyDE).",
+            cards_hyde(),
+            rules_hyde(),
             model=BEST_EMBEDDER,
         ),
         Variant(
