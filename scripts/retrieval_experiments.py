@@ -51,7 +51,7 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     search_filters,
 )
 from mtg_deck_advisor.llm.client import ModelClient
-from mtg_deck_advisor.llm.errors import InvalidOutputError, ModelError
+from mtg_deck_advisor.llm.errors import InvalidOutputError, ModelCallError, ModelError
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder, OllamaProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
 from mtg_deck_advisor.llm.types import Message, ModelRequest
@@ -253,6 +253,24 @@ def ollama_embedder(model: str) -> Embedder:
     return inner if model == settings.embedding_model else TruncatingEmbedder(inner)
 
 
+def embed_with_retry(embedder: Embedder, texts: list[str], attempts: int = 5) -> list[list[float]]:
+    """Embed, waiting out Windows running short of network ports.
+
+    Ollama makes an internal HTTP call per text, and a long run at full speed
+    can exhaust Windows' short-lived ports ("lacked sufficient buffer space").
+    They free up within a minute or two, so wait and retry instead of failing.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return embedder.embed(texts)
+        except ModelCallError as exc:
+            if "buffer space" not in str(exc) or attempt == attempts:
+                raise
+            print(f"  out of network ports; waiting 90 s (attempt {attempt})", flush=True)
+            time.sleep(90)
+    raise RuntimeError("unreachable: the last attempt either returns or raises")
+
+
 def unload_all() -> None:
     """Unload every Ollama model, so the next one has the GPU to itself (ADR 0009)."""
     base_url = get_settings().ollama_base_url
@@ -311,7 +329,7 @@ def embed_with_model(model: str, limit: int | None) -> None:
         started = time.perf_counter()
         for start in range(0, len(todo), 64):
             batch = todo[start : start + 64]
-            vectors = embedder.embed([text for _, _, text in batch])
+            vectors = embed_with_retry(embedder, [text for _, _, text in batch])
             with conn.transaction():
                 conn.cursor().executemany(
                     "INSERT INTO experiments.embeddings VALUES (%s, %s, %s, %s::vector)",
@@ -426,8 +444,8 @@ def summarise_batch(client: ModelClient, cards: Sequence[tuple[str, str, str, st
     return [by_index[i] for i in range(1, len(cards) + 1)]
 
 
-def summarise_cards(names: Sequence[str]) -> None:
-    """Summarise these cards with the local model (resumable), and project the full run."""
+def summarise_cards(names: Sequence[str] | None) -> None:
+    """Summarise these cards (None: every legal card) with the local model, resumably."""
     settings = get_settings()
     provider = OllamaProvider(
         base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
@@ -446,13 +464,19 @@ def summarise_cards(names: Sequence[str]) -> None:
         rows = conn.execute(
             """
             SELECT c.oracle_id, c.name, c.type_line, c.mana_cost, c.oracle_text FROM cards c
-            WHERE c.removed_at IS NULL AND c.commander_legality = 'legal' AND c.name = ANY(%s)
+            WHERE c.removed_at IS NULL AND c.commander_legality = 'legal'
+              AND (%s::text[] IS NULL OR c.name = ANY(%s::text[]))
               AND NOT EXISTS (SELECT 1 FROM experiments.card_summaries s
                               WHERE s.oracle_id = c.oracle_id AND s.prompt_version = %s
                                 AND s.model = %s)
             ORDER BY c.name
             """,
-            (list(names), SUMMARY_PROMPT_VERSION, SUMMARY_MODEL),
+            (
+                None if names is None else list(names),
+                None if names is None else list(names),
+                SUMMARY_PROMPT_VERSION,
+                SUMMARY_MODEL,
+            ),
         ).fetchall()
         total = conn.execute(
             "SELECT count(*) FROM cards WHERE removed_at IS NULL AND commander_legality = 'legal'"
@@ -466,9 +490,19 @@ def summarise_cards(names: Sequence[str]) -> None:
             try:
                 summaries = summarise_batch(client, [row[1:] for row in batch])
             except ModelError as exc:
-                failed += len(batch)
-                print(f"\n  batch at {start} failed: {exc}")
-                continue
+                # At temperature 0 a bad batch fails the same way every time (the
+                # model skipped one of two vanilla cards), so retry card by card.
+                print(f"\n  batch at {start} failed ({exc}); retrying its cards one by one")
+                kept = []
+                for row in batch:
+                    try:
+                        (summary,) = summarise_batch(client, [row[1:]])
+                    except ModelError as card_exc:
+                        failed += 1
+                        print(f"  {row[1]}: {card_exc}")
+                        continue
+                    kept.append((row, summary))
+                batch, summaries = [r for r, _ in kept], [s for _, s in kept]
             with conn.transaction():
                 conn.cursor().executemany(
                     "INSERT INTO experiments.card_summaries VALUES (%s, %s, %s, %s)",
@@ -497,21 +531,20 @@ def embed_summaries() -> None:
             SELECT c.oracle_id, c.name, c.type_line, c.oracle_text, s.summary
             FROM experiments.card_summaries s JOIN cards c USING (oracle_id)
             WHERE s.prompt_version = %s AND s.model = %s
+              AND NOT EXISTS (SELECT 1 FROM experiments.embeddings e
+                              WHERE e.model = %s AND e.kind = 'card'
+                                AND e.key = s.oracle_id::text)
             """,
-            (SUMMARY_PROMPT_VERSION, SUMMARY_MODEL),
+            (SUMMARY_PROMPT_VERSION, SUMMARY_MODEL, f"{BEST_EMBEDDER}|summary-only"),
         ).fetchall()
         conn.commit()
         unload_all()
-        variants = {
-            f"{BEST_EMBEDDER}|summary-appended": [
-                (str(r[0]), f"{card_text(r[1], r[2], r[3])} Summary: {r[4]}") for r in rows
-            ],
-            f"{BEST_EMBEDDER}|summary-only": [(str(r[0]), r[4]) for r in rows],
-        }
+        # Appending the summary lost in the pilot; only the summary vector is kept.
+        variants = {f"{BEST_EMBEDDER}|summary-only": [(str(r[0]), r[4]) for r in rows]}
         for label, items in variants.items():
             for start in range(0, len(items), 64):
                 batch = items[start : start + 64]
-                vectors = embedder.embed([text for _, text in batch])
+                vectors = embed_with_retry(embedder, [text for _, text in batch])
                 with conn.transaction():
                     conn.cursor().executemany(
                         "INSERT INTO experiments.embeddings VALUES (%s, 'card', %s, %s::vector) "
@@ -525,16 +558,18 @@ def embed_summaries() -> None:
             print(f"embedded {len(items)} cards as {label}")
 
 
-def cards_with_summaries(how: str) -> CardSearch:
-    """Pool queries use the summary vectors; catalogue queries fall back to the best config.
+def cards_with_summaries(how: str, everywhere: bool = False) -> CardSearch:
+    """Search with the summary vectors: for pool queries only, or for every query.
 
-    Only pool cards are summarised in the pilot, so catalogue searches would pit
-    summarised cards against unsummarised ones. Compare with `--scope pool`.
+    In the pilot only pool cards were summarised, so catalogue searches would
+    have pitted summarised cards against unsummarised ones; they fell back to
+    the best config (compare with `--scope pool`). With every card summarised,
+    `everywhere` uses the summaries for catalogue queries too.
     """
     best = cards_with_model(BEST_EMBEDDER)
 
     def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
-        if query.scope != "pool":
+        if query.scope != "pool" and not everywhere:
             return best(ctx, query, filters)
         conditions, params = card_conditions(filters)
         keyword = arm(ctx, query, filters, "keyword", CANDIDATES)
@@ -685,6 +720,14 @@ VARIANTS: dict[str, Variant] = {
             "Pilot: the summary embedded as its own vector and fused with the card vector and "
             "the keyword arm (weights 1, 1, 0.5); catalogue queries unchanged from embed-8b.",
             cards_with_summaries("vector"),
+            rules_with_model(BEST_EMBEDDER),
+            model=BEST_EMBEDDER,
+        ),
+        Variant(
+            "summary-vector-all",
+            "Every card summarised: the summary embedded as its own vector and fused with the "
+            "card vector and the keyword arm (weights 1, 1, 0.5), for all card queries.",
+            cards_with_summaries("vector", everywhere=True),
             rules_with_model(BEST_EMBEDDER),
             model=BEST_EMBEDDER,
         ),
@@ -912,7 +955,12 @@ def main() -> int:
     )
     embed_parser.add_argument("model")
     embed_parser.add_argument("--limit", type=int, help="embed only this many, for timing")
-    commands.add_parser("summarise", help="summarise the dev pool's cards with the local model")
+    summarise_parser = commands.add_parser(
+        "summarise", help="summarise the dev pool's cards with the local model"
+    )
+    summarise_parser.add_argument(
+        "--all", action="store_true", help="every legal card, not just the dev pool (~7 h)"
+    )
     commands.add_parser("embed-summaries", help="embed the summarised cards two ways")
     compare_parser.add_argument(
         "--scope", choices=["catalogue", "pool"], help="compare only card queries of this scope"
@@ -925,7 +973,7 @@ def main() -> int:
         embed_with_model(args.model, args.limit)
         return 0
     if args.command == "summarise":
-        summarise_cards(load_set(SET_NAME).pool)
+        summarise_cards(None if args.all else load_set(SET_NAME).pool)
         return 0
     if args.command == "embed-summaries":
         embed_summaries()
