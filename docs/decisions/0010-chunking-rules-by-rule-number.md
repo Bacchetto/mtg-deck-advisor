@@ -1,6 +1,6 @@
 # 0010 - Chunking the Comprehensive Rules by rule number
 
-**Status:** Accepted, 2026-10-02
+**Status:** Accepted, 2026-10-02. Revised the same day after the retrieval eval: the embedded context was dropped.
 **Applies to:** `mtg_deck_advisor.retrieval.text.rule_text`, `retrieval.embeddings.embed_rules`, the `rules` and `rule_embeddings` tables
 
 ## Context
@@ -26,14 +26,22 @@ From the current file (effective September 25, 2026):
 ## Decision
 
 - **One chunk per numbered rule, examples included.** The ingestion parser (Milestone 2) already stores rules this way, one row per rule, and the embedding adds nothing on top of that. The rule number is the chunk's ID and its citation.
-- **The embedded text adds context; the chunk doesn't change.** A lettered rule often doesn't say what it's about. "Reminder text is ignored when determining a card's color identity" is clear, but many subrules start "If..." or "That player...". So the embedded text is built like this:
+- **Each rule is embedded as its own text**, examples included, on one line.
+- **No added context (revised after measuring).** The first design added the section heading and the parent rule's first sentence to the embedded text, because a lettered rule often doesn't say what it's about:
 
   ```
   903. Commander. 903.4: The Commander variant uses color identity to determine what cards can be in a deck with a certain commander. 903.4c: Reminder text is ignored when determining a card's color identity. See rule 207.2.
   ```
 
-  It's the section heading, then the parent rule's **first sentence** only (the topic, without the parent's full text drowning out the subrule), then the rule itself. What's retrieved, shown and cited is still the single rule.
-- **The stored hash covers the whole embedded text**, not just the rule's own text. Changing a parent rule re-embeds its subrules too, because their context changed.
+  The retrieval eval measured it as a loss on the 45 owner-reviewed rules questions:
+
+  | Embedded text | recall@10 | MRR@10 |
+  |---|---|---|
+  | The rule's own text | **0.97** | **0.71** |
+  | With section and parent's first sentence | 0.91 | 0.66 |
+
+  The results are from vector search ([report](../../evals/reports/2026-10-02-retrieval.md)); hybrid search showed the same direction. A plausible reason: every rule in a section shares its heading, and every subrule shares its parent's sentence, which pulls their vectors together and blurs what distinguishes them. So the context went, as this ADR said it would if it didn't help.
+- **Staleness comes from the rule's own content hash**, as for cards.
 - **The glossary is left out.** Most glossary entries restate or point to a numbered rule ("See rule 701.33"). Retrieving one would give an answer with no rule number to cite. Leaving it out keeps every chunk citable.
 
 ## Alternatives
@@ -48,13 +56,11 @@ From the current file (effective September 25, 2026):
 - 903.4 with 903.4a–f is already 1,500 characters, and some rules have twenty or more subrules.
 - The citation would be less precise.
 
-The parent's first sentence gets most of the context benefit while keeping single-rule chunks.
-
-**No context (the rule's text alone).** This is the simplest option, and the baseline for the comparison below.
+**Single rules with added context** (section heading and parent's first sentence, the first design). It keeps single-rule chunks while giving subrules their topic, but it measured worse than no context (see above).
 
 ## Consequences
 
 - Every retrieved chunk is a citable rule number, which is what RAG-3's citations and RAG-4's "not found" check need.
-- The chunks are short (a mean of about 60 tokens), so the embedding model never truncates, and a long rule is still a single chunk: the longest embedded text is under 3,000 characters, far inside the model's 32k-token limit.
+- The chunks are short (a mean of about 60 tokens), so the embedding model never truncates, and a long rule is still a single chunk: the longest is 2,872 characters, far inside the model's 32k-token limit.
 - Embedding all 3,166 rules takes 43 s locally; a rerun with nothing changed takes 0.1 s.
-- **The context choice is measured, not assumed.** The retrieval eval (issue #64) compares rule text with context against rule text alone, on the 45 owner-reviewed rules questions. If the context doesn't help, it goes; this ADR will be updated with the result either way.
+- **Retrieval quality, measured:** with vector search (the rules default; hybrid scored 0.74 recall@10), the answering rule is in the top 10 for 44 of the 45 eval questions. The one miss, "can I run more than one copy of a card?", is answered by 903.5b, which says "a different English name" and never "copy". That kind of vocabulary gap is the case for a reranker or a model-written answer that can cite related rules (Milestone 5).
