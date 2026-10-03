@@ -19,13 +19,14 @@ import argparse
 import statistics
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from uuid import UUID
 
 import psycopg
+from psycopg import sql
 
 from mtg_deck_advisor.config import get_settings
 from mtg_deck_advisor.db.connection import connect
@@ -47,10 +48,17 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
 )
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder
 from mtg_deck_advisor.observability.logging import configure_logging
-from mtg_deck_advisor.retrieval.search import CardFilters, SearchMode, search_cards, search_rules
+from mtg_deck_advisor.retrieval.search import (
+    CANDIDATES,
+    CardFilters,
+    SearchMode,
+    card_conditions,
+    search_cards,
+    search_rules,
+)
 
 RUNS = Path("evals/runs")
-REPORTS = Path("evals/reports")
+REPORTS = Path("evals/reports/retrieval-experiments")
 K = 10
 SET_NAME = "dev"
 
@@ -89,6 +97,122 @@ def rules_in_mode(mode: SearchMode) -> RuleSearch:
     return search
 
 
+# ------------------------------------------- query-side variants (#73)
+
+
+class InstructionSwap:
+    """The same embedder, with a different task instruction on queries.
+
+    Queries reach the embedder as `Instruct: <instruction>\\nQuery: <text>`
+    (retrieval.text.query_text). This swaps the instruction, or drops it
+    (None), without touching production code; documents carry no
+    instruction, so stored embeddings stay valid.
+    """
+
+    def __init__(self, inner: Embedder, instruction: str | None) -> None:
+        self._inner = inner
+        self._instruction = instruction
+
+    @property
+    def model(self) -> str:
+        return self._inner.model
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        return self._inner.embed([self._swap(text) for text in texts])
+
+    def _swap(self, text: str) -> str:
+        if not text.startswith("Instruct: ") or "\nQuery: " not in text:
+            return text
+        query = text.split("\nQuery: ", 1)[1]
+        return (
+            query if self._instruction is None else f"Instruct: {self._instruction}\nQuery: {query}"
+        )
+
+
+def cards_with_instruction(instruction: str | None) -> CardSearch:
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        embedder = InstructionSwap(ctx.embedder, instruction)
+        hits = search_cards(ctx.conn, embedder, query.query, filters, k=K, mode="hybrid")
+        return [hit.name for hit in hits]
+
+    return search
+
+
+def rules_with_instruction(instruction: str | None) -> RuleSearch:
+    def search(ctx: Context, question: RuleQuestion) -> list[str]:
+        embedder = InstructionSwap(ctx.embedder, instruction)
+        hits = search_rules(ctx.conn, embedder, question.question, k=K, mode="vector")
+        return [hit.number for hit in hits]
+
+    return search
+
+
+def weighted_rrf(rankings: Sequence[Sequence[str]], weights: Sequence[float]) -> list[str]:
+    """Reciprocal rank fusion with a weight per ranking: sum of weight / (60 + rank)."""
+    scores: dict[str, float] = {}
+    for ranking, weight in zip(rankings, weights, strict=True):
+        for rank, item in enumerate(ranking, start=1):
+            scores[item] = scores.get(item, 0.0) + weight / (60 + rank)
+    return sorted(scores, key=lambda item: -scores[item])
+
+
+def arm(
+    ctx: Context, query: CardQuery, filters: CardFilters, mode: SearchMode, n: int
+) -> list[str]:
+    hits = search_cards(ctx.conn, ctx.embedder, query.query, filters, k=n, mode=mode)
+    return [hit.name for hit in hits]
+
+
+def all_words_first(ctx: Context, query: CardQuery, filters: CardFilters, n: int) -> list[str]:
+    """Keyword arm: cards matching every word of the query first, then cards matching any."""
+    conditions, params = card_conditions(filters)
+    rows = ctx.conn.execute(
+        sql.SQL(
+            """
+            SELECT c.name FROM cards c, (SELECT plainto_tsquery('english', %s) AS query) q
+            WHERE c.search_vector @@ q.query AND {conditions}
+            ORDER BY ts_rank_cd(c.search_vector, q.query, 1) DESC, c.name
+            LIMIT %s
+            """
+        ).format(conditions=conditions),
+        [query.query, *params, n],
+    ).fetchall()
+    every = [row[0] for row in rows]
+    return (every + [name for name in arm(ctx, query, filters, "keyword", n) if name not in every])[
+        :n
+    ]
+
+
+def cards_fused(
+    depth: int = CANDIDATES, keyword_weight: float = 1.0, all_words: bool = False
+) -> CardSearch:
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        vector = arm(ctx, query, filters, "vector", depth)
+        keyword = (
+            all_words_first(ctx, query, filters, depth)
+            if all_words
+            else arm(ctx, query, filters, "keyword", depth)
+        )
+        return weighted_rrf([vector, keyword], [1.0, keyword_weight])[:K]
+
+    return search
+
+
+# The instruction ADR 0009 measured, and alternatives. Many queries are
+# deck-building needs or names, not descriptions of one card's effect.
+CARD_INSTRUCTIONS = {
+    "search": "Given a search for Magic: The Gathering cards by name, mechanic or effect, "
+    "retrieve the cards that match",
+    "needs": "Given what a Commander deck needs, retrieve Magic: The Gathering cards whose "
+    "rules text provides it",
+}
+RULES_INSTRUCTION = (
+    "Given a question about playing Magic: The Gathering, retrieve the Comprehensive Rules "
+    "passage that answers it"
+)
+
+BASELINE_RULES = rules_in_mode("vector")
+
 VARIANTS: dict[str, Variant] = {
     variant.name: variant
     for variant in [
@@ -96,13 +220,75 @@ VARIANTS: dict[str, Variant] = {
             "baseline",
             "As shipped in #70: cards hybrid, rules vector.",
             cards_in_mode("hybrid"),
-            rules_in_mode("vector"),
+            BASELINE_RULES,
         ),
         Variant(
             "all-vector",
             "Vector search for cards and rules.",
             cards_in_mode("vector"),
-            rules_in_mode("vector"),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "instr-search",
+            f"Card query instruction: {CARD_INSTRUCTIONS['search']!r}; rules: "
+            f"{RULES_INSTRUCTION!r}.",
+            cards_with_instruction(CARD_INSTRUCTIONS["search"]),
+            rules_with_instruction(RULES_INSTRUCTION),
+        ),
+        Variant(
+            "instr-needs",
+            f"Card query instruction: {CARD_INSTRUCTIONS['needs']!r}.",
+            cards_with_instruction(CARD_INSTRUCTIONS["needs"]),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "instr-none",
+            "No query instruction, for cards or rules.",
+            cards_with_instruction(None),
+            rules_with_instruction(None),
+        ),
+        Variant(
+            "rrf-keyword-half",
+            "Hybrid with the keyword arm's fusion weight halved (0.5).",
+            cards_fused(keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "depth-30",
+            "Hybrid fusing each arm's top 30 (baseline: 50).",
+            cards_fused(depth=30),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "depth-100",
+            "Hybrid fusing each arm's top 100 (baseline: 50).",
+            cards_fused(depth=100),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "fused-check",
+            "The baseline rebuilt with this script's fusion (depth 50, equal weights): "
+            "must match the baseline, to show the reimplementation is faithful.",
+            cards_fused(),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "keyword-half-depth-30",
+            "The keyword arm at weight 0.5, fusing each arm's top 30.",
+            cards_fused(depth=30, keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "keyword-half-depth-100",
+            "The keyword arm at weight 0.5, fusing each arm's top 100.",
+            cards_fused(depth=100, keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "keyword-all-words",
+            "Hybrid whose keyword arm ranks cards matching every word first, then any word.",
+            cards_fused(all_words=True),
+            BASELINE_RULES,
         ),
     ]
 }
@@ -313,6 +499,7 @@ def main() -> int:
         return 0
     base, cand = RunResult.load(run_path(args.baseline)), RunResult.load(run_path(args.candidate))
     report = compare_report(base, cand, eval_set)
+    REPORTS.mkdir(parents=True, exist_ok=True)
     path = REPORTS / f"{date.today().isoformat()}-compare-{args.baseline}-vs-{args.candidate}.md"
     path.write_text(report, encoding="utf-8")
     print(report)
