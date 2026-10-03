@@ -51,17 +51,19 @@ def loaded(settings: Settings) -> Settings:
 
 def names(settings: Settings, query: str, filters: CardFilters | None = None) -> list[str]:
     with connect(settings) as conn:
-        hits = search_cards(conn, FakeEmbedder(), query, filters or CardFilters())
+        hits = search_cards(conn, FakeEmbedder(), query, filters or CardFilters(), mode="vector")
     return [hit.name for hit in hits]
 
 
 def test_the_closest_card_comes_first_with_its_text_and_score(loaded: Settings) -> None:
     with connect(loaded) as conn:
-        hits = search_cards(conn, FakeEmbedder(), "add colorless mana", CardFilters(), k=3)
+        hits = search_cards(
+            conn, FakeEmbedder(), "add colorless mana", CardFilters(), k=3, mode="vector"
+        )
 
     assert hits[0].name == "Sol Ring"
     assert hits[0].oracle_text == "{T}: Add {C}{C}."
-    assert hits[0].similarity >= hits[1].similarity >= hits[2].similarity
+    assert hits[0].score >= hits[1].score >= hits[2].score
     assert len(hits) == 3
 
 
@@ -118,7 +120,7 @@ def test_removed_or_banned_cards_never_appear(loaded: Settings) -> None:
 
 def test_embeddings_from_another_model_are_not_mixed_in(loaded: Settings) -> None:
     with connect(loaded) as conn:
-        hits = search_cards(conn, FakeEmbedder(model="other"), "mana", CardFilters())
+        hits = search_cards(conn, FakeEmbedder(model="other"), "mana", CardFilters(), mode="vector")
 
     assert hits == []
 
@@ -149,14 +151,16 @@ def test_a_heavily_filtered_search_still_returns_k_results(loaded: Settings) -> 
         conn.execute("SET enable_seqscan = off")
         conn.execute("SET enable_sort = off")
         filters = CardFilters(color_identity_within="U")
-        hits = search_cards(conn, FakeEmbedder(), "add colorless mana", filters, k=10)
+        hits = search_cards(
+            conn, FakeEmbedder(), "add colorless mana", filters, k=10, mode="vector"
+        )
 
     assert len(hits) == 10
 
 
 def test_rules_search_returns_citable_rules(loaded: Settings) -> None:
     with connect(loaded) as conn:
-        hits = search_rules(conn, FakeEmbedder(), "Is reminder text ignored?", k=3)
+        hits = search_rules(conn, FakeEmbedder(), "Is reminder text ignored?", k=3, mode="vector")
 
     assert hits[0].number == "903.4c"
     assert hits[0].section == "903. Commander"
