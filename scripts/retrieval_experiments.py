@@ -16,16 +16,20 @@ The held-out test set can't be run from here: it's scored only by
 """
 
 import argparse
+import math
 import statistics
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
+import httpx2
 import psycopg
+from psycopg import sql
 
 from mtg_deck_advisor.config import get_settings
 from mtg_deck_advisor.db.connection import connect
@@ -47,10 +51,19 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
 )
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder
 from mtg_deck_advisor.observability.logging import configure_logging
-from mtg_deck_advisor.retrieval.search import CardFilters, SearchMode, search_cards, search_rules
+from mtg_deck_advisor.retrieval.embeddings import vector_literal
+from mtg_deck_advisor.retrieval.search import (
+    CANDIDATES,
+    CardFilters,
+    SearchMode,
+    card_conditions,
+    search_cards,
+    search_rules,
+)
+from mtg_deck_advisor.retrieval.text import card_text, query_text, rule_text
 
 RUNS = Path("evals/runs")
-REPORTS = Path("evals/reports")
+REPORTS = Path("evals/reports/retrieval-experiments")
 K = 10
 SET_NAME = "dev"
 
@@ -71,6 +84,9 @@ class Variant:
     description: str
     cards: CardSearch
     rules: RuleSearch
+    # Set when the variant searches another embedding model's vectors, which
+    # must cover every card and rule before a run means anything.
+    model: str | None = None
 
 
 def cards_in_mode(mode: SearchMode) -> CardSearch:
@@ -89,6 +105,284 @@ def rules_in_mode(mode: SearchMode) -> RuleSearch:
     return search
 
 
+# ------------------------------------------- query-side variants (#73)
+
+
+class InstructionSwap:
+    """The same embedder, with a different task instruction on queries.
+
+    Queries reach the embedder as `Instruct: <instruction>\\nQuery: <text>`
+    (retrieval.text.query_text). This swaps the instruction, or drops it
+    (None), without touching production code; documents carry no
+    instruction, so stored embeddings stay valid.
+    """
+
+    def __init__(self, inner: Embedder, instruction: str | None) -> None:
+        self._inner = inner
+        self._instruction = instruction
+
+    @property
+    def model(self) -> str:
+        return self._inner.model
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        return self._inner.embed([self._swap(text) for text in texts])
+
+    def _swap(self, text: str) -> str:
+        if not text.startswith("Instruct: ") or "\nQuery: " not in text:
+            return text
+        query = text.split("\nQuery: ", 1)[1]
+        return (
+            query if self._instruction is None else f"Instruct: {self._instruction}\nQuery: {query}"
+        )
+
+
+def cards_with_instruction(instruction: str | None) -> CardSearch:
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        embedder = InstructionSwap(ctx.embedder, instruction)
+        hits = search_cards(ctx.conn, embedder, query.query, filters, k=K, mode="hybrid")
+        return [hit.name for hit in hits]
+
+    return search
+
+
+def rules_with_instruction(instruction: str | None) -> RuleSearch:
+    def search(ctx: Context, question: RuleQuestion) -> list[str]:
+        embedder = InstructionSwap(ctx.embedder, instruction)
+        hits = search_rules(ctx.conn, embedder, question.question, k=K, mode="vector")
+        return [hit.number for hit in hits]
+
+    return search
+
+
+def weighted_rrf(rankings: Sequence[Sequence[str]], weights: Sequence[float]) -> list[str]:
+    """Reciprocal rank fusion with a weight per ranking: sum of weight / (60 + rank)."""
+    scores: dict[str, float] = {}
+    for ranking, weight in zip(rankings, weights, strict=True):
+        for rank, item in enumerate(ranking, start=1):
+            scores[item] = scores.get(item, 0.0) + weight / (60 + rank)
+    return sorted(scores, key=lambda item: -scores[item])
+
+
+def arm(
+    ctx: Context, query: CardQuery, filters: CardFilters, mode: SearchMode, n: int
+) -> list[str]:
+    hits = search_cards(ctx.conn, ctx.embedder, query.query, filters, k=n, mode=mode)
+    return [hit.name for hit in hits]
+
+
+def all_words_first(ctx: Context, query: CardQuery, filters: CardFilters, n: int) -> list[str]:
+    """Keyword arm: cards matching every word of the query first, then cards matching any."""
+    conditions, params = card_conditions(filters)
+    rows = ctx.conn.execute(
+        sql.SQL(
+            """
+            SELECT c.name FROM cards c, (SELECT plainto_tsquery('english', %s) AS query) q
+            WHERE c.search_vector @@ q.query AND {conditions}
+            ORDER BY ts_rank_cd(c.search_vector, q.query, 1) DESC, c.name
+            LIMIT %s
+            """
+        ).format(conditions=conditions),
+        [query.query, *params, n],
+    ).fetchall()
+    every = [row[0] for row in rows]
+    return (every + [name for name in arm(ctx, query, filters, "keyword", n) if name not in every])[
+        :n
+    ]
+
+
+def cards_fused(
+    depth: int = CANDIDATES, keyword_weight: float = 1.0, all_words: bool = False
+) -> CardSearch:
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        vector = arm(ctx, query, filters, "vector", depth)
+        keyword = (
+            all_words_first(ctx, query, filters, depth)
+            if all_words
+            else arm(ctx, query, filters, "keyword", depth)
+        )
+        return weighted_rrf([vector, keyword], [1.0, keyword_weight])[:K]
+
+    return search
+
+
+# ------------------------------------------ other embedding models (#73)
+
+DIMENSIONS = 1024
+EXPERIMENT_TABLE = "experiments.embeddings"
+
+
+class TruncatingEmbedder:
+    """An embedder whose vectors are cut to their first 1,024 dimensions and renormalised.
+
+    Qwen3 embedding models are Matryoshka-trained: their leading dimensions
+    form a valid smaller embedding. Truncating keeps the schema's
+    vector(1024), and pgvector's HNSW index, which can't index more than
+    2,000 dimensions, for models that produce up to 4,096.
+    """
+
+    def __init__(self, inner: Embedder, dimensions: int = DIMENSIONS) -> None:
+        self._inner = inner
+        self._dimensions = dimensions
+
+    @property
+    def model(self) -> str:
+        return self._inner.model
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        vectors = []
+        for vector in self._inner.embed(texts):
+            cut = vector[: self._dimensions]
+            norm = math.sqrt(sum(x * x for x in cut))
+            vectors.append([x / norm for x in cut])
+        return vectors
+
+
+def ollama_embedder(model: str) -> Embedder:
+    settings = get_settings()
+    inner = OllamaEmbedder(
+        base_url=settings.ollama_base_url,
+        model=model,
+        timeout_seconds=settings.ollama_timeout_seconds,
+    )
+    return inner if model == settings.embedding_model else TruncatingEmbedder(inner)
+
+
+def unload_all() -> None:
+    """Unload every Ollama model, so the next one has the GPU to itself (ADR 0009)."""
+    base_url = get_settings().ollama_base_url
+    for loaded in httpx2.get(f"{base_url}/api/ps", timeout=10).json().get("models", []):
+        httpx2.post(
+            f"{base_url}/api/generate", json={"model": loaded["name"], "keep_alive": 0}, timeout=60
+        )
+
+
+def vram_gb(model: str) -> float:
+    base_url = get_settings().ollama_base_url
+    running = httpx2.get(f"{base_url}/api/ps", timeout=10).json().get("models", [])
+    return next((m["size_vram"] / 1e9 for m in running if m["name"] == model), 0.0)
+
+
+def embed_with_model(model: str, limit: int | None) -> None:
+    """Embed every legal card and rule with `model` into the experiments table (resumable)."""
+    embedder = ollama_embedder(model)
+    with connect(get_settings()) as conn:
+        conn.execute("CREATE SCHEMA IF NOT EXISTS experiments")
+        conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {EXPERIMENT_TABLE} (
+                model text, kind text, key text, embedding vector({DIMENSIONS}) NOT NULL,
+                PRIMARY KEY (model, kind, key)
+            )
+            """
+        )
+        conn.commit()
+        done = {
+            (row[0], row[1])
+            for row in conn.execute(
+                "SELECT kind, key FROM experiments.embeddings WHERE model = %s", (model,)
+            ).fetchall()
+        }
+        cards = [
+            ("card", str(row[0]), card_text(row[1], row[2], row[3]))
+            for row in conn.execute(
+                "SELECT oracle_id, name, type_line, oracle_text FROM cards "
+                "WHERE removed_at IS NULL AND commander_legality = 'legal' ORDER BY name"
+            ).fetchall()
+        ]
+        rules = [
+            ("rule", row[0], rule_text(row[1]))
+            for row in conn.execute(
+                "SELECT number, text FROM rules WHERE removed_at IS NULL ORDER BY number"
+            ).fetchall()
+        ]
+        everything = cards + rules
+        conn.commit()  # end the reads, so each batch below commits on its own
+        todo = [item for item in everything if (item[0], item[1]) not in done]
+        if limit is not None:
+            todo = todo[:limit]
+        unload_all()
+        embedder.embed(["warm-up"])
+        started = time.perf_counter()
+        for start in range(0, len(todo), 64):
+            batch = todo[start : start + 64]
+            vectors = embedder.embed([text for _, _, text in batch])
+            with conn.transaction():
+                conn.cursor().executemany(
+                    "INSERT INTO experiments.embeddings VALUES (%s, %s, %s, %s::vector)",
+                    [
+                        (model, kind, key, vector_literal(vector))
+                        for (kind, key, _), vector in zip(batch, vectors, strict=True)
+                    ],
+                )
+            print(f"  {start + len(batch)}/{len(todo)}", end="\r", flush=True)
+        seconds = time.perf_counter() - started
+        rate = len(todo) / seconds if seconds else 0.0
+        remaining = len(everything) - len(done) - len(todo)
+        print(
+            f"\n{model}: embedded {len(todo):,} in {seconds:.0f} s ({rate:.1f}/s), "
+            f"VRAM {vram_gb(model):.1f} GB. Remaining {remaining:,}"
+            + (f", about {remaining / rate / 60:.0f} min more." if rate and remaining else ".")
+        )
+
+
+def other_model_vector_arm(
+    ctx: Context, model: str, text: str, kind: str, conditions: Any, params: list[Any], n: int
+) -> list[str]:
+    embedder = ollama_embedder(model)
+    (vector,) = embedder.embed([query_text(model, "cards" if kind == "card" else "rules", text)])
+    if kind == "rule":
+        rows = ctx.conn.execute(
+            "SELECT key FROM experiments.embeddings WHERE model = %s AND kind = 'rule' "
+            "ORDER BY embedding <=> %s::vector LIMIT %s",
+            (model, vector_literal(vector), n),
+        ).fetchall()
+        return [row[0] for row in rows]
+    rows = ctx.conn.execute(
+        sql.SQL(
+            "SELECT c.name FROM experiments.embeddings e JOIN cards c ON c.oracle_id::text = e.key "
+            "WHERE e.model = %s AND e.kind = 'card' AND {conditions} "
+            "ORDER BY e.embedding <=> %s::vector LIMIT %s"
+        ).format(conditions=conditions),
+        [model, *params, vector_literal(vector), n],
+    ).fetchall()
+    return [row[0] for row in rows]
+
+
+def cards_with_model(model: str, keyword_weight: float = 0.5) -> CardSearch:
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        conditions, params = card_conditions(filters)
+        vector = other_model_vector_arm(
+            ctx, model, query.query, "card", conditions, params, CANDIDATES
+        )
+        keyword = arm(ctx, query, filters, "keyword", CANDIDATES)
+        return weighted_rrf([vector, keyword], [1.0, keyword_weight])[:K]
+
+    return search
+
+
+def rules_with_model(model: str) -> RuleSearch:
+    def search(ctx: Context, question: RuleQuestion) -> list[str]:
+        return other_model_vector_arm(ctx, model, question.question, "rule", None, [], K)
+
+    return search
+
+
+# The instruction ADR 0009 measured, and alternatives. Many queries are
+# deck-building needs or names, not descriptions of one card's effect.
+CARD_INSTRUCTIONS = {
+    "search": "Given a search for Magic: The Gathering cards by name, mechanic or effect, "
+    "retrieve the cards that match",
+    "needs": "Given what a Commander deck needs, retrieve Magic: The Gathering cards whose "
+    "rules text provides it",
+}
+RULES_INSTRUCTION = (
+    "Given a question about playing Magic: The Gathering, retrieve the Comprehensive Rules "
+    "passage that answers it"
+)
+
+BASELINE_RULES = rules_in_mode("vector")
+
 VARIANTS: dict[str, Variant] = {
     variant.name: variant
     for variant in [
@@ -96,19 +390,130 @@ VARIANTS: dict[str, Variant] = {
             "baseline",
             "As shipped in #70: cards hybrid, rules vector.",
             cards_in_mode("hybrid"),
-            rules_in_mode("vector"),
+            BASELINE_RULES,
         ),
         Variant(
             "all-vector",
             "Vector search for cards and rules.",
             cards_in_mode("vector"),
-            rules_in_mode("vector"),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "instr-search",
+            f"Card query instruction: {CARD_INSTRUCTIONS['search']!r}; rules: "
+            f"{RULES_INSTRUCTION!r}.",
+            cards_with_instruction(CARD_INSTRUCTIONS["search"]),
+            rules_with_instruction(RULES_INSTRUCTION),
+        ),
+        Variant(
+            "instr-needs",
+            f"Card query instruction: {CARD_INSTRUCTIONS['needs']!r}.",
+            cards_with_instruction(CARD_INSTRUCTIONS["needs"]),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "instr-none",
+            "No query instruction, for cards or rules.",
+            cards_with_instruction(None),
+            rules_with_instruction(None),
+        ),
+        Variant(
+            "rrf-keyword-half",
+            "Hybrid with the keyword arm's fusion weight halved (0.5).",
+            cards_fused(keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "depth-30",
+            "Hybrid fusing each arm's top 30 (baseline: 50).",
+            cards_fused(depth=30),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "depth-100",
+            "Hybrid fusing each arm's top 100 (baseline: 50).",
+            cards_fused(depth=100),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "fused-check",
+            "The baseline rebuilt with this script's fusion (depth 50, equal weights): "
+            "must match the baseline, to show the reimplementation is faithful.",
+            cards_fused(),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "keyword-half-depth-30",
+            "The keyword arm at weight 0.5, fusing each arm's top 30.",
+            cards_fused(depth=30, keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "keyword-half-depth-100",
+            "The keyword arm at weight 0.5, fusing each arm's top 100.",
+            cards_fused(depth=100, keyword_weight=0.5),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "embed-4b",
+            "qwen3-embedding:4b truncated to 1,024 dimensions; cards hybrid with the keyword "
+            "arm at 0.5 (the current best), rules vector.",
+            cards_with_model("qwen3-embedding:4b"),
+            rules_with_model("qwen3-embedding:4b"),
+            model="qwen3-embedding:4b",
+        ),
+        Variant(
+            "embed-8b",
+            "qwen3-embedding:8b truncated to 1,024 dimensions; cards hybrid with the keyword "
+            "arm at 0.5 (the current best), rules vector.",
+            cards_with_model("qwen3-embedding:8b"),
+            rules_with_model("qwen3-embedding:8b"),
+            model="qwen3-embedding:8b",
+        ),
+        Variant(
+            "embed-8b-keyword-full",
+            "qwen3-embedding:8b, with the keyword arm at full weight (1.0).",
+            cards_with_model("qwen3-embedding:8b", keyword_weight=1.0),
+            rules_with_model("qwen3-embedding:8b"),
+            model="qwen3-embedding:8b",
+        ),
+        Variant(
+            "embed-8b-vector",
+            "qwen3-embedding:8b, vector search only (no keyword arm).",
+            cards_with_model("qwen3-embedding:8b", keyword_weight=0.0),
+            rules_with_model("qwen3-embedding:8b"),
+            model="qwen3-embedding:8b",
+        ),
+        Variant(
+            "keyword-all-words",
+            "Hybrid whose keyword arm ranks cards matching every word first, then any word.",
+            cards_fused(all_words=True),
+            BASELINE_RULES,
         ),
     ]
 }
 
 
 # ------------------------------------------------------------------- run
+
+
+def check_coverage(conn: psycopg.Connection, model: str) -> None:
+    """Refuse to run on a partial embedding: missing cards silently look like misses."""
+    row = conn.execute(
+        """
+        SELECT
+            (SELECT count(*) FROM cards WHERE removed_at IS NULL AND commander_legality = 'legal')
+            + (SELECT count(*) FROM rules WHERE removed_at IS NULL),
+            (SELECT count(*) FROM experiments.embeddings WHERE model = %s)
+        """,
+        (model,),
+    ).fetchone()
+    expected, embedded = row if row is not None else (0, 0)
+    if embedded < expected:
+        raise SystemExit(
+            f"{model} has {embedded:,} of {expected:,} cards and rules embedded: "
+            f"finish with `embed {model}` first"
+        )
 
 
 def run(variant: Variant, eval_set: EvalSet, model: str) -> RunResult:
@@ -119,6 +524,8 @@ def run(variant: Variant, eval_set: EvalSet, model: str) -> RunResult:
         timeout_seconds=settings.ollama_timeout_seconds,
     )
     with connect(settings) as conn:
+        if variant.model is not None:
+            check_coverage(conn, variant.model)
         ctx = Context(conn, embedder)
         names = {name for query in eval_set.card_queries for name in query.relevant}
         ids = resolve_names(conn, names | set(eval_set.pool))
@@ -296,10 +703,18 @@ def main() -> int:
     compare_parser = commands.add_parser("compare", help="compare two saved runs")
     compare_parser.add_argument("baseline")
     compare_parser.add_argument("candidate")
+    embed_parser = commands.add_parser(
+        "embed", help="embed every card and rule with another model (resumable)"
+    )
+    embed_parser.add_argument("model")
+    embed_parser.add_argument("--limit", type=int, help="embed only this many, for timing")
     args = parser.parse_args()
 
     settings = get_settings()
     configure_logging(settings)
+    if args.command == "embed":
+        embed_with_model(args.model, args.limit)
+        return 0
     if args.command == "list":
         for variant in VARIANTS.values():
             print(f"{variant.name:24} {variant.description}")
@@ -313,6 +728,7 @@ def main() -> int:
         return 0
     base, cand = RunResult.load(run_path(args.baseline)), RunResult.load(run_path(args.candidate))
     report = compare_report(base, cand, eval_set)
+    REPORTS.mkdir(parents=True, exist_ok=True)
     path = REPORTS / f"{date.today().isoformat()}-compare-{args.baseline}-vs-{args.candidate}.md"
     path.write_text(report, encoding="utf-8")
     print(report)
