@@ -18,7 +18,7 @@ import re
 from typing import Literal
 
 CARD_TEXT_VERSION = "cards-v1"
-RULE_TEXT_VERSION = "rules-v1"
+RULE_TEXT_VERSION = "rules-v2"
 
 COLOR_WORDS = {"W": "white", "U": "blue", "B": "black", "R": "red", "G": "green"}
 SYMBOL_WORDS = {
@@ -69,25 +69,15 @@ def card_text(name: str, type_line: str, oracle_text: str) -> str:
     return text
 
 
-# The end of a sentence: a full stop, then a capital. Rule numbers ("rule
-# 604.3") have no space after their dot, so they never end a sentence.
-SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+def rule_text(text: str) -> str:
+    """The text embedded for one rule: its own text, examples included, on one line.
 
-
-def first_sentence(text: str) -> str:
-    return SENTENCE_END.split(" ".join(text.split()), maxsplit=1)[0]
-
-
-def rule_text(number: str, section: str, text: str, parent: tuple[str, str] | None = None) -> str:
-    """`Section. [Parent: first sentence.] Number: text`, for one rule (see ADR 0010).
-
-    A lettered rule often doesn't say what it's about ("Reminder text is
-    ignored..." is about color identity only because of 903.4), so its
-    parent's opening sentence comes first. The chunk that's stored and cited
-    is still the single rule; this is only the text that gets embedded.
+    The section heading and the parent rule's first sentence were added as
+    context at first; the retrieval eval measured them as a loss (recall@10
+    0.89 with them, 0.97 without), so each rule is embedded as itself.
+    See ADR 0010.
     """
-    context = f" {parent[0]}: {first_sentence(parent[1])}" if parent else ""
-    return f"{section}.{context} {number}: {' '.join(text.split())}"
+    return " ".join(text.split())
 
 
 # Qwen3 embedding models expect a query to carry a one-line task instruction

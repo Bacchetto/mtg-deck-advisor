@@ -38,35 +38,33 @@ def test_every_rule_is_embedded_and_a_rerun_embeds_nothing(loaded: Settings) -> 
     assert stored == (10,)
 
 
-def test_a_lettered_rule_is_embedded_with_its_parents_context(loaded: Settings) -> None:
+def test_a_rule_is_embedded_as_its_own_text(loaded: Settings) -> None:
     with connect(loaded) as conn:
         embed_rules(conn, FakeEmbedder())
-        child = conn.execute("SELECT section, text FROM rules WHERE number = '903.4c'").fetchone()
-        parent = conn.execute("SELECT text FROM rules WHERE number = '903.4'").fetchone()
-        stored = conn.execute(
-            "SELECT embedding::text FROM rule_embeddings WHERE number = '903.4c'"
+        row = conn.execute(
+            "SELECT r.text, e.embedding::text FROM rule_embeddings e JOIN rules r USING (number) "
+            "WHERE number = '903.4c'"
         ).fetchone()
 
-    assert child is not None and parent is not None and stored is not None
-    expected_text = rule_text("903.4c", child[0], child[1], parent=("903.4", parent[0]))
-    (expected,) = FakeEmbedder().embed([expected_text])
-    assert json.loads(stored[0]) == pytest.approx(expected, abs=1e-6)
+    assert row is not None
+    (expected,) = FakeEmbedder().embed([rule_text(row[0])])
+    assert json.loads(row[1]) == pytest.approx(expected, abs=1e-6)
 
 
-def test_changing_a_parent_rule_embeds_its_lettered_rules_again(loaded: Settings) -> None:
+def test_only_a_rule_whose_text_changed_is_embedded_again(loaded: Settings) -> None:
     with connect(loaded) as conn:
         embed_rules(conn, FakeEmbedder())
+        # As ingestion would: new text, so a new content hash.
         conn.execute(
-            "UPDATE rules SET text = 'Commander decks use color identity. More.' "
-            "WHERE number = '903.4'"
+            "UPDATE rules SET text = 'Commander decks use color identity.', "
+            "content_hash = 'edited' WHERE number = '903.4'"
         )
         conn.commit()
         again = FakeEmbedder()
         report = embed_rules(conn, again)
 
-    texts = [text for call in again.calls for text in call]
-    assert report.updated == 4  # 903.4 itself, and 903.4a, 903.4b, 903.4c
-    assert all("Commander decks use color identity." in text for text in texts)
+    assert again.calls == [["Commander decks use color identity."]]
+    assert (report.updated, report.unchanged) == (1, 9)
 
 
 def test_removed_rules_are_not_embedded(loaded: Settings) -> None:

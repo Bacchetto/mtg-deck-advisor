@@ -148,6 +148,33 @@ A new 300-card pool costs about $0.37 and takes about 35 seconds. Tagging it aga
 nothing, because the tags are already stored. The run's projected cost is checked against
 `RUN_COST_CAP_USD` before any call is made.
 
+## Search
+
+Cards and rules are searchable by meaning (vector search with local embeddings), by
+keyword (Postgres full-text search), or both, fused by reciprocal rank (hybrid). Card
+searches take exact filters: color identity within the commander's, card types, a mana
+value range, and "in this pool". Each rule is one chunk, cited by its number
+([ADR 0010](docs/decisions/0010-chunking-rules-by-rule-number.md)).
+
+Measured on an owner-reviewed eval set of 44 card queries and 45 rules questions, written
+before the search code ([full report](evals/reports/2026-10-02-retrieval.md)):
+
+| Recall@10 / MRR@10 | vector | keyword | hybrid |
+|---|---|---|---|
+| Cards (44 queries) | 0.53 / 0.49 | 0.33 / 0.28 | **0.58** / 0.45 |
+| Rules (45 questions) | **0.97 / 0.71** | 0.43 / 0.24 | 0.74 / 0.46 |
+
+The defaults follow these numbers:
+- **Card search is hybrid.** It rescues exact names and mechanics that vector search
+  misses, though the margin is small.
+- **Rules search is vector.** Keyword matching on the common words in rules questions only
+  added noise.
+
+The weak spot is cards described in other words, such as "an artifact that costs one and
+taps for two colorless mana" (Sol Ring): recall@10 is 0.47 on those. Rerun the eval with
+`python scripts/evaluate_retrieval.py` (local and free; `--card-variants` also compares
+card text variants).
+
 ## Development
 
 ```bash

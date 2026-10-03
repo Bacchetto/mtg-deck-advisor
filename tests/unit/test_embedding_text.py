@@ -48,36 +48,15 @@ def test_each_ability_and_face_stays_separated() -> None:
     )
 
 
-def test_a_top_level_rule_is_its_section_number_and_text() -> None:
-    text = rule_text("903.8", "903. Commander", "A player may cast a commander they own.")
+def test_a_rule_is_embedded_as_its_own_text() -> None:
+    # The retrieval eval measured section and parent context as a loss (ADR 0010).
+    text = rule_text("Reminder text is ignored when determining a card's color identity.")
 
-    assert text == "903. Commander. 903.8: A player may cast a commander they own."
-
-
-def test_a_lettered_rule_is_introduced_by_its_parents_first_sentence() -> None:
-    text = rule_text(
-        "903.4c",
-        "903. Commander",
-        "Reminder text is ignored when determining a card's color identity. See rule 207.2.",
-        parent=(
-            "903.4",
-            "The Commander variant uses color identity to determine what cards can be in a "
-            "deck. The color identity of a card is the color or colors of any mana symbols "
-            "(see rule 604.3).",
-        ),
-    )
-
-    assert text == (
-        "903. Commander. 903.4: The Commander variant uses color identity to determine what "
-        "cards can be in a deck. 903.4c: Reminder text is ignored when determining a card's "
-        "color identity. See rule 207.2."
-    )
+    assert text == "Reminder text is ignored when determining a card's color identity."
 
 
 def test_a_rules_examples_stay_on_one_line() -> None:
-    text = rule_text("100.1", "100. General", "A rule.\nExample: An example.")
-
-    assert text == "100. General. 100.1: A rule. Example: An example."
+    assert rule_text("A rule.\nExample: An example.") == "A rule. Example: An example."
 
 
 def test_queries_to_a_qwen3_embedding_model_carry_its_instruction() -> None:

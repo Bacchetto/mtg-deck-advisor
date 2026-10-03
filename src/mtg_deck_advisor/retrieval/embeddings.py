@@ -8,7 +8,6 @@ and a rerun embeds nothing. Each batch is committed as it's done, so an
 interrupted run keeps its progress.
 """
 
-import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -73,27 +72,11 @@ def embed_cards(
 def embed_rules(
     conn: psycopg.Connection, embedder: Embedder, *, batch_size: int = DEFAULT_BATCH_SIZE
 ) -> EmbeddingReport:
-    """Embed every current rule whose stored embedding is missing or stale (ADR 0010).
-
-    A lettered rule's embedded text includes its parent's first sentence, so
-    the rule's own content hash isn't enough to spot a stale embedding: the
-    stored hash is of the whole embedded text, and changing a parent redoes
-    its lettered rules too.
-    """
+    """Embed every current rule whose stored embedding is missing or stale (ADR 0010)."""
     rows = conn.execute(
-        """
-        SELECT r.number, r.section, r.text, p.number, p.text
-        FROM rules r LEFT JOIN rules p ON p.number = r.parent AND p.removed_at IS NULL
-        WHERE r.removed_at IS NULL
-        ORDER BY r.number
-        """
+        "SELECT number, content_hash, text FROM rules WHERE removed_at IS NULL ORDER BY number"
     ).fetchall()
-    sources = []
-    for number, section, text, parent_number, parent_text in rows:
-        parent = (parent_number, parent_text) if parent_number is not None else None
-        embedded = rule_text(number, section, text, parent=parent)
-        digest = hashlib.sha256(embedded.encode()).hexdigest()
-        sources.append(Source(key=number, content_hash=digest, text=embedded))
+    sources = [Source(key=row[0], content_hash=row[1], text=rule_text(row[2])) for row in rows]
     return embed_sources(
         conn, embedder, "rule_embeddings", "number", sources, RULE_TEXT_VERSION, batch_size
     )
