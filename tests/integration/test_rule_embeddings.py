@@ -54,8 +54,10 @@ def test_a_rule_is_embedded_as_its_own_text(loaded: Settings) -> None:
 def test_only_a_rule_whose_text_changed_is_embedded_again(loaded: Settings) -> None:
     with connect(loaded) as conn:
         embed_rules(conn, FakeEmbedder())
+        # As ingestion would: new text, so a new content hash.
         conn.execute(
-            "UPDATE rules SET text = 'Commander decks use color identity.' WHERE number = '903.4'"
+            "UPDATE rules SET text = 'Commander decks use color identity.', "
+            "content_hash = 'edited' WHERE number = '903.4'"
         )
         conn.commit()
         again = FakeEmbedder()
