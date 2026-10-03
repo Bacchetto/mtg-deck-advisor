@@ -64,7 +64,7 @@ def test_the_bootstrap_interval_is_repeatable_and_contains_the_mean() -> None:
 
 
 def test_identical_differences_give_a_zero_width_interval() -> None:
-    assert bootstrap_interval([0.2] * 10) == (pytest.approx(0.2), pytest.approx(0.2))
+    assert list(bootstrap_interval([0.2] * 10)) == pytest.approx([0.2, 0.2])
 
 
 def comparison_with(recall: float, mrr: float, wins: int, losses: int) -> Comparison:
