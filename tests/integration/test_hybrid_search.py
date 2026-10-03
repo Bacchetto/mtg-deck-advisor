@@ -135,9 +135,18 @@ def test_rules_keyword_search_finds_the_rule_with_the_word(loaded: Settings) -> 
 
 def test_rules_hybrid_search_combines_both_arms(loaded: Settings) -> None:
     with connect(loaded) as conn:
-        hits = search_rules(conn, FixedQueryEmbedder(), "reminder", k=3)
+        hits = search_rules(conn, FixedQueryEmbedder(), "reminder", k=3, mode="hybrid")
 
     assert "903.4c" in [hit.number for hit in hits]
+
+
+def test_rules_search_defaults_to_vector_mode(loaded: Settings) -> None:
+    # The retrieval eval measured hybrid as a loss on rules questions.
+    with connect(loaded) as conn:
+        default = search_rules(conn, FakeEmbedder(), "commander color identity", k=5)
+        vector = search_rules(conn, FakeEmbedder(), "commander color identity", k=5, mode="vector")
+
+    assert default == vector
 
 
 def test_cards_and_rules_have_full_text_indexes(loaded: Settings) -> None:
