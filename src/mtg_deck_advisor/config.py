@@ -70,8 +70,10 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 300
     # The local chat model, when MODEL_PROVIDER is ollama or for comparisons.
     ollama_chat_model: str = "qwen3:14b"
-    # The embedding model for retrieval (Milestone 4).
-    embedding_model: str = "qwen3-embedding:0.6b"
+    # The embedding model for retrieval, chosen on the retrieval dev set (#73),
+    # and the size its vectors are cut to: the schema's vector(1024).
+    embedding_model: str = "qwen3-embedding:8b"
+    embedding_dimensions: int = 1024
 
     # Where downloaded source files (Scryfall bulk data, the rules file) are
     # cached. Relative paths are relative to the working directory.

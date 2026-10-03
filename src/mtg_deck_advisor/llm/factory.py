@@ -44,6 +44,7 @@ def build_embedder(settings: Settings) -> Embedder:
         base_url=settings.ollama_base_url,
         model=settings.embedding_model,
         timeout_seconds=settings.ollama_timeout_seconds,
+        dimensions=settings.embedding_dimensions,
     )
 
 

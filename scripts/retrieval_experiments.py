@@ -250,7 +250,8 @@ def ollama_embedder(model: str) -> Embedder:
         model=model,
         timeout_seconds=settings.ollama_timeout_seconds,
     )
-    return inner if model == settings.embedding_model else TruncatingEmbedder(inner)
+    # Truncating a 1,024-dimensional vector to 1,024 is a no-op, so always wrap.
+    return TruncatingEmbedder(inner)
 
 
 def embed_with_retry(embedder: Embedder, texts: list[str], attempts: int = 5) -> list[list[float]]:
