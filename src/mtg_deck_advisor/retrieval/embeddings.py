@@ -8,6 +8,7 @@ and a rerun embeds nothing. Each batch is committed as it's done, so an
 interrupted run keeps its progress.
 """
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -21,6 +22,7 @@ from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.retrieval.text import (
     CARD_TEXT_VERSION,
     RULE_TEXT_VERSION,
+    SUMMARY_TEXT_VERSION,
     card_text,
     rule_text,
 )
@@ -79,6 +81,30 @@ def embed_rules(
     sources = [Source(key=row[0], content_hash=row[1], text=rule_text(row[2])) for row in rows]
     return embed_sources(
         conn, embedder, "rule_embeddings", "number", sources, RULE_TEXT_VERSION, batch_size
+    )
+
+
+def embed_summaries(
+    conn: psycopg.Connection, embedder: Embedder, *, batch_size: int = DEFAULT_BATCH_SIZE
+) -> EmbeddingReport:
+    """Embed every stored card summary whose embedding is missing or stale (#74).
+
+    The stored hash is of the summary text, so a regenerated summary is
+    embedded again even if the card itself didn't change.
+    """
+    rows = conn.execute(
+        """
+        SELECT s.oracle_id, s.summary FROM card_summaries s JOIN cards c USING (oracle_id)
+        WHERE c.removed_at IS NULL AND c.commander_legality = 'legal'
+        ORDER BY c.name
+        """
+    ).fetchall()
+    sources = [
+        Source(key=row[0], content_hash=hashlib.sha256(row[1].encode()).hexdigest(), text=row[1])
+        for row in rows
+    ]
+    return embed_sources(
+        conn, embedder, "summary_embeddings", "oracle_id", sources, SUMMARY_TEXT_VERSION, batch_size
     )
 
 

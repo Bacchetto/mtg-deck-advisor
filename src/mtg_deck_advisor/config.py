@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     # and the size its vectors are cut to: the schema's vector(1024).
     embedding_model: str = "qwen3-embedding:8b"
     embedding_dimensions: int = 1024
+    # The local chat model that writes each card's one-sentence summary for
+    # pool searches: the model the summaries were measured with (#74).
+    summary_model: str = "qwen3:14b"
 
     # Where downloaded source files (Scryfall bulk data, the rules file) are
     # cached. Relative paths are relative to the working directory.
