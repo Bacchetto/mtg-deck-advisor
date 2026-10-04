@@ -3,6 +3,7 @@
 import json
 from collections.abc import Sequence
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -176,3 +177,35 @@ def test_hybrid_card_search_weights_the_keyword_arm_at_half(loaded: Settings) ->
     )[:10]
     assert [hit.oracle_id for hit in hybrid] == [oracle_id for oracle_id, _ in expected]
     assert [hit.score for hit in hybrid] == pytest.approx([score for _, score in expected])
+
+
+class ReversingReranker:
+    """Puts the first stage's candidates in reverse order, and remembers what it saw."""
+
+    def __init__(self) -> None:
+        self.seen: list[list[str]] = []
+
+    def rerank(self, query: str, candidates: Sequence[tuple[UUID, str]]) -> list[UUID]:
+        self.seen.append([text for _, text in candidates])
+        return [key for key, _ in reversed(candidates)]
+
+
+def test_a_reranker_reorders_the_first_stages_candidates(loaded: Settings) -> None:
+    reranker = ReversingReranker()
+    with connect(loaded) as conn:
+        first_stage = search_cards(conn, FixedQueryEmbedder(), "mana", k=20)
+        reranked = search_cards(conn, FixedQueryEmbedder(), "mana", k=3, reranker=reranker)
+
+    # The reranker saw the first stage's candidates, as "name | type line | rules text".
+    assert reranker.seen == [
+        [f"{hit.name} | {hit.type_line} | {hit.oracle_text}" for hit in first_stage]
+    ]
+    assert [hit.name for hit in reranked] == [hit.name for hit in reversed(first_stage)][:3]
+
+
+def test_without_a_reranker_search_is_unchanged(loaded: Settings) -> None:
+    with connect(loaded) as conn:
+        plain = search_cards(conn, FixedQueryEmbedder(), "mana", k=5)
+        again = search_cards(conn, FixedQueryEmbedder(), "mana", k=5, reranker=None)
+
+    assert [hit.oracle_id for hit in plain] == [hit.oracle_id for hit in again]
