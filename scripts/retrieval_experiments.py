@@ -52,6 +52,7 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
 )
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.errors import InvalidOutputError, ModelCallError, ModelError
+from mtg_deck_advisor.llm.factory import build_embedder
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder, OllamaProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
 from mtg_deck_advisor.llm.types import Message, ModelRequest
@@ -811,6 +812,13 @@ VARIANTS: dict[str, Variant] = {
             BASELINE_RULES,
         ),
         Variant(
+            "production",
+            "The app's own search_cards and search_rules, with their current defaults and "
+            "the stored production embeddings: tracks what #76 ships.",
+            cards_in_mode("hybrid"),
+            BASELINE_RULES,
+        ),
+        Variant(
             "all-vector",
             "Vector search for cards and rules.",
             cards_in_mode("vector"),
@@ -990,11 +998,8 @@ def check_coverage(conn: psycopg.Connection, model: str) -> None:
 
 def run(variant: Variant, eval_set: EvalSet, model: str) -> RunResult:
     settings = get_settings()
-    embedder = OllamaEmbedder(
-        base_url=settings.ollama_base_url,
-        model=model,
-        timeout_seconds=settings.ollama_timeout_seconds,
-    )
+    # The production embedder (truncated to EMBEDDING_DIMENSIONS), as search uses it.
+    embedder = build_embedder(settings.model_copy(update={"embedding_model": model}))
     with connect(settings) as conn:
         if variant.model is not None:
             check_coverage(conn, variant.model)
