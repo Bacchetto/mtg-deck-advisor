@@ -46,6 +46,7 @@ from tests.integration.test_agent_tools import (
     LEGAL_CARDS,
     POOL,
     card_id,
+    fixture_cards,
     loaded,  # noqa: F401 (a fixture)
 )
 
@@ -92,7 +93,7 @@ def test_a_pasted_pool_is_imported_with_its_unresolved_names(conn: psycopg.Conne
         conn, "1 Sol Ring\n2 Relentless Rats\n1 relentless rats\n1 Not A Real Card\n", name="Mine"
     )
 
-    cards = dict(
+    cards: dict[UUID, int] = dict(
         conn.execute(
             "SELECT oracle_id, count FROM pool_cards WHERE pool_id = %s", (imported.pool_id,)
         ).fetchall()
@@ -133,7 +134,7 @@ def test_a_draft_fixes_its_rejected_proposal_and_ends_in_an_approvable_deck(
     assert "Something with rats." in prompt
     assert "<untrusted>" in prompt and ATRAXA in prompt  # a commander candidate
     rejected, accepted = run.proposals
-    statuses = dict(
+    statuses: dict[UUID, str] = dict(
         conn.execute(
             "SELECT id, status FROM proposals WHERE id = ANY(%s)", ([rejected, accepted],)
         ).fetchall()
@@ -280,7 +281,8 @@ def malicious_card(conn: psycopg.Connection) -> UUID:
     raw["oracle_text"] = INJECTION
     record = normalise(raw)
     assert record is not None
-    apply_cards(conn, [record])
+    # The batch is the whole catalogue: anything missing from it would be marked removed.
+    apply_cards(conn, [*fixture_cards(), record])
     embed_cards(conn, FakeEmbedder())
     return record.oracle_id
 
