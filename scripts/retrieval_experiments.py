@@ -58,6 +58,7 @@ from mtg_deck_advisor.llm.recording import MemoryRecorder
 from mtg_deck_advisor.llm.types import Message, ModelRequest
 from mtg_deck_advisor.observability.logging import configure_logging
 from mtg_deck_advisor.retrieval.embeddings import vector_literal
+from mtg_deck_advisor.retrieval.rerank import build_reranker
 from mtg_deck_advisor.retrieval.search import (
     CANDIDATES,
     CardFilters,
@@ -98,6 +99,16 @@ class Variant:
 def cards_in_mode(mode: SearchMode) -> CardSearch:
     def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
         hits = search_cards(ctx.conn, ctx.embedder, query.query, filters, k=K, mode=mode)
+        return [hit.name for hit in hits]
+
+    return search
+
+
+def cards_reranked_production() -> CardSearch:
+    reranker = build_reranker(get_settings())
+
+    def search(ctx: Context, query: CardQuery, filters: CardFilters) -> list[str]:
+        hits = search_cards(ctx.conn, ctx.embedder, query.query, filters, k=K, reranker=reranker)
         return [hit.name for hit in hits]
 
     return search
@@ -816,6 +827,13 @@ VARIANTS: dict[str, Variant] = {
             "The app's own search_cards and search_rules, with their current defaults and "
             "the stored production embeddings: tracks what #76 ships.",
             cards_in_mode("hybrid"),
+            BASELINE_RULES,
+        ),
+        Variant(
+            "production-reranked",
+            "The app's own search_cards with its reranker (RERANK_MODEL), and search_rules: "
+            "what #76 ships.",
+            cards_reranked_production(),
             BASELINE_RULES,
         ),
         Variant(

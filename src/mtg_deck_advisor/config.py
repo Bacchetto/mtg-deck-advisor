@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     # The local chat model that writes each card's one-sentence summary for
     # pool searches: the model the summaries were measured with (#74).
     summary_model: str = "qwen3:14b"
+    # The local chat model that reranks card search candidates (#75); empty
+    # turns reranking off. It fits beside the 8b embedder in a 16 GB GPU.
+    rerank_model: str = "qwen3:8b"
 
     # Where downloaded source files (Scryfall bulk data, the rules file) are
     # cached. Relative paths are relative to the working directory.

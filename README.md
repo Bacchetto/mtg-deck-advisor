@@ -133,6 +133,7 @@ Ollama runs natively (not in Docker), so it can use the GPU
 ```bash
 ollama pull qwen3-embedding:8b    # embeddings (4.7 GB), truncated to 1,024 dimensions
 ollama pull qwen3:14b             # local chat model and card summaries (9.3 GB)
+ollama pull qwen3:8b              # reranks card searches (5.2 GB)
 ```
 
 The app reaches Ollama at `http://127.0.0.1:11434`; containers use
