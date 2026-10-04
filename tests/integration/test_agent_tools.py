@@ -27,7 +27,11 @@ from mtg_deck_advisor.llm.types import ToolCall, ToolResult
 from mtg_deck_advisor.retrieval.embeddings import embed_cards, embed_rules
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
-CARD_FILES = ("oracle_cards_sample.jsonl", "oracle_cards_punctuation.jsonl")
+CARD_FILES = (
+    "oracle_cards_sample.jsonl",
+    "oracle_cards_punctuation.jsonl",
+    "oracle_cards_deckbuilding.jsonl",
+)
 
 ATRAXA = "Atraxa, Praetors' Voice"
 RATS = "Relentless Rats"
@@ -55,10 +59,11 @@ def fixture_cards() -> list[CardRecord]:
 
 
 def card_id(name: str) -> UUID:
-    (oracle_id,) = [
-        c.oracle_id for c in fixture_cards() if c.name == name and c.commander_legality == "legal"
-    ]
-    return oracle_id
+    matches = [card for card in fixture_cards() if card.name == name]
+    if len(matches) > 1:  # a joke card can share a real card's name
+        matches = [card for card in matches if card.commander_legality == "legal"]
+    (card,) = matches
+    return card.oracle_id
 
 
 class ReversingReranker:
@@ -86,7 +91,9 @@ def loaded(settings: Settings) -> Settings:
         apply_rules(conn, parse_rules(rules).rules)
         embed_cards(conn, FakeEmbedder())
         embed_rules(conn, FakeEmbedder())
-        hashes = dict(conn.execute("SELECT oracle_id, content_hash FROM cards").fetchall())
+        hashes: dict[UUID, str] = dict(
+            conn.execute("SELECT oracle_id, content_hash FROM cards").fetchall()
+        )
         save_roles(
             conn,
             [
@@ -379,7 +386,7 @@ def test_an_illegal_deck_is_rejected_with_every_reason(conn: psycopg.Connection)
 
     assert result.is_error
     problems = body(result)
-    assert "Bonecrusher Giant" in problems and "903.4" in problems  # outside the colors
+    assert "Bonecrusher Giant" in problems and "903.5c" in problems  # outside the colors
     assert "Mox Jet" in problems and "banned" in problems.lower()
     assert "903.5a" in problems  # 42 cards, not 100
     (proposal,) = session.context.proposals
