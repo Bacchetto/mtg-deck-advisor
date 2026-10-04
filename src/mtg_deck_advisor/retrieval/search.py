@@ -53,6 +53,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.retrieval.embeddings import vector_literal
 from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
+from mtg_deck_advisor.retrieval.rerank import RERANK_DEPTH, Reranker
 from mtg_deck_advisor.retrieval.text import query_text
 
 COLORS = "WUBRG"
@@ -225,10 +226,19 @@ def search_cards(
     *,
     k: int = DEFAULT_K,
     mode: SearchMode = "hybrid",
+    reranker: Reranker[UUID] | None = None,
 ) -> list[CardHit]:
-    """The k best cards for the query, among those the filters allow."""
+    """The k best cards for the query, among those the filters allow.
+
+    With a reranker, the first stage's top RERANK_DEPTH cards are reordered by
+    it, and the top k of that order are returned; each hit keeps its
+    first-stage score, so with a reranker the scores aren't in order.
+    """
     filters = filters or CardFilters()
     conditions, params = card_conditions(filters)
+    final_k = k
+    if reranker is not None:
+        k = max(k, RERANK_DEPTH)
     limit = CANDIDATES if mode == "hybrid" else k
     vector: list[tuple[UUID, float]] = []
     keyword: list[tuple[UUID, float]] = []
@@ -260,6 +270,12 @@ def search_cards(
         ([oracle_id for oracle_id, _ in ranked],),
     ).fetchall()
     cards = {row[0]: row for row in rows}
+    if reranker is not None:
+        scores = dict(ranked)
+        # What the reranker reads: "name | type line | rules text".
+        texts = {key: f"{row[1]} | {row[2]} | {row[4]}" for key, row in cards.items()}
+        order = reranker.rerank(query, [(key, texts[key]) for key, _ in ranked])
+        ranked = [(key, scores[key]) for key in order[:final_k]]
     return [
         CardHit(
             oracle_id=oracle_id,
