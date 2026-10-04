@@ -223,7 +223,8 @@ def test_the_budget_stops_a_run_partway(conn: psycopg.Connection) -> None:
     assert len(provider.calls) == 1
     assert result.cost_usd == pytest.approx(0.07)
     status, turns, cost, _, transcript, _, _ = run_row(conn, result.run_id)
-    assert (status, turns, float(cost), transcript) == ("budget", 1, pytest.approx(0.07), 3)
+    assert (status, turns, transcript) == ("budget", 1, 3)
+    assert float(cost) == pytest.approx(0.07)
 
 
 # --- failures -------------------------------------------------------------------------
