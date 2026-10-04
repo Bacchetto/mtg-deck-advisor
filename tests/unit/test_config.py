@@ -156,3 +156,12 @@ def test_retrieval_model_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     # schema's 1,024 dimensions.
     assert settings.embedding_model == "qwen3-embedding:8b"
     assert settings.embedding_dimensions == 1024
+
+
+def test_the_summary_model_defaults_to_the_one_the_summaries_were_measured_with(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    monkeypatch.delenv("SUMMARY_MODEL", raising=False)
+
+    assert load().summary_model == "qwen3:14b"

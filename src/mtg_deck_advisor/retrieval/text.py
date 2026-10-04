@@ -19,6 +19,8 @@ from typing import Literal
 
 CARD_TEXT_VERSION = "cards-v1"
 RULE_TEXT_VERSION = "rules-v2"
+# Summaries are embedded as written (retrieval.summaries).
+SUMMARY_TEXT_VERSION = "summaries-v1"
 
 COLOR_WORDS = {"W": "white", "U": "blue", "B": "black", "R": "red", "G": "green"}
 SYMBOL_WORDS = {

@@ -8,7 +8,12 @@
   card matching more of them ranks higher: `ts_rank_cd`, normalised by text
   length so long cards don't win by size. It finds exact terms ("ripple"),
   but not paraphrases.
-- **Hybrid:** each arm's top 50, fused by reciprocal rank (`fusion.py`).
+- **Hybrid:** each arm's top 50, fused by reciprocal rank (`fusion.py`), with
+  the keyword arm at half weight for cards (#73: +4 points recall@10 on dev).
+  A search within a pool (`oracle_ids` set) fuses a third arm: each card's
+  one-sentence summary, embedded (`summaries.py`, #74). It helps the
+  deck-building needs pools are searched for, and is left out of catalogue
+  searches, where it made name searches worse.
 
 The defaults follow the retrieval eval (evals/reports/2026-10-02-retrieval.md):
 hybrid for cards, where it rescues exact names and terms that vector search
@@ -55,6 +60,8 @@ TYPE_WORD = re.compile(r"^[A-Za-z'-]+$")
 DEFAULT_K = 10
 # How many results each arm contributes to hybrid search before fusion.
 CANDIDATES = 50
+# The fusion weight of the keyword arm in hybrid card search (#73).
+KEYWORD_WEIGHT = 0.5
 
 type SearchMode = Literal["vector", "keyword", "hybrid"]
 
@@ -164,28 +171,29 @@ def _combine[K: Hashable](
 
 def _card_vector_ranking(
     conn: psycopg.Connection,
-    embedder: Embedder,
-    query: str,
+    table: str,
+    vector: str,
+    model: str,
     conditions: sql.Composable,
     params: list[Any],
     limit: int,
 ) -> list[tuple[UUID, float]]:
+    """Nearest cards by one kind of stored vector: the card's (card_embeddings) or its summary's."""
     statement = sql.SQL(
         """
         WITH nearest AS MATERIALIZED (
             SELECT e.oracle_id, e.embedding <=> %s::vector AS distance
-            FROM card_embeddings e JOIN cards c USING (oracle_id)
+            FROM {table} e JOIN cards c USING (oracle_id)
             WHERE e.model = %s AND {conditions}
             ORDER BY distance
             LIMIT %s
         )
         SELECT oracle_id, 1 - distance FROM nearest ORDER BY distance
         """
-    ).format(conditions=conditions)
-    vector = _embed_query(embedder, "cards", query)
+    ).format(table=sql.Identifier(table), conditions=conditions)
     with conn.transaction():
         conn.execute("SET LOCAL hnsw.iterative_scan = relaxed_order")
-        rows = conn.execute(statement, [vector, embedder.model, *params, limit]).fetchall()
+        rows = conn.execute(statement, [vector, model, *params, limit]).fetchall()
     return [(row[0], row[1]) for row in rows]
 
 
@@ -219,15 +227,32 @@ def search_cards(
     mode: SearchMode = "hybrid",
 ) -> list[CardHit]:
     """The k best cards for the query, among those the filters allow."""
-    conditions, params = card_conditions(filters or CardFilters())
+    filters = filters or CardFilters()
+    conditions, params = card_conditions(filters)
     limit = CANDIDATES if mode == "hybrid" else k
     vector: list[tuple[UUID, float]] = []
     keyword: list[tuple[UUID, float]] = []
+    query_vector = _embed_query(embedder, "cards", query) if mode != "keyword" else ""
     if mode != "keyword":
-        vector = _card_vector_ranking(conn, embedder, query, conditions, params, limit)
+        vector = _card_vector_ranking(
+            conn, "card_embeddings", query_vector, embedder.model, conditions, params, limit
+        )
     if mode != "vector":
         keyword = _card_keyword_ranking(conn, query, conditions, params, limit)
-    ranked = _combine(vector, keyword, mode, k)
+
+    ranked: list[tuple[UUID, float]]
+    if mode == "hybrid":
+        rankings = [[key for key, _ in vector], [key for key, _ in keyword]]
+        weights = [1.0, KEYWORD_WEIGHT]
+        if filters.oracle_ids is not None:
+            summary = _card_vector_ranking(
+                conn, "summary_embeddings", query_vector, embedder.model, conditions, params, limit
+            )
+            rankings.append([key for key, _ in summary])
+            weights.append(1.0)
+        ranked = reciprocal_rank_fusion(rankings, weights=weights)[:k]
+    else:
+        ranked = list(vector if mode == "vector" else keyword)[:k]
 
     rows = conn.execute(
         "SELECT oracle_id, name, type_line, mana_cost, oracle_text FROM cards "

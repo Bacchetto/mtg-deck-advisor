@@ -94,7 +94,7 @@ about 24 minutes on the development machine (RX 9070 XT), and later runs only em
 text has changed:
 
 ```bash
-docker compose run --rm embed all       # or `cards`, or `rules`
+docker compose run --rm embed all       # or `cards`, `rules`, or `summaries`
 ```
 
 ```text
@@ -104,6 +104,13 @@ rules: 3,166 added, 0 updated, 0 unchanged; 121.9 s
 cards: 0 added, 0 updated, 32,116 unchanged; 0.9 s        # second run
 rules: 0 added, 0 updated, 3,166 unchanged; 0.1 s
 ```
+
+`all` also covers **card summaries**. These are one plain-English sentence per card ("Destroys all
+creatures... used for board wipe"), written by the local chat model (`SUMMARY_MODEL`, `qwen3:14b`)
+and embedded for searches within a pool. On an empty database they take about 6.6 hours of GPU time
+for the whole catalogue. After that, only new or changed cards are summarised, at about 0.75 s each.
+If the retrieval experiments' summaries are already in the database, copy them instead:
+`python scripts/import_experiment_summaries.py`.
 
 `docker compose down` stops everything. `docker compose down -v` also deletes the data.
 The application image is 273 MB.
@@ -125,7 +132,7 @@ Ollama runs natively (not in Docker), so it can use the GPU
 
 ```bash
 ollama pull qwen3-embedding:8b    # embeddings (4.7 GB), truncated to 1,024 dimensions
-ollama pull qwen3:14b             # local chat model (9.3 GB)
+ollama pull qwen3:14b             # local chat model and card summaries (9.3 GB)
 ```
 
 The app reaches Ollama at `http://127.0.0.1:11434`; containers use

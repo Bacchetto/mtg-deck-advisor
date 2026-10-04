@@ -47,3 +47,16 @@ def test_nothing_to_fuse_gives_nothing() -> None:
 def test_k_must_be_positive() -> None:
     with pytest.raises(ValueError, match="k"):
         reciprocal_rank_fusion([["a"]], k=0)
+
+
+def test_weights_scale_each_rankings_contribution() -> None:
+    fused = reciprocal_rank_fusion([["a", "b"], ["c"]], weights=[1.0, 0.5])
+
+    # c is first in its list, but at half weight it scores below b's second place.
+    assert [item for item, _ in fused] == ["a", "b", "c"]
+    assert dict(fused)["c"] == pytest.approx(0.5 / 61)
+
+
+def test_there_is_one_weight_per_ranking() -> None:
+    with pytest.raises(ValueError, match="weight"):
+        reciprocal_rank_fusion([["a"], ["b"]], weights=[1.0])
