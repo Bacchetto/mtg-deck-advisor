@@ -183,18 +183,24 @@ def pool_ids(conn: psycopg.Connection) -> list[UUID]:
 
 def test_a_pool_search_finds_a_card_through_its_summary(loaded: Settings) -> None:
     with connect(loaded) as conn:
-        summarise_cards(conn, client(SummaryModel()))
+        # Sol Ring is the only card with a summary, so only it gets a score from
+        # the summary arm on top of its vector rank: it must come first.
         conn.execute(
-            "UPDATE card_summaries SET summary = 'xyzzy plugh, the rarest of effects.' "
-            "WHERE oracle_id = (SELECT oracle_id FROM cards WHERE name = 'Sol Ring')"
+            "INSERT INTO card_summaries (oracle_id, summary, content_hash, prompt_version, model) "
+            "SELECT oracle_id, 'xyzzy plugh, the rarest of effects.', content_hash, %s, 'fake' "
+            "FROM cards WHERE name = 'Sol Ring'",
+            (SUMMARY_PROMPT_VERSION,),
         )
         conn.commit()
         embed_summaries(conn, FakeEmbedder())
         pool = CardFilters(oracle_ids=pool_ids(conn))
         hits = search_cards(conn, FakeEmbedder(), "xyzzy plugh", pool, k=1)
+        catalogue = search_cards(conn, FakeEmbedder(), "xyzzy plugh", k=10)
 
-    # Only the summary arm knows these words, and only for Sol Ring.
     assert [hit.name for hit in hits] == ["Sol Ring"]
+    # A catalogue search doesn't use summaries: Sol Ring scores from one arm only.
+    sol_ring = next(hit for hit in catalogue if hit.name == "Sol Ring")
+    assert sol_ring.score < hits[0].score
 
 
 def test_a_pool_search_still_works_with_no_summaries(loaded: Settings) -> None:
