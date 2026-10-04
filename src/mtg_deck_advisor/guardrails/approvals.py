@@ -26,7 +26,7 @@ import psycopg
 
 from mtg_deck_advisor.deck.facts import load_card_facts
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import load_deck, load_pool, save_version
+from mtg_deck_advisor.deck.store import decklist, load_deck, load_pool, save_version
 from mtg_deck_advisor.guardrails.audit import record_audit
 from mtg_deck_advisor.guardrails.commander import validate
 from mtg_deck_advisor.observability.tracing import current_trace_id
@@ -172,18 +172,10 @@ def export_deck(conn: psycopg.Connection, deck_id: UUID, *, version: int | None 
                 f"version {deck.version} of deck {deck_id} has no export approval from the user"
             ),
         )
-    state = deck.state
-    names: dict[UUID, str] = dict(
-        conn.execute(
-            "SELECT oracle_id, name FROM cards WHERE oracle_id = ANY(%s)",
-            ([state.commander, *state.cards],),
-        ).fetchall()
-    )
-    others = sorted(state.cards.items(), key=lambda item: names[item[0]])
-    lines = [f"1 {names[state.commander]}"] + [f"{count} {names[card]}" for card, count in others]
+    text = decklist(conn, deck.state)
     with conn.transaction():
         record_audit(conn, "system", "export", subject, {"version": deck.version})
-    return "\n".join(lines)
+    return text
 
 
 def _decide(
