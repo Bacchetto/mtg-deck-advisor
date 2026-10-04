@@ -2,6 +2,7 @@
 
 import copy
 import json
+import random
 import uuid
 from pathlib import Path
 from typing import Any
@@ -132,6 +133,13 @@ def test_a_heavily_filtered_search_still_returns_k_results(loaded: Settings) -> 
 
     With a filter matching 2% of cards, that would leave about one result.
     The iterative scan keeps going until it has k.
+
+    Each synthetic card gets its own random words. Texts that differed by one
+    word made near-duplicate vectors, and HNSW builds a poorly connected graph
+    over near-duplicates: rebuilt 40 times, the index found only 3 to 7 of the
+    32 matching cards, so the test passed or failed by the luck of the build.
+    With distinct words it found 10 on every rebuild, and 4 without the
+    iterative scan, so the test still catches its removal.
     """
     sol_ring = next(raw for raw in raw_cards() if raw["name"] == "Sol Ring")
     synthetic = []
@@ -139,7 +147,9 @@ def test_a_heavily_filtered_search_still_returns_k_results(loaded: Settings) -> 
         raw = copy.deepcopy(sol_ring)
         raw["oracle_id"] = str(uuid.UUID(int=i + 1))
         raw["name"] = f"Test Relic {i}"
-        raw["oracle_text"] = f"{{T}}: Add {{C}}. Relic number {i} glows."
+        words = random.Random(i)  # noqa: S311 (seeded test data, not security)
+        text = " ".join(f"w{words.randrange(5000)}" for _ in range(6))
+        raw["oracle_text"] = f"{{T}}: Add {{C}}. {text}"
         raw["color_identity"] = ["U"] if i % 50 == 0 else ["R"]
         synthetic.append(raw)
     with connect(loaded) as conn:
