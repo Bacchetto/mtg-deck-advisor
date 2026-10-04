@@ -21,7 +21,14 @@ import anthropic
 import httpx2
 
 from mtg_deck_advisor.llm.errors import ProviderAuthError, SpendLimitError
-from mtg_deck_advisor.llm.types import ProviderRequest, ProviderResponse, Usage
+from mtg_deck_advisor.llm.types import (
+    Message,
+    ProviderRequest,
+    ProviderResponse,
+    ToolCall,
+    ToolSpec,
+    Usage,
+)
 
 # Models that accept output_config.effort. Haiku 4.5 rejects it.
 EFFORT_MODELS = frozenset(
@@ -116,8 +123,12 @@ class AnthropicProvider:
             "system": [
                 {"type": "text", "text": request.system, "cache_control": {"type": "ephemeral"}}
             ],
-            "messages": [message.model_dump() for message in request.messages],
+            "messages": [_message_param(message) for message in request.messages],
         }
+        if request.tools:
+            # The model decides whether to call a tool ("auto", the default):
+            # forced tool use returns a 400 on Sonnet and Opus 5.5.
+            params["tools"] = [_tool_param(tool) for tool in request.tools]
         output_config: dict[str, Any] = {}
         if request.output_schema is not None:
             output_config["format"] = {
@@ -151,6 +162,14 @@ class AnthropicProvider:
             text=text,
             stop_reason=message.stop_reason or "",
             model=message.model,
+            tool_calls=tuple(
+                ToolCall(id=block.id, name=block.name, arguments=dict(block.input))
+                for block in message.content
+                if block.type == "tool_use"
+            ),
+            # Every block as the API sent it, to send back unchanged: thinking
+            # blocks on a tool-use turn must be returned as they were (ADR 0012).
+            provider_content=tuple(block.to_dict(mode="json") for block in message.content),
             usage=Usage(
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,
@@ -158,6 +177,42 @@ class AnthropicProvider:
                 cache_creation_input_tokens=usage.cache_creation_input_tokens or 0,
             ),
         )
+
+
+def _tool_param(tool: ToolSpec) -> dict[str, Any]:
+    """A tool definition: strict, so the model's arguments always match the schema."""
+    return {
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": strict_schema(tool.input_schema),
+        "strict": True,
+    }
+
+
+def _message_param(message: Message) -> dict[str, Any]:
+    """One turn in the Messages API's shape."""
+    if message.role == "assistant" and message.provider_content is not None:
+        # A turn this provider produced goes back exactly as it came.
+        return {"role": "assistant", "content": list(message.provider_content)}
+    if not message.tool_calls and not message.tool_results:
+        return {"role": message.role, "content": message.content}
+    blocks: list[dict[str, Any]] = []
+    for result in message.tool_results:
+        block: dict[str, Any] = {
+            "type": "tool_result",
+            "tool_use_id": result.tool_call_id,
+            "content": result.content,
+        }
+        if result.is_error:
+            block["is_error"] = True
+        blocks.append(block)
+    if message.content:
+        blocks.append({"type": "text", "text": message.content})
+    blocks.extend(
+        {"type": "tool_use", "id": call.id, "name": call.name, "input": call.arguments}
+        for call in message.tool_calls
+    )
+    return {"role": message.role, "content": blocks}
 
 
 def _is_spend_limit(exc: anthropic.APIStatusError) -> bool:

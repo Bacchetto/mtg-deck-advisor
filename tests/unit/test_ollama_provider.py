@@ -8,7 +8,7 @@ import pytest
 
 from mtg_deck_advisor.llm.errors import ModelCallError
 from mtg_deck_advisor.llm.ollama import OllamaEmbedder, OllamaProvider
-from mtg_deck_advisor.llm.types import Message, ProviderRequest
+from mtg_deck_advisor.llm.types import Message, ProviderRequest, ToolSpec
 
 BASE_URL = "http://ollama.test:11434"
 SCHEMA: dict[str, Any] = {
@@ -146,6 +146,15 @@ def test_a_model_that_is_not_pulled_gives_an_actionable_error() -> None:
 
     with pytest.raises(ModelCallError, match="ollama pull qwen3:8b"):
         provider_for(server).complete(request(), "qwen3:8b")
+
+
+def test_tool_calling_is_refused_rather_than_silently_dropped() -> None:
+    server = Server(httpx2.Response(200, json=chat_payload()))
+    tool = ToolSpec(name="search_pool", description="d", input_schema={"type": "object"})
+
+    with pytest.raises(ModelCallError, match="tool calling"):
+        provider_for(server).complete(request(tools=(tool,)), "qwen3:8b")
+    assert server.requests == []
 
 
 # --- embeddings ------------------------------------------------------------

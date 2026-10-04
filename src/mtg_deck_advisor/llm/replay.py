@@ -15,10 +15,14 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from mtg_deck_advisor.llm.errors import ModelCallError
-from mtg_deck_advisor.llm.types import Provider, ProviderRequest, ProviderResponse
+from mtg_deck_advisor.llm.types import (
+    Provider,
+    ProviderRequest,
+    ProviderResponse,
+    request_dump,
+)
 
 
 class ReplayMissError(ModelCallError):
@@ -31,7 +35,8 @@ def request_key(request: ProviderRequest, model: str) -> str:
     The purpose label is left out: it describes the call, it doesn't shape the
     answer, and renaming it must not invalidate the recordings made under it.
     """
-    content: dict[str, Any] = request.model_dump(mode="json", exclude={"purpose"})
+    # Empty tool fields are left out, so existing recordings still replay.
+    content = request_dump(request, exclude={"purpose"})
     content["model"] = model
     canonical = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

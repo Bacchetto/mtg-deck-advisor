@@ -114,11 +114,14 @@ class OllamaProvider(_OllamaHttp):
         return False
 
     def complete(self, request: ProviderRequest, model: str) -> ProviderResponse:
+        if request.tools or any(m.tool_calls or m.tool_results for m in request.messages):
+            # The agent runs on Claude (ADR 0012); local models only tag and rerank.
+            raise ModelCallError("tool calling isn't supported with Ollama yet")
         body: dict[str, Any] = {
             "model": model,
             "messages": [
                 {"role": "system", "content": request.system},
-                *(message.model_dump() for message in request.messages),
+                *({"role": m.role, "content": m.content} for m in request.messages),
             ],
             "stream": False,
             "think": request.effort in THINKING_EFFORTS,
