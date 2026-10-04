@@ -155,7 +155,8 @@ def main() -> None:
             elif args.command == "rules":
                 for question in args.questions:
                     started = time.perf_counter()
-                    answer = answer_rules_question(services(conn, settings, args.cap), question)
+                    with traced():  # one trace per question, so each report counts its own
+                        answer = answer_rules_question(services(conn, settings, args.cap), question)
                     print(f"\nQ: {question}")
                     report(conn, answer.run, time.perf_counter() - started)
                     if answer.found:
