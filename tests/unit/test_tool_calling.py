@@ -239,7 +239,9 @@ def test_the_client_returns_tool_calls_and_records_the_call() -> None:
     call = ToolCall(id="t1", name="search_pool", arguments={"query": "ramp"})
     recorder = MemoryRecorder()
     client = ModelClient(
-        FakeProvider(tool_call_reply(call, text="Looking.")), "m", recorder=recorder
+        FakeProvider(tool_call_reply(call, text="Looking.")),
+        "claude-sonnet-5-5",
+        recorder=recorder,
     )
 
     response = client.generate(
