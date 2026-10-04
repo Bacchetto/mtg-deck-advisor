@@ -277,3 +277,19 @@ def test_a_tool_turn_survives_record_and_replay(tmp_path: Path) -> None:
     replayed = ReplayProvider(tmp_path).complete(req, "claude-sonnet-5-5")
 
     assert replayed.tool_calls == recorded.tool_calls == (call,)
+
+
+def test_a_tool_conversation_is_cached_as_it_grows() -> None:
+    # Each agent turn resends the whole conversation; automatic caching moves
+    # the cache breakpoint to its end, so earlier turns are read from cache.
+    with_tools = Server(payload([{"type": "text", "text": "Done."}], "end_turn"))
+    plain = Server(payload([{"type": "text", "text": "Hi."}], "end_turn"))
+
+    provider(with_tools).complete(request(), "claude-sonnet-5-5")
+    provider(plain).complete(
+        ProviderRequest(purpose="x", system="s", messages=(Message(role="user", content="q"),)),
+        "claude-sonnet-5-5",
+    )
+
+    assert with_tools.requests[0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in plain.requests[0]  # one-off calls would only pay to write
