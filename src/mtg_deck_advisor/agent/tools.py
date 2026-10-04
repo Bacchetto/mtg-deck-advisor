@@ -1,4 +1,4 @@
-"""The agent's tools (AGT-1, AGT-4, GRD-1, GRD-3, OBS-1).
+"""The agent's tools (AGT-1, AGT-4, GRD-1, GRD-3, OBS-1). See ADR 0013.
 
 Each tool has a Pydantic argument model: its JSON schema is what the model
 sees, and the same model validates what the model sends back. `execute` runs

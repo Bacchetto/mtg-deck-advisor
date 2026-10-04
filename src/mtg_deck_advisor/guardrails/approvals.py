@@ -1,4 +1,4 @@
-"""Approving, rejecting, applying and exporting: code decides, the user approves (GRD-2, GRD-5).
+"""Approving, rejecting, applying and exporting: the user approves (GRD-2, GRD-5). ADR 0013.
 
 The agent only ever creates proposals. Everything with an effect lives here,
 and none of it is a tool:

@@ -1,4 +1,4 @@
-"""The bounded agent loop (AGT-1, AGT-2, AGT-4).
+"""The bounded agent loop (AGT-1, AGT-2, AGT-4). See ADR 0013.
 
 Native tool calling through ModelClient: send the conversation and the task's
 tools; run every tool call the model makes and send all the results back in
