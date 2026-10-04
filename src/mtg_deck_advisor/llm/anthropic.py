@@ -129,6 +129,11 @@ class AnthropicProvider:
             # The model decides whether to call a tool ("auto", the default):
             # forced tool use returns a 400 on Sonnet and Opus 5.5.
             params["tools"] = [_tool_param(tool) for tool in request.tools]
+            # A tool conversation resends everything each turn. Automatic caching
+            # keeps the cache breakpoint at the end as it grows, so earlier turns
+            # are read at a tenth of the input price. One-off calls go without:
+            # they would pay the cache-write premium for nothing.
+            params["cache_control"] = {"type": "ephemeral"}
         output_config: dict[str, Any] = {}
         if request.output_schema is not None:
             output_config["format"] = {

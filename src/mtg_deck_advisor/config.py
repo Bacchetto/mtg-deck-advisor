@@ -9,7 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # owner-reviewed gold sample (evals/reports/2026-10-02-role-tagging-comparison.md):
     # best F1 (0.93) and exact match (0.90), about $1.19 per 1,000 newly seen cards.
     role_tagging_model: str = "claude-opus-5-5"
+
+    # The deck-building agent (Milestone 5). One run is one draft, refinement or
+    # rules question: at most AGENT_MAX_TURNS model calls, and it stops before a
+    # call that could take its spending past AGENT_COST_CAP_USD (AGT-2).
+    agent_model: str = "claude-sonnet-5-5"
+    agent_max_turns: int = Field(default=30, ge=1)
+    agent_cost_cap_usd: float = Field(default=1.0, gt=0)
 
     # Recorded model responses (llm.replay). MODEL_PROVIDER=replay serves them
     # with no network or key; RECORD_RESPONSES=true saves every response a real

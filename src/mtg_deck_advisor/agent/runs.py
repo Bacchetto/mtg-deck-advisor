@@ -16,6 +16,7 @@ from psycopg.types.json import Jsonb
 from mtg_deck_advisor.observability.tracing import current_trace_id
 
 Task = Literal["draft", "refine", "rules"]
+RunStatus = Literal["running", "completed", "turn_limit", "budget", "error"]
 ToolOutcome = Literal["ok", "error", "rejected"]
 
 
@@ -51,6 +52,29 @@ def start_run(
         raise RuntimeError("agent run was not recorded")
     run_id: UUID = row[0]
     return run_id
+
+
+def finish_run(
+    conn: psycopg.Connection,
+    run_id: UUID,
+    *,
+    status: RunStatus,
+    turns: int,
+    cost_usd: float,
+    final_text: str | None,
+    transcript: list[dict[str, Any]],
+    error: str | None = None,
+) -> None:
+    """Record how a run ended, with its transcript: the partial results if it was cut short."""
+    conn.execute(
+        """
+        UPDATE agent_runs
+        SET status = %s, turns = %s, cost_usd = %s, final_text = %s, transcript = %s,
+            error = %s, finished_at = now()
+        WHERE id = %s
+        """,
+        (status, turns, cost_usd, final_text, Jsonb(transcript), error, run_id),
+    )
 
 
 def record_tool_call(
