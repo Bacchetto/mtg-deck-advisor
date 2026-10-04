@@ -22,6 +22,7 @@ with its arguments, result, outcome and latency (OBS-1).
 """
 
 import difflib
+import re
 import time
 from collections import Counter
 from collections.abc import Callable, Iterable
@@ -49,6 +50,9 @@ from mtg_deck_advisor.retrieval.rerank import Reranker
 from mtg_deck_advisor.retrieval.search import CardFilters, search_cards, search_rules
 
 log = structlog.get_logger(__name__)
+
+# A Comprehensive Rules number: "903", "903.5" or "903.5c".
+RULE_NUMBER = re.compile(r"\d{3}(\.\d+[a-z]*)?")
 
 TASK_WORDS: dict[Task, str] = {
     "draft": "drafting a deck",
@@ -325,6 +329,8 @@ def _propose_deck(ctx: ToolContext, args: ProposeDeckArgs) -> Output:
     counts, unresolved = _resolve(ctx, args.cards)
     problems += unresolved
 
+    problems += _citation_problems(ctx, args.citations)
+
     deck = DeckState.new(commander.oracle_id, counts) if commander else None
     if deck is not None:
         ctx.draft = deck
@@ -341,7 +347,8 @@ def _propose_deck(ctx: ToolContext, args: ProposeDeckArgs) -> Output:
             "request": args.model_dump(mode="json"),
             "deck": deck.to_dict() if deck else None,
         },
-        base_version=None,
+        # Applying refuses if the deck has moved on since (None: no version yet).
+        base_version=_saved_version(ctx, deck_id),
         rationale=args.rationale,
         citations=args.citations,
         problems=problems,
@@ -359,7 +366,7 @@ def _propose_changes(ctx: ToolContext, args: ProposeChangesArgs) -> Output:
 
     adds, problems = _resolve(ctx, args.add)
     removes, unresolved = _resolve(ctx, args.remove)
-    problems += unresolved
+    problems += unresolved + _citation_problems(ctx, args.citations)
     deck = saved.state
     names = {card.oracle_id: card.name for card in _pool_cards(ctx).values()}
     for card, count in removes.items():
@@ -644,6 +651,37 @@ def _resolve(
         else:
             counts[card.oracle_id] = counts.get(card.oracle_id, 0) + entry.count
     return counts, problems
+
+
+def _saved_version(ctx: ToolContext, deck_id: UUID) -> int | None:
+    saved = load_deck(ctx.conn, deck_id)
+    return saved.version if saved else None
+
+
+def _citation_problems(ctx: ToolContext, citations: Iterable[str]) -> list[dict[str, Any]]:
+    """A problem for each citation this run's tool results never showed (RAG-3).
+
+    A citation is a rule number ("903.5c") or a card name. Citing only what a
+    tool returned means a rationale can't lean on a rule or card the model
+    recalled, or invented, rather than looked up.
+    """
+    problems = []
+    for citation in citations:
+        cited = citation.strip().rstrip(".")
+        if RULE_NUMBER.fullmatch(cited):
+            shown = cited in ctx.seen_rules
+        else:
+            card = _find(ctx, cited)
+            shown = card is not None and card.oracle_id in ctx.seen_cards
+        if not shown:
+            problems.append(
+                {
+                    "code": "unsupported_citation",
+                    "message": f"Citation '{citation}' isn't from this run's tool results: "
+                    "cite only rule numbers and cards a tool showed you.",
+                }
+            )
+    return problems
 
 
 def _problem_line(problem: dict[str, Any]) -> str:
