@@ -7,6 +7,7 @@ It wraps whichever provider is configured and adds what every call needs:
 - a record of every provider call: tokens, cost, latency, outcome, trace ID (OBS-1)
 """
 
+import json
 import threading
 import time
 from collections.abc import Callable
@@ -24,7 +25,15 @@ from mtg_deck_advisor.llm.errors import ModelError as ModelError
 from mtg_deck_advisor.llm.errors import RefusalError as RefusalError
 from mtg_deck_advisor.llm.pricing import PRICES, cost_usd, worst_case_cost_usd
 from mtg_deck_advisor.llm.recording import CallRecord, CallRecorder, Outcome
-from mtg_deck_advisor.llm.types import Message, ModelRequest, Provider, ProviderRequest, Usage
+from mtg_deck_advisor.llm.types import (
+    Message,
+    ModelRequest,
+    Provider,
+    ProviderRequest,
+    ToolCall,
+    Usage,
+    request_dump,
+)
 from mtg_deck_advisor.observability.tracing import current_trace_id
 
 log = structlog.get_logger(__name__)
@@ -44,6 +53,17 @@ class ModelResponse(BaseModel):
     latency_ms: float
     provider: str
     model: str
+    tool_calls: tuple[ToolCall, ...] = ()
+    provider_content: tuple[dict[str, Any], ...] | None = None
+
+    def as_message(self) -> Message:
+        """This response as the assistant turn to append to the conversation."""
+        return Message(
+            role="assistant",
+            content=self.text,
+            tool_calls=self.tool_calls,
+            provider_content=self.provider_content,
+        )
 
 
 @dataclass(frozen=True)
@@ -158,6 +178,8 @@ class ModelClient:
             latency_ms=latency_ms,
             provider=self._provider.name,
             model=reply.model,
+            tool_calls=reply.tool_calls,
+            provider_content=reply.provider_content,
         )
         if reply.stop_reason == "refusal":
             self._record(request, attempt, "refusal", response)
@@ -177,7 +199,8 @@ class ModelClient:
         return cost_usd(self._model, usage)
 
     def _worst_case_usd(self, request: ProviderRequest) -> float:
-        chars = len(request.system) + sum(len(m.content) for m in request.messages)
+        chars = len(request.system) + sum(_message_chars(m) for m in request.messages)
+        chars += sum(len(tool.description) + len(str(tool.input_schema)) for tool in request.tools)
         if request.output_schema is not None:
             chars += len(str(request.output_schema))
         return worst_case_cost_usd(self._model, chars // CHARS_PER_TOKEN, request.max_tokens)
@@ -216,8 +239,8 @@ class ModelClient:
             model=response.model if response else self._model,
             attempt=attempt,
             outcome=outcome,
-            request=request.model_dump(mode="json"),
-            response_text=response.text if response else None,
+            request=request_dump(request),
+            response_text=_response_text(response) if response else None,
             stop_reason=response.stop_reason if response else None,
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
@@ -240,6 +263,28 @@ class ModelClient:
             latency_ms=round(record.latency_ms, 1) if record.latency_ms is not None else None,
         )
         self._recorder.record(record)
+
+
+def _message_chars(message: Message) -> int:
+    """About how much a turn adds to the prompt, for the worst-case cost estimate."""
+    chars = len(message.content)
+    chars += sum(len(json.dumps(call.arguments)) for call in message.tool_calls)
+    chars += sum(len(result.content) for result in message.tool_results)
+    if message.provider_content is not None:
+        chars += len(json.dumps(message.provider_content))
+    return chars
+
+
+def _response_text(response: ModelResponse) -> str:
+    """What's recorded for a response: its text, or, with tool calls, both as JSON."""
+    if not response.tool_calls:
+        return response.text
+    return json.dumps(
+        {
+            "text": response.text,
+            "tool_calls": [call.model_dump(mode="json") for call in response.tool_calls],
+        }
+    )
 
 
 def _with_correction(

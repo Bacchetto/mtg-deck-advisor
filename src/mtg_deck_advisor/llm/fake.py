@@ -5,7 +5,7 @@ import math
 import re
 from collections.abc import Sequence
 
-from mtg_deck_advisor.llm.types import ProviderRequest, ProviderResponse
+from mtg_deck_advisor.llm.types import ProviderRequest, ProviderResponse, ToolCall, Usage
 
 
 class FakeEmbedder:
@@ -39,6 +39,17 @@ class FakeEmbedder:
         if norm == 0:
             vector[0], norm = 1.0, 1.0
         return [x / norm for x in vector]
+
+
+def tool_call_reply(*calls: ToolCall, text: str = "", model: str = "fake") -> ProviderResponse:
+    """A scripted assistant turn that calls tools, for FakeProvider."""
+    return ProviderResponse(
+        text=text,
+        stop_reason="tool_use",
+        usage=Usage(input_tokens=100, output_tokens=20),
+        model=model,
+        tool_calls=calls,
+    )
 
 
 class FakeProvider:
