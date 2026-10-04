@@ -143,3 +143,16 @@ def test_role_tagging_uses_the_model_chosen_by_the_comparison(
     monkeypatch.delenv("ROLE_TAGGING_MODEL", raising=False)
 
     assert load().role_tagging_model == "claude-opus-5-5"
+
+
+def test_retrieval_model_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", DATABASE_URL)
+    for name in ("EMBEDDING_MODEL", "EMBEDDING_DIMENSIONS"):
+        monkeypatch.delenv(name, raising=False)
+
+    settings = load()
+
+    # Chosen on the retrieval dev set (#73): the 8b model, truncated to the
+    # schema's 1,024 dimensions.
+    assert settings.embedding_model == "qwen3-embedding:8b"
+    assert settings.embedding_dimensions == 1024

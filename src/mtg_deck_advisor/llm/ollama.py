@@ -6,9 +6,16 @@ port 11434. Local calls cost nothing, so they aren't priced or budgeted.
 Unlike a cloud API, a local server that isn't running, or a model that isn't
 pulled, won't recover in a few seconds, so there are no retries: failures are
 reported at once, with what to do about them.
+
+The one exception is Windows running out of short-lived network ports during
+long runs ("lacked sufficient buffer space"): Ollama makes an internal HTTP
+call per text, and the ports free up within a minute or two. That's waited
+out and retried a few times (#76).
 """
 
-from collections.abc import Sequence
+import math
+import time
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol
 
 import httpx2
@@ -34,16 +41,42 @@ class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[list[float]]: ...
 
 
+# Windows' error when it has run out of short-lived network ports.
+PORTS_EXHAUSTED = "lacked sufficient buffer space"
+PORT_WAIT_SECONDS = 60.0
+PORT_ATTEMPTS = 5
+
+
 class _OllamaHttp:
     """Shared HTTP handling: one client, and Ollama failures turned into clear errors."""
 
     def __init__(
-        self, base_url: str, timeout_seconds: float, http_client: httpx2.Client | None
+        self,
+        base_url: str,
+        timeout_seconds: float,
+        http_client: httpx2.Client | None,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._http = http_client or httpx2.Client(timeout=timeout_seconds)
+        self._sleep = sleep
 
     def _post(self, path: str, body: dict[str, Any], model: str) -> dict[str, Any]:
+        for attempt in range(1, PORT_ATTEMPTS + 1):
+            try:
+                return self._post_once(path, body, model)
+            except ModelCallError as exc:
+                if PORTS_EXHAUSTED not in str(exc):
+                    raise
+                if attempt == PORT_ATTEMPTS:
+                    raise ModelCallError(
+                        f"Windows ran out of network ports for Ollama, and it persisted over "
+                        f"{PORT_ATTEMPTS} attempts {PORT_WAIT_SECONDS:.0f} s apart: {exc}"
+                    ) from exc
+                self._sleep(PORT_WAIT_SECONDS)
+        raise AssertionError("unreachable")  # pragma: no cover
+
+    def _post_once(self, path: str, body: dict[str, Any], model: str) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         try:
             response = self._http.post(url, json=body)
@@ -109,7 +142,13 @@ class OllamaProvider(_OllamaHttp):
 
 
 class OllamaEmbedder(_OllamaHttp):
-    """Embeddings from a local Ollama model. Vectors come back normalised (length 1)."""
+    """Embeddings from a local Ollama model, normalised (length 1).
+
+    With `dimensions`, each vector is cut to its first `dimensions` values and
+    renormalised. Qwen3 embedding models are Matryoshka-trained, so the leading
+    values form a valid smaller embedding: the 8b model's 4,096 become the
+    schema's 1,024, which pgvector's HNSW index can hold (its limit is 2,000).
+    """
 
     def __init__(
         self,
@@ -117,11 +156,14 @@ class OllamaEmbedder(_OllamaHttp):
         base_url: str,
         model: str,
         timeout_seconds: float,
+        dimensions: int | None = None,
         batch_size: int = 64,
         http_client: httpx2.Client | None = None,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        super().__init__(base_url, timeout_seconds, http_client)
+        super().__init__(base_url, timeout_seconds, http_client, sleep)
         self._model = model
+        self._dimensions = dimensions
         self._batch_size = batch_size
 
     @property
@@ -138,5 +180,17 @@ class OllamaEmbedder(_OllamaHttp):
                 raise ModelCallError(
                     f"Ollama returned {len(embeddings)} embeddings for {len(batch)} texts"
                 )
-            vectors.extend(embeddings)
+            vectors.extend(self._truncate(vector) for vector in embeddings)
         return vectors
+
+    def _truncate(self, vector: list[float]) -> list[float]:
+        if self._dimensions is None:
+            return vector
+        if len(vector) < self._dimensions:
+            raise ModelCallError(
+                f"{self._model} returned {len(vector)} dimensions; {self._dimensions} were "
+                "configured (EMBEDDING_DIMENSIONS)"
+            )
+        cut = vector[: self._dimensions]
+        norm = math.sqrt(sum(x * x for x in cut))
+        return [x / norm for x in cut]

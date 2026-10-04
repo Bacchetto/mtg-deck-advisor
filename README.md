@@ -90,7 +90,7 @@ rules: 0 added, 0 updated, 3166 unchanged, 0 removed
 
 Then embed the cards and rules for semantic search. This uses the local embedding model through Ollama
 (see [Local models with Ollama](#local-models-with-ollama)), so it's free. The first run takes
-about 8 minutes on the development machine (RX 9070 XT), and later runs only embed cards and rules whose
+about 24 minutes on the development machine (RX 9070 XT), and later runs only embed cards and rules whose
 text has changed:
 
 ```bash
@@ -98,8 +98,8 @@ docker compose run --rm embed all       # or `cards`, or `rules`
 ```
 
 ```text
-cards: 32,116 added, 0 updated, 0 unchanged; 449.6 s     # first run
-rules: 3,166 added, 0 updated, 0 unchanged; 42.9 s
+cards: 32,116 added, 0 updated, 0 unchanged; 1327.6 s    # first run
+rules: 3,166 added, 0 updated, 0 unchanged; 121.9 s
 
 cards: 0 added, 0 updated, 32,116 unchanged; 0.9 s        # second run
 rules: 0 added, 0 updated, 3,166 unchanged; 0.1 s
@@ -124,8 +124,8 @@ Ollama runs natively (not in Docker), so it can use the GPU
 [Ollama](https://ollama.com), then pull the models this project uses:
 
 ```bash
-ollama pull qwen3-embedding:0.6b   # embeddings (0.6 GB)
-ollama pull qwen3:14b              # local chat model (9.3 GB)
+ollama pull qwen3-embedding:8b    # embeddings (4.7 GB), truncated to 1,024 dimensions
+ollama pull qwen3:14b             # local chat model (9.3 GB)
 ```
 
 The app reaches Ollama at `http://127.0.0.1:11434`; containers use

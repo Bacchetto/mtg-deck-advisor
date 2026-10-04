@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from mtg_deck_advisor.config import get_settings
 from mtg_deck_advisor.db.connection import connect
 from mtg_deck_advisor.llm.errors import ModelError
-from mtg_deck_advisor.llm.ollama import OllamaEmbedder
+from mtg_deck_advisor.llm.factory import build_embedder
 from mtg_deck_advisor.observability.logging import configure_logging
 from mtg_deck_advisor.observability.tracing import traced
 from mtg_deck_advisor.retrieval.embeddings import EmbeddingReport, embed_cards, embed_rules
@@ -40,11 +40,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     settings = get_settings()
     configure_logging(settings)
-    embedder = OllamaEmbedder(
-        base_url=settings.ollama_base_url,
-        model=settings.embedding_model,
-        timeout_seconds=settings.ollama_timeout_seconds,
-    )
+    embedder = build_embedder(settings)
     names = list(JOBS) if args.what == "all" else [args.what]
     with traced(), connect(settings) as conn:
         for name in names:
