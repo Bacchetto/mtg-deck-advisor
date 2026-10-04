@@ -15,6 +15,7 @@ from mtg_deck_advisor.ingestion.rules import parse_rules
 from mtg_deck_advisor.ingestion.rules_ingestion import apply_rules
 from mtg_deck_advisor.llm.fake import FakeEmbedder
 from mtg_deck_advisor.retrieval.embeddings import embed_cards, embed_rules
+from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 from mtg_deck_advisor.retrieval.search import (
     CardFilters,
     SearchMode,
@@ -159,3 +160,19 @@ def test_cards_and_rules_have_full_text_indexes(loaded: Settings) -> None:
         ]
 
     assert len([d for d in definitions if "gin" in d and "search_vector" in d]) == 2
+
+
+def test_hybrid_card_search_weights_the_keyword_arm_at_half(loaded: Settings) -> None:
+    # Measured on the retrieval dev set (#73): +4.0 recall@10, 13 wins, 3 losses.
+    query = "regenerated damage"
+    with connect(loaded) as conn:
+        vector = search_cards(conn, FixedQueryEmbedder(), query, k=50, mode="vector")
+        keyword = search_cards(conn, FixedQueryEmbedder(), query, k=50, mode="keyword")
+        hybrid = search_cards(conn, FixedQueryEmbedder(), query, k=10)
+
+    expected = reciprocal_rank_fusion(
+        [[hit.oracle_id for hit in vector], [hit.oracle_id for hit in keyword]],
+        weights=[1.0, 0.5],
+    )[:10]
+    assert [hit.oracle_id for hit in hybrid] == [oracle_id for oracle_id, _ in expected]
+    assert [hit.score for hit in hybrid] == pytest.approx([score for _, score in expected])
