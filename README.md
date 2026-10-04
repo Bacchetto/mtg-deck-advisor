@@ -164,24 +164,31 @@ searches take exact filters: color identity within the commander's, card types, 
 value range, and "in this pool". Each rule is one chunk, cited by its number
 ([ADR 0010](docs/decisions/0010-chunking-rules-by-rule-number.md)).
 
-Measured on an owner-reviewed eval set of 44 card queries and 45 rules questions, written
-before the search code ([full report](evals/reports/2026-10-02-retrieval.md)):
+Card search runs in two stages:
+1. **First stage, hybrid search:** vector search over 8b embeddings, keyword search at half weight, and, for searches within a pool, each card's one-sentence summary.
+2. **Second stage, reranking:** a local model (`qwen3:8b`) reorders the top 20, reading each card's rules text.
 
-| Recall@10 / MRR@10 | vector | keyword | hybrid |
-|---|---|---|---|
-| Cards (44 queries) | 0.53 / 0.49 | 0.33 / 0.28 | **0.58** / 0.45 |
-| Rules (45 questions) | **0.97 / 0.71** | 0.43 / 0.24 | 0.74 / 0.46 |
+Rules search is vector search. Everything runs locally and is free.
 
-The defaults follow these numbers:
-- **Card search is hybrid.** It rescues exact names and mechanics that vector search
-  misses, though the margin is small.
-- **Rules search is vector.** Keyword matching on the common words in rules questions only
-  added noise.
+Every choice was made by measurement: on a dev set of 44 card queries and 45 rules questions, under a
+rule fixed in advance ([ADR 0011](docs/decisions/0011-retrieval-improvements-chosen-on-a-dev-set.md)).
+The result was then checked once on a **held-out** set of 41 card queries and 22 rules questions,
+written before any tuning:
 
-The weak spot is cards described in other words, such as "an artifact that costs one and
-taps for two colorless mana" (Sol Ring): recall@10 is 0.47 on those. Rerun the eval with
-`python scripts/evaluate_retrieval.py` (local and free; `--card-variants` also compares
-card text variants).
+| Held-out set ([report](evals/reports/2026-10-04-retrieval-test.md)) | Before | Now |
+|---|---|---|
+| Cards: recall@10 / MRR@10 | 0.63 / 0.54 | **0.72 / 0.79** |
+| Rules: recall@10 / MRR@10 | 1.00 / 0.67 | **1.00 / 0.75** |
+| Median card search | 24 ms | 1.1 s |
+
+- **What MRR means here:** 0.79 means the right card is usually first.
+- **The biggest gain is for deck-building searches within a pool:** recall@10 0.56 → 0.76.
+- **Known weakness:** a bare mechanic name ("recover") is now found less reliably than before (0.80 → 0.30 recall@10, on three queries).
+- **GPU memory:** search needs about 12 GB of VRAM for the embedder and the reranker. Set `RERANK_MODEL=` to turn reranking off on a smaller GPU.
+
+Rerun the eval with `python scripts/evaluate_retrieval.py` (dev set, local and free). The experiments
+that chose each setting are in `scripts/retrieval_experiments.py` and
+[evals/reports/retrieval-experiments/](evals/reports/retrieval-experiments/).
 
 ## Development
 

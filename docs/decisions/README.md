@@ -35,3 +35,4 @@ Each ADR is linked from the module docstring of the code it governs, so someone 
 | [0008](0008-one-model-interface-owned-by-the-project.md) | One model interface, owned by the project | `llm` |
 | [0009](0009-local-models-chosen-by-measurement.md) | Local models, run natively and chosen by measurement | `llm.ollama`, Ollama settings |
 | [0010](0010-chunking-rules-by-rule-number.md) | One chunk per rule number, embedded as the rule's own text (context measured as a loss) | `retrieval.text`, `retrieval.embeddings` |
+| [0011](0011-retrieval-improvements-chosen-on-a-dev-set.md) | Retrieval improvements chosen on a dev set by a fixed rule, checked once on a held-out set | `retrieval`, embedding and reranking settings |
