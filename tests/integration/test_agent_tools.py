@@ -351,6 +351,7 @@ def test_a_failing_tool_is_an_error_result_and_the_run_carries_on(
 
 def test_a_legal_deck_proposal_waits_for_the_user(conn: psycopg.Connection) -> None:
     session = session_for(conn, "draft")
+    session.call("search_rules", question="color identity commander", k=3)
 
     result = session.call(
         "propose_deck",
@@ -509,3 +510,37 @@ def test_a_rejected_proposal_is_recorded_as_rejected(conn: psycopg.Connection) -
     (recorded,) = tool_calls_for(conn, session.context.run_id)
 
     assert recorded.outcome == "rejected"
+
+
+# --- citations (RAG-3) ----------------------------------------------------------------
+
+
+def test_citations_must_come_from_this_runs_tool_results(conn: psycopg.Connection) -> None:
+    session = session_for(conn, "draft")
+    session.call("search_rules", question="color identity commander", k=3)
+    session.call("get_card", name="Sol Ring")
+
+    shown = session.call(
+        "propose_deck",
+        commander=ATRAXA,
+        cards=LEGAL_CARDS,
+        rationale="r",
+        citations=["903.4", "903.4.", "Sol Ring", "sol ring"],
+    )
+    unseen = session.call(
+        "propose_deck",
+        commander=ATRAXA,
+        cards=LEGAL_CARDS,
+        rationale="r",
+        citations=["704.5z", "Lim-Dûl's Cohort", "999.9"],
+    )
+
+    assert not shown.is_error, shown.content
+    assert unseen.is_error
+    problems = body(unseen)
+    for citation in ("704.5z", "Lim-Dûl's Cohort", "999.9"):
+        assert f"'{citation}'" in problems
+    status = conn.execute(
+        "SELECT status FROM proposals WHERE id = %s", (session.context.proposals[-1],)
+    ).fetchone()
+    assert status == ("invalid",)
