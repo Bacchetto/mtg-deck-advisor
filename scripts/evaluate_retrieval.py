@@ -44,10 +44,12 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     resolve_names,
     search_filters,
 )
-from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder
+from mtg_deck_advisor.llm.factory import build_embedder
+from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.observability.logging import configure_logging
 from mtg_deck_advisor.retrieval.embeddings import vector_literal
 from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
+from mtg_deck_advisor.retrieval.rerank import build_reranker
 from mtg_deck_advisor.retrieval.search import (
     CANDIDATES,
     CardFilters,
@@ -60,6 +62,9 @@ from mtg_deck_advisor.retrieval.text import card_text, expand_symbols, query_tex
 
 REPORTS = Path("evals/reports")
 MODES: tuple[SearchMode, ...] = get_args(SearchMode.__value__)
+# What the app ships: cards hybrid with the reranker (RERANK_MODEL), rules vector.
+SHIPPED = "shipped"
+COLUMNS: tuple[str, ...] = (*MODES, SHIPPED)
 K = 10
 
 
@@ -198,11 +203,7 @@ def main() -> int:
     args = parser.parse_args()
     settings = get_settings()
     configure_logging(settings)
-    embedder = OllamaEmbedder(
-        base_url=settings.ollama_base_url,
-        model=settings.embedding_model,
-        timeout_seconds=settings.ollama_timeout_seconds,
-    )
+    embedder = build_embedder(settings)  # as search uses it: truncated to EMBEDDING_DIMENSIONS
     eval_set = load_set(args.set_name)
     card_queries = eval_set.card_queries
     rule_questions = eval_set.rule_questions
@@ -215,7 +216,8 @@ def main() -> int:
         )
         pool_ids = [ids[name] for name in pool_names]
 
-        card_runs = {mode: Run() for mode in MODES}
+        reranker = build_reranker(settings)
+        card_runs: dict[str, Run] = {column: Run() for column in COLUMNS}
         for query in card_queries:
             relevant = {ids[name] for name in query.relevant}
             filters = search_filters(query, pool_ids)
@@ -224,9 +226,13 @@ def main() -> int:
                 hits = search_cards(conn, embedder, query.query, filters, k=K, mode=mode)
                 seconds = time.perf_counter() - started
                 card_runs[mode].add(query.id, [h.oracle_id for h in hits], relevant, seconds)
-        print(f"cards: {len(card_queries)} queries x {len(MODES)} modes")
+            started = time.perf_counter()
+            hits = search_cards(conn, embedder, query.query, filters, k=K, reranker=reranker)
+            seconds = time.perf_counter() - started
+            card_runs[SHIPPED].add(query.id, [h.oracle_id for h in hits], relevant, seconds)
+        print(f"cards: {len(card_queries)} queries x {len(COLUMNS)} configurations")
 
-        rule_runs = {mode: Run() for mode in MODES}
+        rule_runs: dict[str, Run] = {column: Run() for column in COLUMNS}
         keyword_rules: dict[str, list[str]] = {}
         for question in rule_questions:
             relevant = set(question.relevant)
@@ -235,13 +241,17 @@ def main() -> int:
                 found = search_rules(conn, embedder, question.question, k=K, mode=mode)
                 seconds = time.perf_counter() - started
                 rule_runs[mode].add(question.id, [h.number for h in found], relevant, seconds)
+            started = time.perf_counter()
+            found = search_rules(conn, embedder, question.question, k=K)  # the default: vector
+            seconds = time.perf_counter() - started
+            rule_runs[SHIPPED].add(question.id, [h.number for h in found], relevant, seconds)
             keyword_rules[question.id] = [
                 h.number
                 for h in search_rules(
                     conn, embedder, question.question, k=CANDIDATES, mode="keyword"
                 )
             ]
-        print(f"rules: {len(rule_questions)} questions x {len(MODES)} modes")
+        print(f"rules: {len(rule_questions)} questions x {len(COLUMNS)} configurations")
 
         # Rule chunk variant: with the section and the parent's first sentence.
         rows = conn.execute(
@@ -321,8 +331,8 @@ def render(
     model: str,
     card_queries: list[CardQuery],
     rule_questions: list[RuleQuestion],
-    card_runs: dict[SearchMode, Run],
-    rule_runs: dict[SearchMode, Run],
+    card_runs: dict[str, Run],
+    rule_runs: dict[str, Run],
     rules_context: dict[str, Run],
     cards_with_cost: dict[str, Run],
     names_by_id: dict[UUID, str],
@@ -340,12 +350,13 @@ def render(
         f"queries) and `{SET_FILES[set_name][1].name}` ({len(rule_questions)} rules questions), "
         "owner-reviewed. Embedding model: "
         f"`{model}`. Script: `scripts/evaluate_retrieval.py`. Each search returns its top "
-        f"{K}; MRR counts 0 when nothing relevant is in them.",
+        f"{K}; MRR counts 0 when nothing relevant is in them. **shipped** is what the app "
+        "does: cards hybrid with the reranker (RERANK_MODEL), rules vector.",
         "",
         "## Results by mode",
         "",
     ]
-    for mode in MODES:
+    for mode in COLUMNS:
         lines += [
             f"**{mode}**",
             "",
@@ -360,10 +371,10 @@ def render(
     lines += [
         "## Side by side (recall@10 / MRR@10)",
         "",
-        "| Set | " + " | ".join(MODES) + " |",
-        "|---|" + "---|" * len(MODES),
+        "| Set | " + " | ".join(COLUMNS) + " |",
+        "|---|" + "---|" * len(COLUMNS),
     ]
-    groups: list[tuple[str, dict[SearchMode, Run], list[str]]] = [
+    groups: list[tuple[str, dict[str, Run], list[str]]] = [
         ("Cards: catalogue", card_runs, catalogue),
         ("Cards: in pool", card_runs, pool),
         ("Cards: all", card_runs, all_cards),
@@ -379,7 +390,7 @@ def render(
         )
     for label, runs, ids in groups:
         cells = []
-        for mode in MODES:
+        for mode in COLUMNS:
             result = runs[mode].score(ids)
             cells.append(f"{fmt(result.recall_at_10)} / {fmt(result.mrr)}")
         lines.append(f"| {label} ({len(ids)}) | " + " | ".join(cells) + " |")
@@ -390,10 +401,10 @@ def render(
         "",
         "Median per search, including embedding the query with the local model.",
         "",
-        "| | " + " | ".join(MODES) + " |",
-        "|---|" + "---|" * len(MODES),
-        "| Cards (ms) | " + " | ".join(median_ms(card_runs[m]) for m in MODES) + " |",
-        "| Rules (ms) | " + " | ".join(median_ms(rule_runs[m]) for m in MODES) + " |",
+        "| | " + " | ".join(COLUMNS) + " |",
+        "|---|" + "---|" * len(COLUMNS),
+        "| Cards (ms) | " + " | ".join(median_ms(card_runs[m]) for m in COLUMNS) + " |",
+        "| Rules (ms) | " + " | ".join(median_ms(rule_runs[m]) for m in COLUMNS) + " |",
         "",
         "## Embedding text variants",
         "",
@@ -423,20 +434,20 @@ def render(
         "",
         "## Per query (recall@10)",
         "",
-        "Misses are the relevant items hybrid search didn't return in its top 10.",
+        "Misses are the relevant items the shipped configuration didn't return in its top 10.",
         "",
-        "| Query | " + " | ".join(MODES) + " | missed by hybrid |",
-        "|---|" + "---|" * (len(MODES) + 1),
+        "| Query | " + " | ".join(COLUMNS) + " | missed by shipped |",
+        "|---|" + "---|" * (len(COLUMNS) + 1),
     ]
     for query in card_queries:
-        ranked, relevant = card_runs["hybrid"].results[query.id]
+        ranked, relevant = card_runs[SHIPPED].results[query.id]
         missed = sorted(names_by_id[i] for i in relevant - set(ranked))
-        cells = " | ".join(fmt(card_runs[m].recall(query.id)) for m in MODES)
+        cells = " | ".join(fmt(card_runs[m].recall(query.id)) for m in COLUMNS)
         lines.append(f"| {query.id} {query.query} | {cells} | {'; '.join(missed)} |")
     for question in rule_questions:
-        ranked, relevant = rule_runs["hybrid"].results[question.id]
+        ranked, relevant = rule_runs[SHIPPED].results[question.id]
         missed = sorted(relevant - set(ranked))
-        cells = " | ".join(fmt(rule_runs[m].recall(question.id)) for m in MODES)
+        cells = " | ".join(fmt(rule_runs[m].recall(question.id)) for m in COLUMNS)
         lines.append(f"| {question.id} {question.question} | {cells} | {'; '.join(missed)} |")
 
     lines += [
