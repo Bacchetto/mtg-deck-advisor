@@ -132,7 +132,7 @@ class SearchPoolArgs(Arguments):
         "WUBRG ('' for colorless only). Use the commander's identity.",
     )
     mana_value_max: float | None = Field(default=None, ge=0, description="Highest mana value.")
-    k: int = Field(default=10, ge=1, le=25, description="How many cards to return.")
+    k: int = Field(default=10, ge=1, le=40, description="How many cards to return.")
 
 
 class GetCardArgs(Arguments):
