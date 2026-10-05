@@ -173,6 +173,31 @@ def test_when_the_user_declines_nothing_is_approved(
 
 
 @MODES
+def test_a_cancelled_form_is_not_recorded_as_the_users_decision(
+    conn: psycopg.Connection, pool_id: UUID, mode: str
+) -> None:
+    # A client can dismiss a form, or fail to show it at all, and answer
+    # "cancel". The user decided nothing, so nothing may say they did.
+    state = session(conn)
+    _, proposal_id = drafted(conn, pool_id, state)
+
+    (cancelled,) = calls(
+        state,
+        User("cancel"),
+        ("approve_proposal", {"proposal_id": proposal_id}),
+        mode=mode,
+    )
+
+    assert not cancelled.is_error
+    assert "dismissed or not shown" in text(cancelled)
+    assert "declined" not in text(cancelled)
+    assert approvals(conn) == []
+    entries = actions(conn, f"proposal:{proposal_id}")
+    assert ("system", "approval_cancelled") in entries
+    assert not [entry for entry in entries if entry[0] == "user"]
+
+
+@MODES
 def test_a_client_that_cant_ask_the_user_cant_approve(
     conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
