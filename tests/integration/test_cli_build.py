@@ -97,7 +97,7 @@ def test_a_deck_is_built_from_a_pool_file_to_an_exported_decklist(
     assert "version 1" in out and "version 2" in out
     assert "+ 1 Delver of Secrets" in out and "- 1 Island" in out  # the change was shown
     lines = exported.read_text(encoding="utf-8").splitlines()
-    assert lines[0] == f"1 {ATRAXA}" and "1 Delver of Secrets" in lines
+    assert lines[0] == f"1 {ATRAXA}" and "1 Delver of Secrets // Insectile Aberration" in lines
     (deck,) = decks(client)
     assert (deck["name"], deck["version"]) == (ATRAXA, 2)
     with connect(loaded) as conn:

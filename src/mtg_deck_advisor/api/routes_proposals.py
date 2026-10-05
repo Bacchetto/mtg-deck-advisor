@@ -39,7 +39,7 @@ from mtg_deck_advisor.guardrails.approvals import (
     reject_proposal,
 )
 from mtg_deck_advisor.guardrails.audit import record_audit
-from mtg_deck_advisor.guardrails.proposals import load_proposal, named_changes
+from mtg_deck_advisor.guardrails.proposals import deck_proposals, load_proposal, named_changes
 
 router = APIRouter()
 
@@ -140,6 +140,14 @@ class DeckArchived(BaseModel):
     archived: bool
 
 
+class DeckProposal(BaseModel):
+    id: UUID
+    kind: Literal["deck", "changes"]
+    status: str
+    base_version: int | None = Field(description="The version it was made for; none for a draft.")
+    created_at: datetime
+
+
 class DeckRename(BaseModel):
     name: DeckName
 
@@ -234,6 +242,23 @@ def get_deck(deck_id: UUID, conn: Connection) -> DeckView:
         versions=[VersionView(**vars(v)) for v in deck_versions(conn, deck_id)],
         decklist=decklist(conn, deck.state) if deck.state else None,
     )
+
+
+@router.get("/decks/{deck_id}/proposals", tags=["decks"], responses={404: REFUSALS[404]})
+def get_deck_proposals(deck_id: UUID, conn: Connection) -> list[DeckProposal]:
+    """Every proposal made for a deck, oldest first. Show one with `GET /proposals/{id}`."""
+    if load_deck(conn, deck_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no deck {deck_id}")
+    return [
+        DeckProposal(
+            id=p.id,
+            kind=p.kind,
+            status=p.status,
+            base_version=p.base_version,
+            created_at=p.created_at,
+        )
+        for p in deck_proposals(conn, deck_id)
+    ]
 
 
 @router.get("/decks", tags=["decks"])

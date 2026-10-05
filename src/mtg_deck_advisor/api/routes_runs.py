@@ -25,6 +25,7 @@ from mtg_deck_advisor.agent.flows import (
     execute_run,
     import_pool,
     prepare_draft,
+    prepare_redraft,
     prepare_refine,
 )
 from mtg_deck_advisor.agent.runs import RunStatus, fail_run, load_run, run_proposals
@@ -89,6 +90,12 @@ class DraftRequest(BaseModel):
         default=None,
         description='A name for the new deck. Without one it\'s called "New <pool> deck" '
         "until its first version is saved, then takes its commander's name.",
+    )
+
+
+class RedraftRequest(BaseModel):
+    request: str = Field(
+        default="", max_length=2000, description="What the user wants instead, if anything."
     )
 
 
@@ -212,6 +219,32 @@ def start_draft(
         )
     except NotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    return _start(conn, prepared, settings, services, background, response)
+
+
+@router.post(
+    "/decks/{deck_id}/drafts",
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["runs"],
+    responses={404: {}, 409: {"description": "The deck has a saved version, or is archived."}},
+)
+def start_redraft(
+    deck_id: UUID,
+    body: RedraftRequest,
+    conn: Connection,
+    services: Services,
+    settings: AppSettings,
+    background: BackgroundTasks,
+    response: Response,
+) -> RunStarted:
+    """Draft again into a deck with nothing saved yet, such as after rejecting its first draft."""
+    model = services(conn).client.model
+    try:
+        prepared = prepare_redraft(conn, model, deck_id, request=body.request)
+    except NotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except NotReadyError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return _start(conn, prepared, settings, services, background, response)
 
 

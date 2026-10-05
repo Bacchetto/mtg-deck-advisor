@@ -155,6 +155,26 @@ def prepare_draft(
     return PreparedRun(run_id, "draft", pool_id, deck_id, _draft_prompt(conn, pool, request))
 
 
+def prepare_redraft(
+    conn: psycopg.Connection, model: str, deck_id: UUID, *, request: str = ""
+) -> PreparedRun:
+    """A started run that drafts again into a deck with nothing saved yet.
+
+    For when the user rejects a first draft: the new attempt goes into the
+    same deck rather than leaving an empty one behind.
+    """
+    deck = load_deck(conn, deck_id)
+    if deck is None:
+        raise NotFoundError(f"there is no deck {deck_id}")
+    if deck.version is not None:
+        raise NotReadyError(f"deck {deck_id} has a saved version; refine it instead")
+    if deck.archived:
+        raise NotReadyError(f"deck {deck_id} is archived; unarchive it to draft into it")
+    pool = _pool(conn, deck.pool_id)
+    run_id = start_run(conn, "draft", model, pool_id=deck.pool_id, deck_id=deck_id)
+    return PreparedRun(run_id, "draft", deck.pool_id, deck_id, _draft_prompt(conn, pool, request))
+
+
 def prepare_refine(
     conn: psycopg.Connection, model: str, deck_id: UUID, *, request: str
 ) -> PreparedRun:
