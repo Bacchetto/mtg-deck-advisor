@@ -64,12 +64,62 @@ def load_pool(conn: psycopg.Connection, pool_id: UUID) -> Pool | None:
     return Pool(id=pool_id, name=row[0], source=row[1], cards=dict(cards))
 
 
-def create_deck(conn: psycopg.Connection, pool_id: UUID, *, name: str) -> UUID:
-    row = conn.execute(
-        "INSERT INTO decks (pool_id, name) VALUES (%s, %s) RETURNING id", (pool_id, name)
-    ).fetchone()
+def create_deck(conn: psycopg.Connection, pool_id: UUID, *, name: str | None = None) -> UUID:
+    """A new, empty deck. Without a name it's called "New <pool> deck" (made unique).
+
+    A default name is replaced by the commander's when the first version is
+    saved (`name_for_commander`); a name the user gave is never changed.
+    """
+    with conn.transaction():
+        default = name is None
+        if name is None:
+            pool = conn.execute("SELECT name FROM pools WHERE id = %s", (pool_id,)).fetchone()
+            name = unused_name(conn, f"New {pool[0]} deck" if pool else "New deck")
+        row = conn.execute(
+            "INSERT INTO decks (pool_id, name, default_name) VALUES (%s, %s, %s) RETURNING id",
+            (pool_id, name, default),
+        ).fetchone()
     deck_id: UUID = _returned(row)
     return deck_id
+
+
+def unused_name(conn: psycopg.Connection, base: str) -> str:
+    """`base`, or `base (2)`, `base (3)`... whichever no deck has yet.
+
+    Holds a lock until the caller's transaction ends, so two decks named at
+    once can't both take the same name.
+    """
+    conn.execute("SELECT pg_advisory_xact_lock(hashtext('deck names'))")
+    taken = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM decks WHERE name = %s OR starts_with(name, %s)", (base, f"{base} (")
+        )
+    }
+    candidate, n = base, 1
+    while candidate in taken:
+        n += 1
+        candidate = f"{base} ({n})"
+    return candidate
+
+
+def name_for_commander(conn: psycopg.Connection, deck_id: UUID, commander: UUID) -> str | None:
+    """Give a deck that still has its default name its commander's (made unique).
+
+    Returns the new name, or None if the user named the deck. The deck is then
+    no longer default-named, so later versions don't rename it again.
+    """
+    with conn.transaction():
+        row = conn.execute(
+            "SELECT name FROM decks WHERE id = %s AND default_name FOR UPDATE", (deck_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        name = unused_name(conn, card_names(conn, [commander])[commander])
+        conn.execute(
+            "UPDATE decks SET name = %s, default_name = false WHERE id = %s", (name, deck_id)
+        )
+    return name
 
 
 def save_version(

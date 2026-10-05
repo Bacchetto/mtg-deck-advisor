@@ -131,7 +131,8 @@ def test_the_full_flow_approve_apply_refine_export_works_over_http(
     lines = exported.text.splitlines()
     assert lines[0] == f"1 {ATRAXA}" and sum(int(line.split(" ", 1)[0]) for line in lines) == 100
     assert actions(loaded, f"proposal:{proposal_id}") == ["propose", "approve", "apply"]
-    assert actions(loaded, f"deck:{deck_id}") == ["approve_export", "export"]
+    # The first version names the deck for its commander.
+    assert actions(loaded, f"deck:{deck_id}") == ["rename", "approve_export", "export"]
 
 
 def test_a_deck_shows_its_versions_and_latest_decklist(app_for: Callable[..., TestClient]) -> None:
@@ -182,7 +183,7 @@ def test_export_without_an_approval_is_403(
     response = client.get(f"/decks/{deck_id}/versions/1/export")
 
     assert response.status_code == 403
-    assert actions(loaded, f"deck:{deck_id}") == ["export_refused"]
+    assert actions(loaded, f"deck:{deck_id}") == ["rename", "export_refused"]
     assert client.get(f"/decks/{deck_id}/versions/9/export").status_code == 404
     missing = client.post(f"/decks/{deck_id}/versions/9/export-approval", json={})
     assert missing.status_code == 404

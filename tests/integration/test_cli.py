@@ -78,6 +78,7 @@ def test_the_whole_flow_works_through_the_cli(
     assert lines[0] == f"1 {ATRAXA}" and sum(int(line.split(" ", 1)[0]) for line in lines) == 100
     with connect(loaded) as conn:
         assert [e.action for e in audit_entries(conn, f"deck:{deck_id}")] == [
+            "rename",
             "approve_export",
             "export",
         ]
