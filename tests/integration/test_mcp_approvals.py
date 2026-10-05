@@ -27,7 +27,7 @@ from tests.integration.test_agent_tools import ATRAXA, LEGAL_CARDS, loaded  # no
 from tests.integration.test_mcp_server import conn, pool_id, session, text  # noqa: F401
 
 Step = tuple[str, dict[str, Any]]
-DECISION_TOOLS = ("approve_proposal", "reject_proposal", "approve_export")
+DECISION_TOOLS = ("archive_deck", "approve_proposal", "reject_proposal", "approve_export")
 # The handshake-era protocol ("legacy") and the 2026-07-28 revision (the SDK's
 # default) identify the client differently; Claude Code speaks both.
 MODES = pytest.mark.parametrize("mode", ["legacy", "auto"])

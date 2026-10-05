@@ -100,6 +100,8 @@ def test_the_tools_are_the_agents_own_scoped_by_deck_plus_the_users_steps(
         "list_decks",
         "new_deck",
         "rename_deck",
+        "archive_deck",
+        "unarchive_deck",
         *AGENT_TOOLS,
         *USER_STEPS,
     ]
