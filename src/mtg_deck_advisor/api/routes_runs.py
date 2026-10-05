@@ -31,7 +31,7 @@ from mtg_deck_advisor.agent.runs import RunStatus, fail_run, load_run, run_propo
 from mtg_deck_advisor.api.services import AppSettings, Connection, Services, ServicesFactory
 from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.db.connection import connect
-from mtg_deck_advisor.deck.store import list_pools, load_pool
+from mtg_deck_advisor.deck.store import DeckName, list_pools, load_pool
 from mtg_deck_advisor.observability.tracing import current_trace_id, traced
 
 log = structlog.get_logger(__name__)
@@ -85,10 +85,8 @@ class DraftRequest(BaseModel):
     request: str = Field(
         default="", max_length=2000, description="What the user wants, if anything."
     )
-    name: str | None = Field(
+    name: DeckName | None = Field(
         default=None,
-        min_length=1,
-        max_length=200,
         description='A name for the new deck. Without one it\'s called "New <pool> deck" '
         "until its first version is saved, then takes its commander's name.",
     )

@@ -237,6 +237,7 @@ mtg-advisor approve PROPOSAL                         # your decision (or: reject
 mtg-advisor apply PROPOSAL                           # saved as version 1
 mtg-advisor refine DECK --request "Add removal"      # proposes changes to the saved deck
 mtg-advisor approve-export DECK && mtg-advisor export DECK > deck.txt
+mtg-advisor rename DECK "Rat pack"                  # only the name changes
 mtg-advisor ask "How much commander damage loses the game?"
 ```
 
@@ -255,7 +256,7 @@ flow exactly as it ran live.
 The same tools the agent uses are available to an MCP client, whose own model then does the
 deck building, under the same checks
 ([ADR 0014](docs/decisions/0014-interfaces-background-runs-a-thin-cli-and-mcp.md)). The client
-gets `list_pools`, `list_decks`, `new_deck`, the agent's six tools scoped by deck, and your own
+gets `list_pools`, `list_decks`, `new_deck`, `rename_deck`, the agent's six tools scoped by deck, and your own
 steps: `list_proposals`, `show_proposal`, `apply_proposal`, `export_deck`, and the decisions
 `approve_proposal`, `reject_proposal` and `approve_export`. So a deck can be built from draft to
 export without leaving the client.

@@ -47,6 +47,7 @@ from mtg_deck_advisor.agent.runs import Task, finish_run, record_progress, start
 from mtg_deck_advisor.agent.tools import TOOLS, ToolContext, execute
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.deck.store import (
+    DeckName,
     Pool,
     card_names,
     create_deck,
@@ -55,6 +56,7 @@ from mtg_deck_advisor.deck.store import (
     list_pools,
     load_deck,
     load_pool,
+    rename_deck,
 )
 from mtg_deck_advisor.guardrails.approvals import (
     ApprovalError,
@@ -123,6 +125,11 @@ class NewDeckArgs(Arguments):
     )
 
 
+class RenameArgs(Arguments):
+    deck_id: UUID = Field(description="The deck, from list_decks.")
+    name: DeckName = Field(description="The name the user wants.")
+
+
 class DeckArgs(Arguments):
     deck_id: UUID = Field(description="The deck, from list_decks or new_deck.")
 
@@ -180,6 +187,11 @@ class McpSession:
                 "new_deck",
                 "Start a new, empty deck from a pool, to draft into with propose_deck.",
                 NewDeckArgs,
+            ),
+            _tool(
+                "rename_deck",
+                "Rename a deck to the name the user asked for. Only its name changes.",
+                RenameArgs,
             ),
         ]
         agent = []
@@ -252,6 +264,8 @@ class McpSession:
                 return self._list_decks(ListDecksArgs.model_validate(arguments))
             if name == "new_deck":
                 return self._new_deck(NewDeckArgs.model_validate(arguments))
+            if name == "rename_deck":
+                return self._rename(RenameArgs.model_validate(arguments), client)
             if name == "list_proposals":
                 return self._list_proposals(DeckArgs.model_validate(arguments))
             if name == "show_proposal":
@@ -398,6 +412,19 @@ class McpSession:
         deck = load_deck(self.conn, deck_id)
         name = deck.name if deck else args.name
         return _result(f"Created deck {name!r}. Its deck_id is {deck_id}.")
+
+    def _rename(self, args: RenameArgs, client: str | None) -> types.CallToolResult:
+        previous = rename_deck(self.conn, args.deck_id, args.name)
+        if previous is None:
+            return _result(f"There is no deck {args.deck_id}. Use list_decks.", error=True)
+        record_audit(
+            self.conn,
+            "agent",
+            "rename",
+            f"deck:{args.deck_id}",
+            {"from": previous, "to": args.name, "client": client or self.client_name},
+        )
+        return _result(f"Renamed: {previous!r} is now {args.name!r}.")
 
     def _list_proposals(self, args: DeckArgs) -> types.CallToolResult:
         if load_deck(self.conn, args.deck_id) is None:

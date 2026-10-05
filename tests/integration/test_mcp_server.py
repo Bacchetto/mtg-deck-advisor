@@ -95,7 +95,14 @@ def test_the_tools_are_the_agents_own_scoped_by_deck_plus_the_users_steps(
 
     tools = {tool.name: tool for tool in anyio.run(go)}
 
-    assert list(tools) == ["list_pools", "list_decks", "new_deck", *AGENT_TOOLS, *USER_STEPS]
+    assert list(tools) == [
+        "list_pools",
+        "list_decks",
+        "new_deck",
+        "rename_deck",
+        *AGENT_TOOLS,
+        *USER_STEPS,
+    ]
     # Consent comes from the user's answer to a form, never from an argument.
     for name in ("approve_proposal", "reject_proposal", "approve_export"):
         properties = set(tools[name].input_schema["properties"])
