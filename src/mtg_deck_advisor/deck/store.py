@@ -40,6 +40,8 @@ class Deck:
     # None for a deck with no saved version yet.
     version: int | None
     state: DeckState | None
+    # Hidden from lists, and can't change until unarchived.
+    archived: bool = False
 
 
 def create_pool(
@@ -174,9 +176,12 @@ def load_deck(
     conn: psycopg.Connection, deck_id: UUID, *, version: int | None = None
 ) -> Deck | None:
     """The deck at `version`, or at its latest version. None if either doesn't exist."""
-    deck = conn.execute("SELECT pool_id, name FROM decks WHERE id = %s", (deck_id,)).fetchone()
+    deck = conn.execute(
+        "SELECT pool_id, name, archived_at IS NOT NULL FROM decks WHERE id = %s", (deck_id,)
+    ).fetchone()
     if deck is None:
         return None
+    pool_id, name, archived = deck
     row = conn.execute(
         """
         SELECT version, commander, cards FROM deck_versions
@@ -188,9 +193,25 @@ def load_deck(
     if row is None:
         if version is not None:
             return None
-        return Deck(id=deck_id, pool_id=deck[0], name=deck[1], version=None, state=None)
+        return Deck(deck_id, pool_id, name, version=None, state=None, archived=archived)
     state = DeckState.from_dict({"commander": str(row[1]), "cards": row[2]})
-    return Deck(id=deck_id, pool_id=deck[0], name=deck[1], version=row[0], state=state)
+    return Deck(deck_id, pool_id, name, version=row[0], state=state, archived=archived)
+
+
+def set_archived(conn: psycopg.Connection, deck_id: UUID, archived: bool) -> bool | None:
+    """Archive or unarchive a deck. False if it already was; None if there's no such deck."""
+    row = conn.execute(
+        "SELECT archived_at IS NOT NULL FROM decks WHERE id = %s FOR UPDATE", (deck_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    if row[0] == archived:
+        return False
+    conn.execute(
+        "UPDATE decks SET archived_at = CASE WHEN %s THEN now() END WHERE id = %s",
+        (archived, deck_id),
+    )
+    return True
 
 
 def decklist(conn: psycopg.Connection, state: DeckState) -> str:
@@ -266,17 +287,24 @@ class DeckListing:
     pool_id: UUID
     name: str
     version: int | None
+    archived: bool
 
 
-def list_decks(conn: psycopg.Connection, pool_id: UUID | None = None) -> list[DeckListing]:
-    """Decks, oldest first, with their latest version (None if nothing is saved yet)."""
+def list_decks(
+    conn: psycopg.Connection, pool_id: UUID | None = None, *, include_archived: bool = False
+) -> list[DeckListing]:
+    """Decks, oldest first, with their latest version (None if nothing is saved yet).
+
+    Archived decks are left out unless `include_archived`.
+    """
     rows = conn.execute(
         """
-        SELECT d.id, d.pool_id, d.name, max(v.version)
+        SELECT d.id, d.pool_id, d.name, max(v.version), d.archived_at IS NOT NULL
         FROM decks d LEFT JOIN deck_versions v ON v.deck_id = d.id
-        WHERE %s::uuid IS NULL OR d.pool_id = %s
+        WHERE (%(pool)s::uuid IS NULL OR d.pool_id = %(pool)s)
+          AND (%(all)s OR d.archived_at IS NULL)
         GROUP BY d.id ORDER BY d.created_at, d.id
         """,
-        (pool_id, pool_id),
+        {"pool": pool_id, "all": include_archived},
     ).fetchall()
     return [DeckListing(*row) for row in rows]

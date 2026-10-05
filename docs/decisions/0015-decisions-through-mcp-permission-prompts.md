@@ -25,7 +25,7 @@ A form's answer doesn't prove a person saw the form, and nothing the server rece
 - **The user's steps are MCP tools:**
   - **Read:** `list_proposals` and `show_proposal`.
   - **Act:** `apply_proposal` and `export_deck`.
-  - **Decide:** `approve_proposal`, `reject_proposal` and `approve_export`.
+  - **Decide:** `approve_proposal`, `reject_proposal` and `approve_export`, plus `archive_deck` (#112), because a deck shouldn't disappear from the user's lists without them seeing it. Its summary is *"Archive deck '<name>'"*. Renaming and unarchiving hide nothing, so they aren't decisions: they're audited as the client's actions.
 - **Decision tools are marked as requiring user interaction:** `_meta["anthropic/requiresUserInteraction"] = true`. For a tool marked this way, Claude Code (documented, and confirmed in its code):
   - **always shows the user its Allow/Deny permission prompt.** The VS Code extension does show these prompts.
   - **never approves it automatically:** not through allow rules, "always allow", auto mode, bypass mode, hooks, or a permission-prompt tool. It's on the list of "actions no mode auto-approves".

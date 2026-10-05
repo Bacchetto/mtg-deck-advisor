@@ -164,6 +164,8 @@ def prepare_refine(
         raise NotFoundError(f"there is no deck {deck_id}")
     if deck.state is None:
         raise NotReadyError(f"deck {deck_id} has no saved version to refine")
+    if deck.archived:
+        raise NotReadyError(f"deck {deck_id} is archived; unarchive it to refine it")
     run_id = start_run(conn, "refine", model, pool_id=deck.pool_id, deck_id=deck_id)
     prompt = (
         f"Refine my saved deck (version {deck.version}): {request}\n\n"

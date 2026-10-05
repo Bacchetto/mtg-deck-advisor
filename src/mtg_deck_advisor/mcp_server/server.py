@@ -57,6 +57,7 @@ from mtg_deck_advisor.deck.store import (
     load_deck,
     load_pool,
     rename_deck,
+    set_archived,
 )
 from mtg_deck_advisor.guardrails.approvals import (
     ApprovalError,
@@ -112,6 +113,9 @@ class ListPoolsArgs(Arguments):
 
 class ListDecksArgs(Arguments):
     pool_id: UUID | None = Field(default=None, description="Only this pool's decks.")
+    include_archived: bool = Field(
+        default=False, description="Include decks the user archived (hidden by default)."
+    )
 
 
 class NewDeckArgs(Arguments):
@@ -159,9 +163,16 @@ class ExportArgs(DeckArgs):
     confirming: str = CONFIRMING
 
 
+class ArchiveArgs(DeckArgs):
+    confirming: str = Field(
+        description="Exactly \"Archive deck '<name>'\", with the deck's name as list_decks "
+        "shows it. The user sees it when asked to allow the call."
+    )
+
+
 # The decisions only the user can make. Claude Code always asks the user to
 # allow a tool marked this way, whatever their settings (ADR 0015).
-DECISIONS = ("approve_proposal", "reject_proposal", "approve_export")
+DECISIONS = ("archive_deck", "approve_proposal", "reject_proposal", "approve_export")
 USER_INTERACTION = {"anthropic/requiresUserInteraction": True}
 # Clients known to honour that marking; others can't make decisions.
 DECISION_CLIENTS = frozenset({"claude-code"})
@@ -192,6 +203,19 @@ class McpSession:
                 "rename_deck",
                 "Rename a deck to the name the user asked for. Only its name changes.",
                 RenameArgs,
+            ),
+            _tool(
+                "archive_deck",
+                "Archive a deck the user no longer wants to see: it leaves list_decks and can't "
+                "change until unarchived, and all of its history is kept. The user is asked to "
+                "allow it.",
+                ArchiveArgs,
+                meta=USER_INTERACTION,
+            ),
+            _tool(
+                "unarchive_deck",
+                "Bring an archived deck back, as it was.",
+                DeckArgs,
             ),
         ]
         agent = []
@@ -266,6 +290,8 @@ class McpSession:
                 return self._new_deck(NewDeckArgs.model_validate(arguments))
             if name == "rename_deck":
                 return self._rename(RenameArgs.model_validate(arguments), client)
+            if name == "unarchive_deck":
+                return self._unarchive(DeckArgs.model_validate(arguments), client)
             if name == "list_proposals":
                 return self._list_proposals(DeckArgs.model_validate(arguments))
             if name == "show_proposal":
@@ -296,6 +322,8 @@ class McpSession:
             )
         via = {"channel": "mcp", "client": client}
         try:
+            if name == "archive_deck":
+                return self._archive(ArchiveArgs.model_validate(arguments), via)
             if name == "approve_export":
                 export = ExportArgs.model_validate(arguments)
                 deck = load_deck(self.conn, export.deck_id)
@@ -388,12 +416,13 @@ class McpSession:
         return _result(f"{len(pools)} pools:\n{untrusted(chr(10).join(lines))}")
 
     def _list_decks(self, args: ListDecksArgs) -> types.CallToolResult:
-        decks = list_decks(self.conn, args.pool_id)
+        decks = list_decks(self.conn, args.pool_id, include_archived=args.include_archived)
         if not decks:
             return _result("There are no decks yet: start one with new_deck.")
         lines = [
             f"{d.id}  {d.name} (pool {d.pool_id}): "
             + (f"version {d.version}" if d.version else "nothing saved yet")
+            + (" (archived)" if d.archived else "")
             for d in decks
         ]
         return _result(f"{len(decks)} decks:\n{untrusted(chr(10).join(lines))}")
@@ -425,6 +454,35 @@ class McpSession:
             {"from": previous, "to": args.name, "client": client or self.client_name},
         )
         return _result(f"Renamed: {previous!r} is now {args.name!r}.")
+
+    def _unarchive(self, args: DeckArgs, client: str | None) -> types.CallToolResult:
+        changed = set_archived(self.conn, args.deck_id, False)
+        if changed is None:
+            return _result(f"There is no deck {args.deck_id}. Use list_decks.", error=True)
+        if not changed:
+            return _result(f"Deck {args.deck_id} isn't archived.", error=True)
+        record_audit(
+            self.conn,
+            "agent",
+            "unarchive",
+            f"deck:{args.deck_id}",
+            {"client": client or self.client_name},
+        )
+        return _result(f"Deck {args.deck_id} is back in list_decks.")
+
+    def _archive(self, args: ArchiveArgs, via: dict[str, str]) -> types.CallToolResult:
+        deck = load_deck(self.conn, args.deck_id)
+        if deck is None:
+            return _result(f"There is no deck {args.deck_id}. Use list_decks.", error=True)
+        if mismatch := _mismatch(args.confirming, f"Archive deck '{deck.name}'"):
+            return mismatch
+        if not set_archived(self.conn, args.deck_id, True):
+            return _result(f"Deck {args.deck_id} is already archived.", error=True)
+        record_audit(self.conn, "user", "archive", f"deck:{args.deck_id}", {"via": via})
+        return _result(
+            f"The user archived deck {deck.name!r}. It's hidden from list_decks, and "
+            "unarchive_deck brings it back."
+        )
 
     def _list_proposals(self, args: DeckArgs) -> types.CallToolResult:
         if load_deck(self.conn, args.deck_id) is None:
@@ -496,6 +554,12 @@ class McpSession:
             return _result(f"deck_id: {raw!r} is not a deck ID; use list_decks.", error=True)
         if deck_id is None and name != "search_rules":
             return _result(f"{name} needs a deck_id, from list_decks or new_deck.", error=True)
+        if deck_id is not None and (deck := load_deck(self.conn, deck_id)) and deck.archived:
+            return _result(
+                f"Deck {deck.name!r} is archived, so it can't be worked on. Ask the user whether "
+                "to unarchive it with unarchive_deck.",
+                error=True,
+            )
         ctx = self._context(deck_id)
         if isinstance(ctx, str):
             return _result(ctx, error=True)

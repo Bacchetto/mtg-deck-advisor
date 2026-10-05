@@ -238,13 +238,15 @@ mtg-advisor apply PROPOSAL                           # saved as version 1
 mtg-advisor refine DECK --request "Add removal"      # proposes changes to the saved deck
 mtg-advisor approve-export DECK && mtg-advisor export DECK > deck.txt
 mtg-advisor rename DECK "Rat pack"                  # only the name changes
+mtg-advisor decks [--archived]                      # your decks; archive DECK hides one
 mtg-advisor ask "How much commander damage loses the game?"
 ```
 
 Applying or exporting without your approval is refused (`403`), and the attempt is audited.
 A deck you don't name is called "New <pool> deck" until its first version is applied, then
 takes its commander's name; default names get " (2)", " (3)" rather than repeat another deck's.
-`--json` prints the API's answers.
+Archiving hides a deck from lists and keeps all of its history; it can't change or be exported
+until `mtg-advisor unarchive DECK`. `--json` prints the API's answers.
 
 **No API key needed for a demo:** with `MODEL_PROVIDER=replay`, the recorded runs replay through the
 API and the CLI at no cost. Add `evals/datasets/pool_300.txt`, draft with no request, and refine
@@ -256,7 +258,7 @@ flow exactly as it ran live.
 The same tools the agent uses are available to an MCP client, whose own model then does the
 deck building, under the same checks
 ([ADR 0014](docs/decisions/0014-interfaces-background-runs-a-thin-cli-and-mcp.md)). The client
-gets `list_pools`, `list_decks`, `new_deck`, `rename_deck`, the agent's six tools scoped by deck, and your own
+gets `list_pools`, `list_decks`, `new_deck`, `rename_deck`, `archive_deck`, `unarchive_deck`, the agent's six tools scoped by deck, and your own
 steps: `list_proposals`, `show_proposal`, `apply_proposal`, `export_deck`, and the decisions
 `approve_proposal`, `reject_proposal` and `approve_export`. So a deck can be built from draft to
 export without leaving the client.
