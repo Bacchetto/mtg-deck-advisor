@@ -109,3 +109,78 @@ def tool_calls_for(conn: psycopg.Connection, run_id: UUID) -> list[RecordedToolC
         (run_id,),
     ).fetchall()
     return [RecordedToolCall(*row) for row in rows]
+
+
+@dataclass(frozen=True)
+class RunRecord:
+    id: UUID
+    task: Task
+    status: RunStatus
+    pool_id: UUID | None
+    deck_id: UUID | None
+    model: str
+    turns: int
+    cost_usd: float
+    final_text: str | None
+    error: str | None
+    trace_id: str | None
+    started_at: datetime
+    finished_at: datetime | None
+
+
+@dataclass(frozen=True)
+class ProposalSummary:
+    id: UUID
+    kind: Literal["deck", "changes"]
+    status: str
+
+
+def load_run(conn: psycopg.Connection, run_id: UUID) -> RunRecord | None:
+    row = conn.execute(
+        """
+        SELECT id, task, status, pool_id, deck_id, model, turns, cost_usd::float8,
+               final_text, error, trace_id, started_at, finished_at
+        FROM agent_runs WHERE id = %s
+        """,
+        (run_id,),
+    ).fetchone()
+    return RunRecord(*row) if row else None
+
+
+def run_proposals(conn: psycopg.Connection, run_id: UUID) -> list[ProposalSummary]:
+    """The proposals a run made, in the order it made them."""
+    rows = conn.execute(
+        "SELECT id, kind, status FROM proposals WHERE run_id = %s ORDER BY created_at, id",
+        (run_id,),
+    ).fetchall()
+    return [ProposalSummary(*row) for row in rows]
+
+
+def interrupt_running_runs(conn: psycopg.Connection) -> int:
+    """Mark runs still `running` as interrupted errors, and return how many.
+
+    Called when a server starts: a run can only still be running then if the
+    process that ran it stopped mid-run. Its transcript so far is lost, but its
+    tool calls and proposals were committed turn by turn and stay.
+    """
+    rows = conn.execute(
+        """
+        UPDATE agent_runs
+        SET status = 'error', error = 'interrupted: the server stopped mid-run',
+            finished_at = now()
+        WHERE status = 'running'
+        RETURNING id
+        """
+    ).fetchall()
+    return len(rows)
+
+
+def fail_run(conn: psycopg.Connection, run_id: UUID, error: str) -> None:
+    """Mark a run that failed outside the loop as an error, unless it already ended."""
+    conn.execute(
+        """
+        UPDATE agent_runs SET status = 'error', error = %s, finished_at = now()
+        WHERE id = %s AND status = 'running'
+        """,
+        (error, run_id),
+    )
