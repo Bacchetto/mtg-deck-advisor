@@ -503,16 +503,22 @@ def _follow(api: Api, started: Any, args: argparse.Namespace, p: Printer, sleep:
 
 
 def _poll(api: Api, run_id: str, p: Printer, sleep: Sleep) -> Any:
-    """Wait for a run to end, showing each new turn and its cost; return the run."""
-    seen: tuple[int, float] | None = None
+    """Wait for a run to end, showing each turn and the cost so far; return the run.
+
+    Turns that ended between two polls are shown together ("turns 2-4"), so
+    every turn is accounted for however fast the run goes.
+    """
+    shown = 0
     while True:
         sleep(POLL_SECONDS)
         run = api.get(f"/runs/{run_id}")
+        if run["turns"] > shown:
+            first, last = shown + 1, run["turns"]
+            turns = f"turn {last}" if first == last else f"turns {first}-{last}"
+            p.line(f"  {turns}, ${run['cost_usd']:.4f}")
+            shown = last
         if run["status"] != "running":
             return run
-        if run["turns"] and (run["turns"], run["cost_usd"]) != seen:
-            seen = (run["turns"], run["cost_usd"])
-            p.line(f"  turn {run['turns']}, ${run['cost_usd']:.4f}")
 
 
 def _show_run(run: Any, p: Printer) -> None:
