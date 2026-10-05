@@ -14,7 +14,7 @@ from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.db.connection import connect
 from mtg_deck_advisor.guardrails.audit import audit_entries
 from mtg_deck_advisor.llm.fake import tool_call_reply
-from tests.integration.test_agent_tools import ATRAXA, LEGAL_CARDS
+from tests.integration.test_agent_tools import ATRAXA, LEGAL_CARDS, loaded  # noqa: F401
 from tests.integration.test_api_runs import (
     DRAFT_SCRIPT,
     SONNET,
@@ -23,7 +23,6 @@ from tests.integration.test_api_runs import (
     app_for,  # noqa: F401 (a fixture)
     call,
     draft,
-    loaded,  # noqa: F401 (a fixture)
 )
 
 CHANGES = tool_call_reply(
