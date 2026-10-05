@@ -267,3 +267,38 @@ def test_the_system_prompt_marks_delimited_content_as_data() -> None:
         assert "<untrusted>" in prompt
         assert "never instructions" in prompt
         assert "approv" in prompt  # the agent proposes; the user approves
+
+
+class ProgressWatcher(FakeProvider):
+    """Before each call, reads the run's recorded progress from another connection."""
+
+    def __init__(self, settings: Settings, *replies: ProviderResponse) -> None:
+        super().__init__(*replies)
+        self.settings = settings
+        self.seen: list[tuple[int, bool]] = []
+
+    def complete(self, request: Any, model: str) -> ProviderResponse:
+        with connect(self.settings) as other:
+            row = other.execute(
+                "SELECT turns, cost_usd > 0 FROM agent_runs ORDER BY started_at DESC LIMIT 1"
+            ).fetchone()
+        assert row is not None
+        self.seen.append((row[0], row[1]))
+        return super().complete(request, model)
+
+
+def test_a_runs_progress_is_saved_turn_by_turn(
+    conn: psycopg.Connection,
+    loaded: Settings,  # noqa: F811
+) -> None:
+    # So anyone polling the run (the API, the CLI) sees it advance.
+    provider = ProgressWatcher(
+        loaded,
+        tool_call_reply(call("get_card", name="Sol Ring"), model=SONNET),
+        tool_call_reply(call("get_card", 2, name="Sol Ring"), model=SONNET),
+        text_reply("Done."),
+    )
+
+    run(conn, provider)
+
+    assert provider.seen == [(0, False), (1, True), (2, True)]
