@@ -31,10 +31,11 @@ the deck, as for the agent's runs.
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 import psycopg
+import structlog
 from mcp import types
 from mcp.server import Server, ServerRequestContext
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -68,6 +69,8 @@ from mtg_deck_advisor.llm.anthropic import strict_schema
 from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.llm.types import ToolCall
 from mtg_deck_advisor.retrieval.rerank import Reranker
+
+log = structlog.get_logger(__name__)
 
 INSTRUCTIONS = f"""\
 Build Magic: The Gathering Commander decks from a user's card pool, using only \
@@ -132,6 +135,8 @@ class Decision:
     reason: str | None = None
 
 
+# What a client can answer a form with. Only accept and decline are the user's.
+Answer = Literal["accept", "decline", "cancel"]
 # The decisions only the user can make, and the verb for each.
 DECISIONS = {
     "approve_proposal": "approval",
@@ -268,15 +273,36 @@ class McpSession:
             self.conn.rollback()  # asking is read-only
 
     def decide(
-        self, decision: Decision, *, accepted: bool, note: str | None
+        self, decision: Decision, *, answer: Answer, note: str | None
     ) -> types.CallToolResult:
-        """Record the user's answer to a decision form."""
+        """Record the client's answer to a decision form.
+
+        Only "accept" and "decline" are the user's answers. "cancel" means the
+        form was dismissed or never shown (some clients advertise forms but
+        don't display them), so it is audited as the system's, not the user's.
+        """
+        log.info("decision_answered", tool=decision.tool, subject=decision.subject, answer=answer)
+        verb = DECISIONS[decision.tool]
         try:
-            if not accepted:
+            if answer == "cancel":
+                record_audit(
+                    self.conn,
+                    "system",
+                    f"{verb}_cancelled",
+                    decision.subject,
+                    {"client": self.client_name},
+                )
+                return _result(
+                    "The confirmation form was dismissed or not shown, so nothing changed and "
+                    "the user hasn't decided. If no form appeared, this client can't show it: "
+                    "the user can decide with the mtg-advisor CLI (for example "
+                    "`mtg-advisor approve PROPOSAL`) or the API."
+                )
+            if answer == "decline":
                 record_audit(
                     self.conn,
                     "user",
-                    f"{DECISIONS[decision.tool]}_declined",
+                    f"{verb}_declined",
                     decision.subject,
                     {"client": self.client_name},
                 )
@@ -570,9 +596,7 @@ def build_server(session: McpSession) -> Server[Any]:
                 )
             answer = given
         note = (answer.content or {}).get("note") if answer.action == "accept" else None
-        return session.decide(
-            decision, accepted=answer.action == "accept", note=str(note) if note else None
-        )
+        return session.decide(decision, answer=answer.action, note=str(note) if note else None)
 
     return Server(
         "mtg-deck-advisor",
