@@ -248,6 +248,27 @@ API and the CLI at no cost. Add `evals/datasets/pool_300.txt`, draft with no req
 with the request in [the run report](evals/reports/2026-10-04-agent-live-runs.md) to see the whole
 flow exactly as it ran live.
 
+### From Claude Code or Claude Desktop (MCP)
+
+The same tools the agent uses are available to an MCP client, whose own model then does the
+deck building, under the same checks
+([ADR 0014](docs/decisions/0014-interfaces-background-runs-a-thin-cli-and-mcp.md)). The client
+gets `list_pools`, `list_decks`, `new_deck`, and the agent's six tools scoped by deck. There is no
+tool to approve, apply or export: its proposals wait for you in `mtg-advisor` like any other.
+
+The server needs the database and Ollama running, like the API. To register it with Claude Code,
+from the repository directory:
+
+```bash
+claude mcp add mtg-advisor --scope local -- <repo>/.venv/Scripts/python.exe -m mtg_deck_advisor.mcp_server --client claude-code
+```
+
+For Claude Desktop, add the same command to `claude_desktop_config.json` under `mcpServers`.
+Desktop doesn't start it from the repository, so it won't read `.env`: put the settings the server
+needs (at least `DATABASE_URL`, and `OLLAMA_BASE_URL` if not the default) in the server's `env` block. Then ask, for example: "List my card pools,
+start a deck from the one called Demo pool, and propose a legal Commander deck." Review and approve
+the result with `mtg-advisor proposal ID`.
+
 **The API has no authentication yet.** It listens only on `127.0.0.1`. Users, scoped keys, rate limits
 and a spending cap (SEC-3 to SEC-5) come before any deployment, in Milestone 9.
 
