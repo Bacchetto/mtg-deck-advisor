@@ -68,6 +68,7 @@ def run(
     max_tokens: int = 4000,
 ) -> RunResult:
     session = session_for(conn, task)
+    conn.commit()  # as the API does before running, so other connections see the run
     client = ModelClient(provider, SONNET, recorder=MemoryRecorder(), cost_cap_usd=cost_cap_usd)
     return run_agent(
         client,
