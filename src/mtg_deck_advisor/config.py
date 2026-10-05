@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     api_port: int = 8000
     # Where the CLI (mtg-advisor) finds the API.
     api_url: str = "http://127.0.0.1:8000"
+    # MCP clients allowed to record the user's decisions: those known to ask the
+    # user before running a tool marked as requiring user interaction (ADR 0015).
+    mcp_decision_clients: list[str] = ["claude-code"]
 
     # Model calls (ADR 0008). The provider and model are configuration, so
     # switching provider is a settings change with no code change (MOD-4).

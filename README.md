@@ -258,11 +258,12 @@ steps: `list_proposals`, `show_proposal`, `apply_proposal`, `export_deck`, and t
 `approve_proposal`, `reject_proposal` and `approve_export`. So a deck can be built from draft to
 export without leaving the client.
 
-**Decisions stay yours.** When the model calls a decision tool, the server asks **you** directly with
-a confirmation form: what the database says you're approving (commander, card count, cards added
-and removed), never the model's description of it. Only your Accept records the decision; Decline
-changes nothing. A client that can't show these forms (a headless `claude -p` run, for example) is
-told to use `mtg-advisor` instead ([ADR 0015](docs/decisions/0015-approval-through-mcp-elicitation.md)).
+**Decisions stay yours.** The decision tools are marked as requiring your interaction, so Claude
+Code always asks you to **Allow** them, whatever your permission settings or mode, and the prompt
+shows the server's own summary of the decision, such as *"Approve: Bard, King of Dale as commander,
+100 cards, for deck 'MCP test'"*. Deny, and nothing changes. Only clients known to ask first may
+decide (`MCP_DECISION_CLIENTS`, by default Claude Code); others are sent to `mtg-advisor`
+([ADR 0015](docs/decisions/0015-decisions-through-mcp-permission-prompts.md)).
 
 The server needs the database and Ollama running, like the API.
 
@@ -282,8 +283,8 @@ put the settings the server needs (at least `DATABASE_URL`, and `OLLAMA_BASE_URL
 default) in the server's `env` block.
 
 Then ask, for example: "List my card pools, start a deck from the one called Demo pool, and propose
-a legal Commander deck." Then "approve it", "save it" and "export it": each decision brings up a
-form for you to confirm.
+a legal Commander deck." Then "approve it", "save it" and "export it": each decision brings up
+Claude Code's permission prompt for you to allow.
 
 **The API has no authentication yet.** It listens only on `127.0.0.1`. Users, scoped keys, rate limits
 and a spending cap (SEC-3 to SEC-5) come before any deployment, in Milestone 9.

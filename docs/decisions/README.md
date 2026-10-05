@@ -39,4 +39,4 @@ Each ADR is linked from the module docstring of the code it governs, so someone 
 | [0012](0012-native-tool-calling-with-provider-turns-kept-verbatim.md) | Native tool calling, with each provider turn kept verbatim | `llm` |
 | [0013](0013-an-agent-that-proposes-and-code-that-decides.md) | An agent that proposes, and code that decides: bounded loop, proposals, user approvals, delimited data | `agent`, `guardrails` |
 | [0014](0014-interfaces-background-runs-a-thin-cli-and-mcp.md) | Interfaces: background runs with polling, a CLI that only calls the API, MCP with the client as the agent | `api`, `cli`, `mcp_server` |
-| [0015](0015-approval-through-mcp-elicitation.md) | Approval through MCP elicitation: the model asks, the user confirms in a form | `mcp_server` |
+| [0015](0015-decisions-through-mcp-permission-prompts.md) | Decisions through MCP, allowed by the user in Claude Code's own permission prompt | `mcp_server` |

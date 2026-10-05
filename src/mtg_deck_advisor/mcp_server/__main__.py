@@ -39,6 +39,7 @@ def main() -> None:
             embedder=build_embedder(settings),
             reranker=build_reranker(settings),
             client_name=args.client,
+            decision_clients=frozenset(settings.mcp_decision_clients),
         )
         try:
             anyio.run(serve, build_server(session))

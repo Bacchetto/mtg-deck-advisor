@@ -17,21 +17,23 @@ The user's own steps are tools too, so a deck can be built from draft to
 export without leaving the client: `list_proposals`, `show_proposal`,
 `apply_proposal` and `export_deck`, and the decisions `approve_proposal`,
 `reject_proposal` and `approve_export`. A decision is the user's, not the
-model's, so calling a decision tool doesn't make one: the server asks the
-user directly with an MCP elicitation form, written from what the database
-holds, and only the user's Accept records it (`actor = user`). A declined
-form changes nothing; a client that can't show forms is sent to the CLI.
-Apply and export still refuse without the recorded approval (GRD-2, GRD-5).
-See ADR 0015.
+model's. Each decision tool is marked as requiring user interaction
+(`_meta["anthropic/requiresUserInteraction"]`), so Claude Code always shows
+the user its Allow/Deny prompt for it: no allow rule, permission mode or hook
+can approve it for them. The prompt shows the call's arguments, and the
+`confirming` argument must be the server's own summary of the decision, word
+for word, so what the user allows can't be slanted by the model. Only
+clients known to honour the marking may decide (`MCP_DECISION_CLIENTS`);
+others are sent to the CLI. Apply and export still refuse without the
+recorded approval (GRD-2, GRD-5). See ADR 0015.
 
 A deck with a saved version is refined (`propose_changes`); one without is
 drafted (`propose_deck`). Which one is decided when the session first touches
 the deck, as for the agent's runs.
 """
 
-import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 import psycopg
@@ -63,7 +65,12 @@ from mtg_deck_advisor.guardrails.approvals import (
     reject_proposal,
 )
 from mtg_deck_advisor.guardrails.audit import record_audit
-from mtg_deck_advisor.guardrails.proposals import deck_proposals, load_proposal, named_changes
+from mtg_deck_advisor.guardrails.proposals import (
+    ProposalRecord,
+    deck_proposals,
+    load_proposal,
+    named_changes,
+)
 from mtg_deck_advisor.guardrails.untrusted import untrusted
 from mtg_deck_advisor.llm.anthropic import strict_schema
 from mtg_deck_advisor.llm.ollama import Embedder
@@ -79,9 +86,10 @@ list_decks to continue one. Research with search_pool, get_card and search_rules
 check with analyze_deck, then propose: propose_deck for a deck with nothing saved, \
 propose_changes for a saved one. Code checks every proposal against the Commander \
 rules and returns every problem to fix. When the user wants to keep a proposal, \
-call approve_proposal: the user is asked to confirm in a form, and you can't \
-confirm for them. Then apply_proposal saves it as the deck's next version, and \
-approve_export (confirmed the same way) and export_deck give the decklist.
+call approve_proposal with the confirming text show_proposal gives: the user is \
+asked to allow it, and you can't allow it for them. Then apply_proposal saves it \
+as the deck's next version, and approve_export (allowed the same way) and \
+export_deck give the decklist.
 
 {UNTRUSTED}"""
 
@@ -117,39 +125,33 @@ class ProposalArgs(Arguments):
     proposal_id: UUID = Field(description="The proposal, from list_proposals or a propose tool.")
 
 
+CONFIRMING = Field(
+    min_length=1,
+    max_length=1000,
+    description="The server's summary of this decision, word for word, as show_proposal (or "
+    "apply_proposal, for an export) gives it. The user sees it when asked to allow the call.",
+)
+
+
+class ApproveArgs(ProposalArgs):
+    confirming: str = CONFIRMING
+
+
 class RejectArgs(ProposalArgs):
+    confirming: str = CONFIRMING
     reason: str = Field(min_length=1, max_length=500, description="Why it's rejected.")
 
 
-@dataclass(frozen=True)
-class Decision:
-    """A decision the user is about to be asked to confirm."""
-
-    tool: str
-    subject: str
-    # What the user is shown: the server's account, from the database.
-    message: str
-    proposal_id: UUID | None = None
-    deck_id: UUID | None = None
-    version: int | None = None
-    reason: str | None = None
+class ExportArgs(DeckArgs):
+    confirming: str = CONFIRMING
 
 
-# What a client can answer a form with. Only accept and decline are the user's.
-Answer = Literal["accept", "decline", "cancel"]
-# The decisions only the user can make, and the verb for each.
-DECISIONS = {
-    "approve_proposal": "approval",
-    "reject_proposal": "rejection",
-    "approve_export": "export_approval",
-}
-# The form: Accept or Decline, with an optional note recorded with the decision.
-DECISION_FORM: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "note": {"type": "string", "title": "Note (optional)", "maxLength": 500},
-    },
-}
+# The decisions only the user can make. Claude Code always asks the user to
+# allow a tool marked this way, whatever their settings (ADR 0015).
+DECISIONS = ("approve_proposal", "reject_proposal", "approve_export")
+USER_INTERACTION = {"anthropic/requiresUserInteraction": True}
+# Clients known to honour that marking; others can't make decisions.
+DECISION_CLIENTS = frozenset({"claude-code"})
 
 
 @dataclass
@@ -160,6 +162,7 @@ class McpSession:
     embedder: Embedder
     reranker: Reranker[UUID] | None = None
     client_name: str = "client"
+    decision_clients: frozenset[str] = DECISION_CLIENTS
     _contexts: dict[UUID | None, ToolContext] = field(default_factory=dict)
     _turns: dict[UUID, int] = field(default_factory=dict)
 
@@ -198,15 +201,17 @@ class McpSession:
             ),
             _tool(
                 "approve_proposal",
-                "Ask the user to approve a pending proposal. The user confirms or declines "
-                "in a form; only their confirmation records the approval.",
-                ProposalArgs,
+                "Approve a pending proposal, with the user's permission: they're asked to "
+                "allow this call, and only then is their approval recorded.",
+                ApproveArgs,
+                meta=USER_INTERACTION,
             ),
             _tool(
                 "reject_proposal",
-                "Ask the user to reject a pending proposal, with the reason. The user "
-                "confirms or declines in a form.",
+                "Reject a pending proposal, with the reason, with the user's permission: "
+                "confirming is show_proposal's text with 'Reject:' in place of 'Approve:'.",
                 RejectArgs,
+                meta=USER_INTERACTION,
             ),
             _tool(
                 "apply_proposal",
@@ -216,9 +221,10 @@ class McpSession:
             ),
             _tool(
                 "approve_export",
-                "Ask the user to approve exporting the deck's latest version. The user "
-                "confirms or declines in a form.",
-                DeckArgs,
+                "Approve exporting the deck's latest version, with the user's permission: "
+                "they're asked to allow this call.",
+                ExportArgs,
+                meta=USER_INTERACTION,
             ),
             _tool(
                 "export_deck",
@@ -229,8 +235,10 @@ class McpSession:
         ]
         return own + agent + steps
 
-    def call(self, name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-        """Run one tool call and commit what it did."""
+    def call(
+        self, name: str, arguments: dict[str, Any], *, client: str | None = None
+    ) -> types.CallToolResult:
+        """Run one tool call and commit what it did. `client` is the name the client gave."""
         try:
             if name == "list_pools":
                 return self._list_pools(ListPoolsArgs.model_validate(arguments))
@@ -247,89 +255,92 @@ class McpSession:
             if name == "export_deck":
                 return self._export(DeckArgs.model_validate(arguments))
             if name in DECISIONS:
-                return _result(f"{name} needs the user's confirmation.", error=True)
+                return self._decide(name, arguments, client)
             return self._agent_tool(name, dict(arguments))
         except ValidationError as exc:
             return _result(f"Invalid arguments for {name}: {_describe(exc)}.", error=True)
         finally:
             self.conn.commit()
 
-    def prepare_decision(
-        self, name: str, arguments: dict[str, Any]
-    ) -> Decision | types.CallToolResult:
-        """What the user will be asked to confirm, or why there's nothing to ask."""
+    def _decide(
+        self, name: str, arguments: dict[str, Any], client: str | None
+    ) -> types.CallToolResult:
+        """Record a decision the user allowed in their client, if it can be trusted to ask."""
+        log.info("mcp_decision", tool=name, client=client)
+        if client not in self.decision_clients:
+            return _result(
+                f"Decisions can't be made from this client ({client or 'unnamed'}): it isn't "
+                "known to ask the user before running them. The user can decide with the "
+                "mtg-advisor CLI (for example `mtg-advisor approve PROPOSAL`) or the API.",
+                error=True,
+            )
+        via = {"channel": "mcp", "client": client}
         try:
             if name == "approve_export":
-                deck_args = DeckArgs.model_validate(arguments)
-                return self._export_decision(deck_args.deck_id)
-            args = (RejectArgs if name == "reject_proposal" else ProposalArgs).model_validate(
+                export = ExportArgs.model_validate(arguments)
+                deck = load_deck(self.conn, export.deck_id)
+                if deck is None:
+                    return _result(
+                        f"There is no deck {export.deck_id}. Use list_decks.", error=True
+                    )
+                summary = self._export_summary(export.deck_id)
+                if summary is None:
+                    return _result(
+                        f"Deck {export.deck_id} has nothing saved yet: apply a proposal first.",
+                        error=True,
+                    )
+                if mismatch := _mismatch(export.confirming, summary):
+                    return mismatch
+                approve_export(self.conn, export.deck_id, version=deck.version, via=via)
+                return _result(
+                    f"The user approved exporting version {deck.version}. "
+                    "Get the decklist with export_deck."
+                )
+            args = (RejectArgs if name == "reject_proposal" else ApproveArgs).model_validate(
                 arguments
             )
-            reason = args.reason if isinstance(args, RejectArgs) else None
-            return self._proposal_decision(name, args.proposal_id, reason)
-        except ValidationError as exc:
-            return _result(f"Invalid arguments for {name}: {_describe(exc)}.", error=True)
-        finally:
-            self.conn.rollback()  # asking is read-only
-
-    def decide(
-        self, decision: Decision, *, answer: Answer, note: str | None
-    ) -> types.CallToolResult:
-        """Record the client's answer to a decision form.
-
-        Only "accept" and "decline" are the user's answers. "cancel" means the
-        form was dismissed or never shown (some clients advertise forms but
-        don't display them), so it is audited as the system's, not the user's.
-        """
-        log.info("decision_answered", tool=decision.tool, subject=decision.subject, answer=answer)
-        verb = DECISIONS[decision.tool]
-        try:
-            if answer == "cancel":
-                record_audit(
-                    self.conn,
-                    "system",
-                    f"{verb}_cancelled",
-                    decision.subject,
-                    {"client": self.client_name},
-                )
-                return _result(
-                    "The confirmation form was dismissed or not shown, so nothing changed and "
-                    "the user hasn't decided. If no form appeared, this client can't show it: "
-                    "the user can decide with the mtg-advisor CLI (for example "
-                    "`mtg-advisor approve PROPOSAL`) or the API."
-                )
-            if answer == "decline":
-                record_audit(
-                    self.conn,
-                    "user",
-                    f"{verb}_declined",
-                    decision.subject,
-                    {"client": self.client_name},
-                )
-                return _result("The user declined, so nothing changed.")
-            if decision.tool == "approve_proposal":
-                assert decision.proposal_id is not None  # noqa: S101 (set for this tool)
-                approve_proposal(self.conn, decision.proposal_id, note=note)
-                return _result(
-                    f"The user approved proposal {decision.proposal_id}. "
-                    "Save it with apply_proposal."
-                )
-            if decision.tool == "reject_proposal":
-                assert decision.proposal_id is not None  # noqa: S101 (set for this tool)
-                reject_proposal(
-                    self.conn, decision.proposal_id, reason=note or decision.reason or ""
-                )
-                return _result(f"The user rejected proposal {decision.proposal_id}.")
-            assert decision.deck_id is not None  # noqa: S101 (set for this tool)
-            approve_export(self.conn, decision.deck_id, version=decision.version, note=note)
+            proposal = load_proposal(self.conn, args.proposal_id)
+            if proposal is None:
+                return _result(f"There is no proposal {args.proposal_id}.", error=True)
+            verb = "Reject" if isinstance(args, RejectArgs) else "Approve"
+            if mismatch := _mismatch(args.confirming, self._proposal_summary(proposal, verb)):
+                return mismatch
+            if isinstance(args, RejectArgs):
+                reject_proposal(self.conn, args.proposal_id, reason=args.reason, via=via)
+                return _result(f"The user rejected proposal {args.proposal_id}.")
+            approve_proposal(self.conn, args.proposal_id, via=via)
             return _result(
-                f"The user approved exporting version {decision.version}. "
-                "Get the decklist with export_deck."
+                f"The user approved proposal {args.proposal_id}. Save it with apply_proposal."
             )
         except ApprovalError as exc:
             return _result(str(exc), error=True)
-        finally:
-            self.conn.commit()
+
+    def _proposal_summary(self, proposal: ProposalRecord, verb: str) -> str:
+        """The server's one-line account of deciding a proposal, shown in the user's prompt."""
+        deck = load_deck(self.conn, proposal.deck_id)
+        deck_name = deck.name if deck else "?"
+        if proposal.kind == "deck":
+            state = DeckState.from_dict(proposal.payload["deck"])
+            commander = card_names(self.conn, [state.commander])[state.commander]
+            what = f"{commander} as commander, {state.total} cards"
+        else:
+            add, remove = named_changes(self.conn, proposal)
+            what = ", ".join(
+                [f"remove {n} {name}" for name, n in remove]
+                + [f"add {n} {name}" for name, n in add]
+            )
+        return f"{verb}: {what}, for deck {deck_name!r}"
+
+    def _export_summary(self, deck_id: UUID) -> str | None:
+        """The server's one-line account of exporting a deck's latest version."""
+        deck = load_deck(self.conn, deck_id)
+        if deck is None or deck.state is None or deck.version is None:
+            return None
+        commander = card_names(self.conn, [deck.state.commander])[deck.state.commander]
+        return (
+            f"Export: version {deck.version} of deck {deck.name!r}, {commander} as commander, "
+            f"{deck.state.total} cards"
+        )
 
     def close(self) -> None:
         """End the session's runs as completed, with the number of calls each made."""
@@ -408,10 +419,15 @@ class McpSession:
         if deck:
             lines += ["", decklist(self.conn, DeckState.from_dict(deck))]
         kind = "whole-deck" if proposal.kind == "deck" else "changes"
-        return _result(
-            f"{kind} proposal {proposal.id} for deck {proposal.deck_id}: {proposal.status}\n"
-            + untrusted("\n".join(lines))
-        )
+        text = f"{kind} proposal {proposal.id} for deck {proposal.deck_id}: {proposal.status}\n"
+        text += untrusted("\n".join(lines))
+        if proposal.status == "pending":
+            summary = self._proposal_summary(proposal, "Approve")
+            text += (
+                f'\nTo approve it, call approve_proposal with confirming: "{summary}"\n'
+                "To reject it, use the same text with 'Reject:' in place of 'Approve:'."
+            )
+        return _result(text)
 
     def _apply(self, args: ProposalArgs) -> types.CallToolResult:
         proposal = load_proposal(self.conn, args.proposal_id)
@@ -421,7 +437,11 @@ class McpSession:
             version = apply_proposal(self.conn, args.proposal_id)
         except ApprovalError as exc:
             return _result(str(exc), error=True)
-        return _result(f"Saved as version {version} of deck {proposal.deck_id}.")
+        summary = self._export_summary(proposal.deck_id)
+        return _result(
+            f"Saved as version {version} of deck {proposal.deck_id}.\n"
+            f'To export it, call approve_export with confirming: "{summary}"'
+        )
 
     def _export(self, args: DeckArgs) -> types.CallToolResult:
         deck = load_deck(self.conn, args.deck_id)
@@ -432,55 +452,6 @@ class McpSession:
         except ApprovalError as exc:
             return _result(str(exc), error=True)
         return _result(f"Version {deck.version}, ready to import:\n{untrusted(text)}")
-
-    def _proposal_decision(
-        self, name: str, proposal_id: UUID, reason: str | None
-    ) -> Decision | types.CallToolResult:
-        proposal = load_proposal(self.conn, proposal_id)
-        if proposal is None:
-            return _result(f"There is no proposal {proposal_id}.", error=True)
-        if proposal.status != "pending":
-            return _result(
-                f"Proposal {proposal_id} is {proposal.status}; only a pending proposal can be "
-                "decided.",
-                error=True,
-            )
-        deck = load_deck(self.conn, proposal.deck_id)
-        deck_name = deck.name if deck else "?"
-        if proposal.kind == "deck":
-            state = DeckState.from_dict(proposal.payload["deck"])
-            commander = card_names(self.conn, [state.commander])[state.commander]
-            what = f"a whole deck: {commander} as commander, {state.total} cards"
-        else:
-            add, remove = named_changes(self.conn, proposal)
-            what = "changes: " + ", ".join(
-                [f"remove {n} {name}" for name, n in remove]
-                + [f"add {n} {name}" for name, n in add]
-            )
-        verb = "Approve" if name == "approve_proposal" else "Reject"
-        message = f"{verb} this proposal for your deck {deck_name!r}?\n{what}"
-        if reason:
-            message += f"\nReason given: {reason}"
-        return Decision(
-            name, f"proposal:{proposal_id}", message, proposal_id=proposal_id, reason=reason
-        )
-
-    def _export_decision(self, deck_id: UUID) -> Decision | types.CallToolResult:
-        deck = load_deck(self.conn, deck_id)
-        if deck is None:
-            return _result(f"There is no deck {deck_id}. Use list_decks.", error=True)
-        if deck.state is None or deck.version is None:
-            return _result(
-                f"Deck {deck_id} has nothing saved yet: apply a proposal first.", error=True
-            )
-        commander = card_names(self.conn, [deck.state.commander])[deck.state.commander]
-        message = (
-            f"Approve exporting version {deck.version} of your deck {deck.name!r}?\n"
-            f"{commander} as commander, {deck.state.total} cards"
-        )
-        return Decision(
-            "approve_export", f"deck:{deck_id}", message, deck_id=deck_id, version=deck.version
-        )
 
     def _agent_tool(self, name: str, arguments: dict[str, Any]) -> types.CallToolResult:
         raw = arguments.pop("deck_id", None)
@@ -551,52 +522,9 @@ def build_server(session: McpSession) -> Server[Any]:
 
     async def call_tool(
         ctx: ServerRequestContext[Any], params: types.CallToolRequestParams
-    ) -> types.CallToolResult | types.InputRequiredResult:
-        if params.name not in DECISIONS:
-            return session.call(params.name, params.arguments or {})
-        return await _decide(ctx, params)
-
-    async def _decide(
-        ctx: ServerRequestContext[Any], params: types.CallToolRequestParams
-    ) -> types.CallToolResult | types.InputRequiredResult:
-        """Ask the user, not the model: only the user's answer to the form decides.
-
-        Two protocol eras ask differently. Where the server can send the client a
-        request mid-call, it sends the form and waits. Otherwise (the 2026-07-28
-        revision) it returns "input required" with the form, and the client calls
-        again with the user's answer. The state handed back is a fingerprint of
-        the exact message shown, so an answer is recorded only for what the user
-        saw: if the proposal changed in between, the user is asked again.
-        """
-        name, arguments = params.name, params.arguments or {}
-        decision = session.prepare_decision(name, arguments)
-        if isinstance(decision, types.CallToolResult):
-            return decision
-        if not ctx.session.check_client_capability(ELICITATION):
-            return _result(
-                "This client can't ask the user to confirm, so it can't record a decision. "
-                "The user can do it with the mtg-advisor CLI (for example "
-                "`mtg-advisor approve PROPOSAL`) or the API.",
-                error=True,
-            )
-        if ctx.session.can_send_request:
-            answer = await ctx.session.elicit_form(
-                decision.message, DECISION_FORM, related_request_id=ctx.request_id
-            )
-        else:
-            shown = _fingerprint(decision.message)
-            given = (params.input_responses or {}).get(CONFIRM)
-            if not isinstance(given, types.ElicitResult) or params.request_state != shown:
-                form = types.ElicitRequestFormParams(
-                    mode="form", message=decision.message, requested_schema=DECISION_FORM
-                )
-                return types.InputRequiredResult(
-                    input_requests={CONFIRM: types.ElicitRequest(params=form)},
-                    request_state=shown,
-                )
-            answer = given
-        note = (answer.content or {}).get("note") if answer.action == "accept" else None
-        return session.decide(decision, answer=answer.action, note=str(note) if note else None)
+    ) -> types.CallToolResult:
+        info = ctx.session.client_params.client_info if ctx.session.client_params else None
+        return session.call(params.name, params.arguments or {}, client=info.name if info else None)
 
     return Server(
         "mtg-deck-advisor",
@@ -607,18 +535,25 @@ def build_server(session: McpSession) -> Server[Any]:
     )
 
 
-ELICITATION = types.ClientCapabilities(elicitation=types.ElicitationCapability())
-# The key of the confirmation form in an "input required" round trip.
-CONFIRM = "confirm"
+def _mismatch(given: str, summary: str) -> types.CallToolResult | None:
+    """An error if `confirming` isn't the server's summary, word for word."""
+    if " ".join(given.split()) == " ".join(summary.split()):
+        return None
+    return _result(
+        "confirming must be the server's summary of this decision, word for word, because the "
+        f'user sees it when asked to allow the call: "{summary}"',
+        error=True,
+    )
 
 
-def _fingerprint(message: str) -> str:
-    return hashlib.sha256(message.encode()).hexdigest()
-
-
-def _tool(name: str, description: str, args: type[BaseModel]) -> types.Tool:
+def _tool(
+    name: str, description: str, args: type[BaseModel], meta: dict[str, Any] | None = None
+) -> types.Tool:
     return types.Tool(
-        name=name, description=description, input_schema=strict_schema(args.model_json_schema())
+        name=name,
+        description=description,
+        input_schema=strict_schema(args.model_json_schema()),
+        meta=meta,
     )
 
 

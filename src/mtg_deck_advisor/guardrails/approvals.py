@@ -64,13 +64,20 @@ class Approval:
 
 
 def approve_proposal(
-    conn: psycopg.Connection, proposal_id: UUID, *, note: str | None = None
+    conn: psycopg.Connection,
+    proposal_id: UUID,
+    *,
+    note: str | None = None,
+    via: dict[str, str] | None = None,
 ) -> Approval:
-    return _decide(conn, proposal_id, "approved", note)
+    """Record the user's approval. `via` says where they gave it (the channel and client)."""
+    return _decide(conn, proposal_id, "approved", note, via)
 
 
-def reject_proposal(conn: psycopg.Connection, proposal_id: UUID, *, reason: str) -> Approval:
-    return _decide(conn, proposal_id, "rejected", reason)
+def reject_proposal(
+    conn: psycopg.Connection, proposal_id: UUID, *, reason: str, via: dict[str, str] | None = None
+) -> Approval:
+    return _decide(conn, proposal_id, "rejected", reason, via)
 
 
 def apply_proposal(conn: psycopg.Connection, proposal_id: UUID) -> int:
@@ -133,6 +140,7 @@ def approve_export(
     *,
     version: int | None = None,
     note: str | None = None,
+    via: dict[str, str] | None = None,
 ) -> Approval:
     """Record a user's permission to export one version (the latest by default)."""
     deck = load_deck(conn, deck_id, version=version)
@@ -148,7 +156,10 @@ def approve_export(
             """,
             (deck_id, deck.version, note, current_trace_id()),
         ).fetchone()
-        record_audit(conn, "user", "approve_export", f"deck:{deck_id}", {"version": deck.version})
+        details: dict[str, Any] = {"version": deck.version}
+        if via:
+            details["via"] = via
+        record_audit(conn, "user", "approve_export", f"deck:{deck_id}", details)
     return _approval(row)
 
 
@@ -179,7 +190,11 @@ def export_deck(conn: psycopg.Connection, deck_id: UUID, *, version: int | None 
 
 
 def _decide(
-    conn: psycopg.Connection, proposal_id: UUID, decision: Decision, note: str | None
+    conn: psycopg.Connection,
+    proposal_id: UUID,
+    decision: Decision,
+    note: str | None,
+    via: dict[str, str] | None,
 ) -> Approval:
     subject = f"proposal:{proposal_id}"
     with conn.transaction():
@@ -202,7 +217,10 @@ def _decide(
             (decision, proposal_id),
         )
         action = "approve" if decision == "approved" else "reject"
-        record_audit(conn, "user", action, subject, {"note": note} if note else {})
+        details: dict[str, Any] = {"note": note} if note else {}
+        if via:
+            details["via"] = via
+        record_audit(conn, "user", action, subject, details)
     return _approval(row)
 
 
