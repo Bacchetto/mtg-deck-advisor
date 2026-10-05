@@ -230,7 +230,8 @@ and finds the API at `API_URL`. Drafts and refines run on the server and take a 
 the CLI waits and shows progress (`--no-wait` to return at once, `mtg-advisor run RUN` to check later).
 
 **The whole build in one command:** `mtg-advisor build pool.txt` submits the pool (or takes a pool ID,
-or lets you choose from your pools), asks what you'd like, drafts, shows the proposal, and then
+or lets you choose from your pools), asks what to build around (a commander or a theme; `?` lists
+the commanders your pool can use), drafts, shows the proposal, and then
 waits for you: `[a]pprove` (approve and save), `[r]eject` (with a reason, which is passed on to a
 new attempt), `[c]hange "..."` (a refine), `[e]xport` to a file, or `[q]uit`. A rejected first draft
 is drafted again into the same deck. `mtg-advisor build --deck DECK` picks a deck up where you left it.

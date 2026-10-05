@@ -307,6 +307,11 @@ def ask(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
 type Ask = Callable[[str], str]
 
 MENU = "[a]pprove  [r]eject  [c]hange  [e]xport  [q]uit"
+REQUEST_PROMPT = (
+    "What should the deck be built around? Name a commander or a theme "
+    '(e.g. "Adeline" or "tokens"), ? to see the commanders your pool can use, '
+    "or Enter to let the agent choose: "
+)
 
 
 def build(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
@@ -328,12 +333,25 @@ def build(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
 def _start_build(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep, ask: Ask) -> str:
     pool_id = _choose_pool(api, args, p, ask)
     request = args.request
-    if request is None:
-        request = ask("What would you like? (a commander or theme; Enter for anything) ").strip()
+    while request is None:
+        request = ask(REQUEST_PROMPT).strip()
+        if request == "?":
+            _list_commanders(api, pool_id, p)
+            request = None
     body = {"request": request} | ({"name": args.name} if args.name else {})
     started = api.post(f"/pools/{pool_id}/drafts", body)
     _wait(api, started, p, sleep)
     return str(started["deck_id"])
+
+
+def _list_commanders(api: Api, pool_id: str, p: Printer) -> None:
+    commanders = api.get(f"/pools/{pool_id}")["commanders"]
+    if not commanders:
+        p.line("no card in this pool can be a commander, so a deck can't be drafted from it")
+        return
+    p.line("commanders your pool can use:")
+    for commander in commanders:
+        p.line(f"  {commander['name']} ({commander['color_identity'] or 'colorless'})")
 
 
 def _choose_pool(api: Api, args: argparse.Namespace, p: Printer, ask: Ask) -> str:
