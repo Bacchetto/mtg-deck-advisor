@@ -6,6 +6,8 @@ code checks the result against the Commander rules and stores the proposal as
 problem, which goes back to the agent to fix).
 """
 
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -61,3 +63,32 @@ def save_proposal(
         {"kind": kind, "status": status, "deck": str(deck_id), "problems": len(problems)},
     )
     return proposal_id
+
+
+@dataclass(frozen=True)
+class ProposalRecord:
+    id: UUID
+    run_id: UUID | None
+    deck_id: UUID
+    kind: ProposalKind
+    status: str
+    payload: dict[str, Any]
+    base_version: int | None
+    rationale: str
+    citations: list[str]
+    # The checks' verdict: every problem found; empty for a valid proposal.
+    problems: list[dict[str, Any]]
+    created_at: datetime
+    decided_at: datetime | None
+
+
+def load_proposal(conn: psycopg.Connection, proposal_id: UUID) -> ProposalRecord | None:
+    row = conn.execute(
+        """
+        SELECT id, run_id, deck_id, kind, status, payload, base_version, rationale, citations,
+               coalesce(validation->'problems', '[]'::jsonb), created_at, decided_at
+        FROM proposals WHERE id = %s
+        """,
+        (proposal_id,),
+    ).fetchone()
+    return ProposalRecord(*row) if row else None

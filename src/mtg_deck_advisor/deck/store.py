@@ -5,7 +5,7 @@ next version; no version is ever changed (a trigger refuses it), so every
 applied change can be traced and undone by going back a version.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -166,3 +166,27 @@ def list_pools(conn: psycopg.Connection) -> list[PoolListing]:
         """
     ).fetchall()
     return [PoolListing(*row) for row in rows]
+
+
+@dataclass(frozen=True)
+class VersionListing:
+    version: int
+    proposal_id: UUID | None
+    created_at: datetime
+
+
+def deck_versions(conn: psycopg.Connection, deck_id: UUID) -> list[VersionListing]:
+    """A deck's saved versions, oldest first, with the proposal each came from."""
+    rows = conn.execute(
+        "SELECT version, proposal_id, created_at FROM deck_versions WHERE deck_id = %s "
+        "ORDER BY version",
+        (deck_id,),
+    ).fetchall()
+    return [VersionListing(*row) for row in rows]
+
+
+def card_names(conn: psycopg.Connection, oracle_ids: Iterable[UUID]) -> dict[UUID, str]:
+    rows = conn.execute(
+        "SELECT oracle_id, name FROM cards WHERE oracle_id = ANY(%s)", (list(oracle_ids),)
+    ).fetchall()
+    return dict(rows)
