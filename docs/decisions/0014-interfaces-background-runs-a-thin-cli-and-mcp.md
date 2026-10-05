@@ -1,6 +1,6 @@
 # 0014 - Interfaces: background runs, a thin CLI, and MCP with the client as the agent
 
-**Status:** Accepted, 2026-10-05
+**Status:** Accepted, 2026-10-05. Amended by [ADR 0015](0015-approval-through-mcp-elicitation.md): the MCP server can now record decisions the user confirms in a form.
 **Applies to:** `mtg_deck_advisor.api`, `mtg_deck_advisor.cli`, `mtg_deck_advisor.mcp_server`
 
 ## Context
