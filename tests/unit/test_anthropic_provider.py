@@ -256,3 +256,24 @@ def test_a_rejected_api_key_raises_a_clear_error() -> None:
 def test_a_missing_api_key_is_rejected_when_the_provider_is_built() -> None:
     with pytest.raises(ValueError, match="ANTHROPIC_API_KEY"):
         AnthropicProvider(api_key=None, timeout_seconds=30)
+
+
+def test_dropped_constraints_are_described_so_the_model_still_sees_them() -> None:
+    # Strict mode can't enforce `maximum` and friends; Pydantic still does, so
+    # the model must be told the limits or it learns them only from errors.
+    schema = strict_schema(
+        {
+            "type": "object",
+            "properties": {
+                "k": {"type": "integer", "description": "How many.", "minimum": 1, "maximum": 40},
+                "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
+                "name": {"type": "string", "maxLength": 200, "description": "The name."},
+            },
+        }
+    )
+
+    properties = schema["properties"]
+    assert properties["k"]["description"] == "How many. (minimum 1, maximum 40)"
+    assert properties["tags"]["description"] == "(at most 5 items)"
+    assert properties["name"]["description"] == "The name. (at most 200 characters)"
+    assert "maximum" not in properties["k"]

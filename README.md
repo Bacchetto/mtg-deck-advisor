@@ -190,6 +190,42 @@ Rerun the eval with `python scripts/evaluate_retrieval.py` (dev set, local and f
 that chose each setting are in `scripts/retrieval_experiments.py` and
 [evals/reports/retrieval-experiments/](evals/reports/retrieval-experiments/).
 
+## The agent
+
+The agent drafts a Commander deck from your card pool, refines it on request, and answers
+rules questions. **It only proposes. Code checks every proposal, and nothing changes without your
+approval** ([ADR 0013](docs/decisions/0013-an-agent-that-proposes-and-code-that-decides.md)).
+
+- **How it runs:** Claude Sonnet 5.5 (`AGENT_MODEL`), with native tool calling
+  ([ADR 0012](docs/decisions/0012-native-tool-calling-with-provider-turns-kept-verbatim.md)).
+- **Its six tools:**
+  - **Read-only:** search the pool, look up a card, search the rules, analyze the deck.
+  - **Propose:** a whole deck, or a set of changes.
+- **Bounded:** at most `AGENT_MAX_TURNS` model calls, and a cost cap (`AGENT_COST_CAP_USD`)
+  checked before each call. Every run is recorded with its transcript, tool calls and cost,
+  whether it finishes or not.
+- **Checked by code:** each proposal is checked against the Commander rules and your pool. Its
+  citations must be rules and cards the run actually looked up. A failing proposal goes back
+  to the agent with every problem listed.
+- **Approved by you:** approving, applying and exporting are not tools, and apply and export
+  refuse to act without your approval record. Every step is in an append-only audit log.
+- **Grounded rules answers:** an answer is shown only if every rule it cites was retrieved in
+  the run. Otherwise the answer is "not found".
+- **Card text is treated as data:** card and rule text reach the model inside `<untrusted>`
+  delimiters. Even an obeyed injection has nothing to call that changes anything.
+
+First live runs ([report](evals/reports/2026-10-04-agent-live-runs.md)), on a 300-card pool:
+
+| Run | Turns | Cost | Time |
+|---|---|---|---|
+| Draft (ended in a legal 100-card deck) | 5 | $0.12 | 51 s |
+| Refine (swap three cards) | 4 | $0.06 | 19 s |
+| Rules question (four asked; one correctly "not found") | 2 each | under $0.01 each | 4–8 s |
+
+Until the CLI arrives (Milestone 6), run it step by step with `python scripts/agent_run.py`
+(`draft`, `show`, `approve`, `apply`, `refine`, `approve-export`, `export`, `rules`). The
+recorded runs replay with `MODEL_PROVIDER=replay` and no API key.
+
 ## Development
 
 ```bash

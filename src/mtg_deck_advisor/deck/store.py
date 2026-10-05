@@ -124,6 +124,19 @@ def load_deck(
     return Deck(id=deck_id, pool_id=deck[0], name=deck[1], version=row[0], state=state)
 
 
+def decklist(conn: psycopg.Connection, state: DeckState) -> str:
+    """A plain decklist: `1 Card Name` lines, the commander first, then by name."""
+    names: dict[UUID, str] = dict(
+        conn.execute(
+            "SELECT oracle_id, name FROM cards WHERE oracle_id = ANY(%s)",
+            ([state.commander, *state.cards],),
+        ).fetchall()
+    )
+    others = sorted(state.cards.items(), key=lambda item: names[item[0]])
+    lines = [f"1 {names[state.commander]}"] + [f"{count} {names[card]}" for card, count in others]
+    return "\n".join(lines)
+
+
 def _returned(row: tuple[Any, ...] | None) -> Any:
     """The value an INSERT ... RETURNING gave back (it always gives one row)."""
     if row is None:

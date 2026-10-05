@@ -1,4 +1,4 @@
-"""The agent's tools (AGT-1, AGT-4, GRD-1, GRD-3, OBS-1).
+"""The agent's tools (AGT-1, AGT-4, GRD-1, GRD-3, OBS-1). See ADR 0013.
 
 Each tool has a Pydantic argument model: its JSON schema is what the model
 sees, and the same model validates what the model sends back. `execute` runs
@@ -132,7 +132,7 @@ class SearchPoolArgs(Arguments):
         "WUBRG ('' for colorless only). Use the commander's identity.",
     )
     mana_value_max: float | None = Field(default=None, ge=0, description="Highest mana value.")
-    k: int = Field(default=10, ge=1, le=25, description="How many cards to return.")
+    k: int = Field(default=10, ge=1, le=40, description="How many cards to return.")
 
 
 class GetCardArgs(Arguments):
@@ -354,7 +354,7 @@ def _propose_deck(ctx: ToolContext, args: ProposeDeckArgs) -> Output:
         problems=problems,
     )
     ctx.proposals.append(proposal)
-    return _proposal_output(proposal, problems)
+    return _proposal_output(len(ctx.proposals), problems)
 
 
 def _propose_changes(ctx: ToolContext, args: ProposeChangesArgs) -> Output:
@@ -404,7 +404,7 @@ def _propose_changes(ctx: ToolContext, args: ProposeChangesArgs) -> Output:
         problems=problems,
     )
     ctx.proposals.append(proposal)
-    return _proposal_output(proposal, problems)
+    return _proposal_output(len(ctx.proposals), problems)
 
 
 # --- the registry --------------------------------------------------------------------
@@ -690,15 +690,17 @@ def _problem_line(problem: dict[str, Any]) -> str:
     return f"- {problem['message']}{citation}"
 
 
-def _proposal_output(proposal: UUID, problems: list[dict[str, Any]]) -> Output:
+def _proposal_output(number: int, problems: list[dict[str, Any]]) -> Output:
+    """What the model is told about its proposal. It's numbered within the run
+    rather than by its ID, so a recorded run replays with identical requests."""
     if not problems:
         return Output(
-            f"Proposal {proposal} is legal and is now waiting for the user's approval. "
+            f"Proposal {number} is legal and is now waiting for the user's approval. "
             "Nothing changes until they approve it."
         )
     lines = "\n".join(_problem_line(problem) for problem in problems)
     return Output(
-        f"Proposal {proposal} was rejected with {len(problems)} problems. Fix every one "
+        f"Proposal {number} was rejected with {len(problems)} problems. Fix every one "
         f"and propose again.\n{untrusted(lines)}",
         "rejected",
     )

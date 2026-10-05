@@ -41,21 +41,21 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 # JSON Schema keywords structured outputs don't support. They're dropped from
 # the schema sent to the API; ModelClient still enforces them when it
 # validates the reply against the Pydantic model.
-UNSUPPORTED_SCHEMA_KEYS = frozenset(
-    {
-        "minimum",
-        "maximum",
-        "exclusiveMinimum",
-        "exclusiveMaximum",
-        "multipleOf",
-        "minLength",
-        "maxLength",
-        "pattern",
-        "minItems",
-        "maxItems",
-        "uniqueItems",
-    }
-)
+# Constraints strict schemas can't carry, and how each is described instead.
+# Pydantic still enforces them; the description is so the model knows them.
+UNSUPPORTED_SCHEMA_KEYS: dict[str, str] = {
+    "minimum": "minimum {}",
+    "maximum": "maximum {}",
+    "exclusiveMinimum": "greater than {}",
+    "exclusiveMaximum": "less than {}",
+    "multipleOf": "a multiple of {}",
+    "minLength": "at least {} characters",
+    "maxLength": "at most {} characters",
+    "pattern": "matching {}",
+    "minItems": "at least {} items",
+    "maxItems": "at most {} items",
+    "uniqueItems": "no duplicates",
+}
 
 # Phrases that mark a spend-limit or billing refusal (rate-limits documentation).
 SPEND_LIMIT_MESSAGES = (
@@ -66,24 +66,47 @@ SPEND_LIMIT_MESSAGES = (
 
 
 def strict_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """A copy of `schema` in the form structured outputs require.
+    """A copy of `schema` in the form structured outputs and strict tools require.
 
     Every object gets `additionalProperties: false`, and unsupported
-    constraints are removed. The input is not modified.
+    constraints are removed and restated in the field's description, so the
+    model still sees the limits Pydantic will enforce. The input is not modified.
     """
 
     def tighten(node: Any) -> Any:
-        if isinstance(node, dict):
-            result = {k: tighten(v) for k, v in node.items() if k not in UNSUPPORTED_SCHEMA_KEYS}
-            if result.get("type") == "object":
-                result["additionalProperties"] = False
-            return result
         if isinstance(node, list):
             return [tighten(item) for item in node]
-        return node
+        if not isinstance(node, dict):
+            return node
+        result: dict[str, Any] = {}
+        for key, value in node.items():
+            if key in UNSUPPORTED_SCHEMA_KEYS:
+                continue
+            elif key in ("properties", "$defs"):
+                # Maps of names to schemas: a property may be called "pattern".
+                result[key] = {name: tighten(sub) for name, sub in value.items()}
+            else:
+                result[key] = tighten(value)
+        # In a fixed order (minimum before maximum), whatever order the schema used.
+        limits = [
+            _limit(UNSUPPORTED_SCHEMA_KEYS[key], node[key])
+            for key in UNSUPPORTED_SCHEMA_KEYS
+            if key in node and (key != "uniqueItems" or node[key])
+        ]
+        if limits:
+            described = f"({', '.join(limits)})"
+            result["description"] = " ".join(filter(None, [result.get("description"), described]))
+        if result.get("type") == "object":
+            result["additionalProperties"] = False
+        return result
 
     tightened: dict[str, Any] = tighten(copy.deepcopy(schema))
     return tightened
+
+
+def _limit(phrase: str, value: Any) -> str:
+    text = phrase.format(value)
+    return text.removesuffix("s") if value == 1 and text.endswith(("characters", "items")) else text
 
 
 class AnthropicProvider:

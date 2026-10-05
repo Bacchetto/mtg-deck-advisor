@@ -193,6 +193,13 @@ def test_each_task_offers_only_its_own_tools() -> None:
     assert names("rules") == ["search_rules"]
 
 
+def test_search_pool_returns_up_to_40_cards(conn: psycopg.Connection) -> None:
+    session = session_for(conn, "draft")
+
+    assert not session.call("search_pool", query="creature", k=40).is_error
+    assert session.call("search_pool", query="creature", k=41).is_error
+
+
 def test_tool_schemas_come_from_the_argument_models() -> None:
     specs = {spec.name: spec for spec in tool_specs("draft")}
 
