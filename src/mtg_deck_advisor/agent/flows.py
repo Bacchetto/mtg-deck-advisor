@@ -141,7 +141,12 @@ class DraftResult:
 
 
 def prepare_draft(
-    conn: psycopg.Connection, model: str, pool_id: UUID, *, request: str = "", name: str = "Draft"
+    conn: psycopg.Connection,
+    model: str,
+    pool_id: UUID,
+    *,
+    request: str = "",
+    name: str | None = None,
 ) -> PreparedRun:
     """A new deck for the pool, and a started run that will propose its first version."""
     pool = _pool(conn, pool_id)
@@ -183,7 +188,7 @@ def execute_run(services: AgentServices, prepared: PreparedRun) -> RunResult:
 
 
 def draft_deck(
-    services: AgentServices, pool_id: UUID, *, request: str = "", name: str = "Draft"
+    services: AgentServices, pool_id: UUID, *, request: str = "", name: str | None = None
 ) -> DraftResult:
     """A new deck for the pool, and a run that proposes its first version."""
     model = services.client.model

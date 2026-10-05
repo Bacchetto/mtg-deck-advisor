@@ -26,7 +26,13 @@ import psycopg
 
 from mtg_deck_advisor.deck.facts import load_card_facts
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import decklist, load_deck, load_pool, save_version
+from mtg_deck_advisor.deck.store import (
+    decklist,
+    load_deck,
+    load_pool,
+    name_for_commander,
+    save_version,
+)
 from mtg_deck_advisor.guardrails.audit import record_audit
 from mtg_deck_advisor.guardrails.commander import validate
 from mtg_deck_advisor.observability.tracing import current_trace_id
@@ -95,9 +101,24 @@ def apply_proposal(conn: psycopg.Connection, proposal_id: UUID) -> int:
                 subject,
                 {"deck": str(check.deck_id), "version": version, "approval": str(check.approval)},
             )
+            _name_for_commander(conn, check.deck_id, check.state)
             return version
     # Outside the transaction above, so the refusal's audit entry isn't rolled back.
     _refuse(conn, subject, "apply_refused", check)
+
+
+def _name_for_commander(conn: psycopg.Connection, deck_id: UUID, state: DeckState) -> None:
+    """A deck with a default name takes its commander's when it first has one."""
+    before = load_deck(conn, deck_id)
+    renamed = name_for_commander(conn, deck_id, state.commander)
+    if renamed is not None and before is not None:
+        record_audit(
+            conn,
+            "system",
+            "rename",
+            f"deck:{deck_id}",
+            {"from": before.name, "to": renamed, "reason": "commander"},
+        )
 
 
 @dataclass(frozen=True)

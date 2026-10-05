@@ -2,7 +2,7 @@
 
     mtg-advisor pool add pool.txt [--csv] [--name NAME]
     mtg-advisor pool list | pool show POOL
-    mtg-advisor draft POOL [--request TEXT] [--no-wait]
+    mtg-advisor draft POOL [--request TEXT] [--name NAME] [--no-wait]
     mtg-advisor refine DECK --request TEXT [--no-wait]
     mtg-advisor run RUN
     mtg-advisor proposal PROPOSAL
@@ -161,7 +161,8 @@ def pool_show(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> N
 
 
 def draft(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
-    started = api.post(f"/pools/{args.pool}/drafts", {"request": args.request})
+    body = {"request": args.request} | ({"name": args.name} if args.name else {})
+    started = api.post(f"/pools/{args.pool}/drafts", body)
     _follow(api, started, args, p, sleep)
 
 
@@ -344,6 +345,10 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument(target)
         command.add_argument("--request", default="", required=name == "refine")
         command.add_argument("--no-wait", action="store_true", help="return once it starts")
+        if name == "draft":
+            command.add_argument(
+                "--name", help="the new deck's name (default: its commander's, once saved)"
+            )
         command.set_defaults(handler=handler)
 
     simple: list[tuple[str, Callable[..., None], str, str]] = [

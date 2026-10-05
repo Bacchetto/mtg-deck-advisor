@@ -231,7 +231,7 @@ the CLI waits and shows progress (`--no-wait` to return at once, `mtg-advisor ru
 
 ```bash
 mtg-advisor pool add evals/datasets/pool_300.txt    # submit a pool (a list, or --csv)
-mtg-advisor draft POOL                               # the agent drafts; prints its proposals
+mtg-advisor draft POOL [--name NAME]                 # the agent drafts; prints its proposals
 mtg-advisor proposal PROPOSAL                        # rationale, problems, decklist
 mtg-advisor approve PROPOSAL                         # your decision (or: reject --reason ...)
 mtg-advisor apply PROPOSAL                           # saved as version 1
@@ -241,6 +241,8 @@ mtg-advisor ask "How much commander damage loses the game?"
 ```
 
 Applying or exporting without your approval is refused (`403`), and the attempt is audited.
+A deck you don't name is called "New <pool> deck" until its first version is applied, then
+takes its commander's name; default names get " (2)", " (3)" rather than repeat another deck's.
 `--json` prints the API's answers.
 
 **No API key needed for a demo:** with `MODEL_PROVIDER=replay`, the recorded runs replay through the

@@ -85,6 +85,13 @@ class DraftRequest(BaseModel):
     request: str = Field(
         default="", max_length=2000, description="What the user wants, if anything."
     )
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description='A name for the new deck. Without one it\'s called "New <pool> deck" '
+        "until its first version is saved, then takes its commander's name.",
+    )
 
 
 class RefineRequest(BaseModel):
@@ -202,7 +209,9 @@ def start_draft(
 ) -> RunStarted:
     """Start drafting a new deck from the pool. Poll the run for the result."""
     try:
-        prepared = prepare_draft(conn, services(conn).client.model, pool_id, request=body.request)
+        prepared = prepare_draft(
+            conn, services(conn).client.model, pool_id, request=body.request, name=body.name
+        )
     except NotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     return _start(conn, prepared, settings, services, background, response)

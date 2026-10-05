@@ -114,7 +114,13 @@ class ListDecksArgs(Arguments):
 
 class NewDeckArgs(Arguments):
     pool_id: UUID = Field(description="The pool to build from, from list_pools.")
-    name: str = Field(min_length=1, max_length=200, description="A name for the deck.")
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="A name for the deck, if the user gave one. Without one it's named for "
+        "the pool, then for its commander once its first version is saved.",
+    )
 
 
 class DeckArgs(Arguments):
@@ -389,7 +395,9 @@ class McpSession:
             f"deck:{deck_id}",
             {"pool": str(args.pool_id), "client": self.client_name},
         )
-        return _result(f"Created deck {args.name!r}. Its deck_id is {deck_id}.")
+        deck = load_deck(self.conn, deck_id)
+        name = deck.name if deck else args.name
+        return _result(f"Created deck {name!r}. Its deck_id is {deck_id}.")
 
     def _list_proposals(self, args: DeckArgs) -> types.CallToolResult:
         if load_deck(self.conn, args.deck_id) is None:
