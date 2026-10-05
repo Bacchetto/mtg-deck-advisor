@@ -187,6 +187,45 @@ def test_an_unknown_choice_is_asked_again(
     assert "nothing saved to export yet" in out
 
 
+def test_the_request_prompt_says_what_to_give(
+    app_for: Callable[..., TestClient], tmp_path: Path
+) -> None:
+    session = Session(app_for(*DRAFT_SCRIPT), ["", "q"])
+
+    session.run(add_pool(session.client))
+
+    (prompt,) = [p for p in session.prompts if "built around" in p]
+    assert "Name a commander or a theme" in prompt
+    assert "? to see" in prompt and "Enter to let the agent choose" in prompt
+
+
+def test_a_question_mark_lists_the_pools_commanders_then_asks_again(
+    app_for: Callable[..., TestClient], tmp_path: Path
+) -> None:
+    client = app_for(*DRAFT_SCRIPT)
+    session = Session(client, ["?", "", "q"])
+
+    code, out, err = session.run(add_pool(client))
+
+    assert code == 0, err
+    assert f"{ATRAXA} (WUBG)" in out
+    assert len([p for p in session.prompts if "built around" in p]) == 2
+    (deck,) = decks(client)  # one draft, after the list
+    assert deck["version"] is None
+
+
+def test_a_pool_with_no_possible_commander_says_so(
+    app_for: Callable[..., TestClient], tmp_path: Path
+) -> None:
+    client = app_for()
+    created = ok(client.post("/pools", json={"name": "Lands", "content": "40 Plains\n"}), 201)
+    session = Session(client, ["?"])
+
+    _, out, _ = session.run(str(created["pool_id"]))
+
+    assert "no card in this pool can be a commander" in out
+
+
 # --- the API steps the build needs ---------------------------------------------------------
 
 
