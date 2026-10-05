@@ -67,8 +67,23 @@ def test_a_draft_waits_for_its_run_and_shows_progress() -> None:
     assert api.requests == ["POST /pools/pool-1/drafts"] + [f"GET /runs/{RUN}"] * 4
     assert len(sleeps) == 4
     assert "turn 0" not in out  # nothing to report before the first turn ends
-    assert "turn 1, $0.0100" in out and "turn 3, $0.0400" in out
+    # Every turn is accounted for, including those that ended between two polls
+    # and the last one, which ended with the run.
+    assert "turn 1, $0.0100" in out
+    assert "turns 2-3, $0.0400" in out
+    assert "turn 4, $0.0500" in out
     assert "completed after 4 turns, $0.0500" in out
+
+
+def test_turns_that_end_between_polls_are_still_shown() -> None:
+    # A replayed run takes milliseconds a turn, so most turns end unseen.
+    api = Api()
+    api.polls = [run_view("running", 1, 0.0)]
+
+    _, out, _, _ = cli(api, "draft", "pool-1")
+
+    progress = [line.strip() for line in out.splitlines() if line.startswith("  turn")]
+    assert progress == ["turn 1, $0.0000", "turns 2-4, $0.0500"]
 
 
 def test_no_wait_returns_the_run_at_once() -> None:
