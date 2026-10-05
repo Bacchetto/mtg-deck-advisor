@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from mtg_deck_advisor.api.services import Connection
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import deck_versions, decklist, load_deck
+from mtg_deck_advisor.deck.store import DeckName, deck_versions, decklist, load_deck, rename_deck
 from mtg_deck_advisor.guardrails.approvals import (
     Approval,
     ApprovalError,
@@ -30,6 +30,7 @@ from mtg_deck_advisor.guardrails.approvals import (
     export_deck,
     reject_proposal,
 )
+from mtg_deck_advisor.guardrails.audit import record_audit
 from mtg_deck_advisor.guardrails.proposals import load_proposal, named_changes
 
 router = APIRouter()
@@ -116,6 +117,16 @@ class DeckView(BaseModel):
     decklist: str | None
 
 
+class DeckRename(BaseModel):
+    name: DeckName
+
+
+class DeckNamed(BaseModel):
+    id: UUID
+    name: str
+    previous_name: str
+
+
 # --- proposals ------------------------------------------------------------------------------
 
 
@@ -199,6 +210,18 @@ def get_deck(deck_id: UUID, conn: Connection) -> DeckView:
         versions=[VersionView(**vars(v)) for v in deck_versions(conn, deck_id)],
         decklist=decklist(conn, deck.state) if deck.state else None,
     )
+
+
+@router.patch("/decks/{deck_id}", tags=["decks"], responses={404: REFUSALS[404]})
+def rename(deck_id: UUID, body: DeckRename, conn: Connection) -> DeckNamed:
+    """Rename a deck. Only its name changes; its versions and proposals stay as they are."""
+    with conn.transaction():
+        previous = rename_deck(conn, deck_id, body.name)
+        if previous is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no deck {deck_id}")
+        details = {"from": previous, "to": body.name}
+        record_audit(conn, "user", "rename", f"deck:{deck_id}", details)
+    return DeckNamed(id=deck_id, name=body.name, previous_name=previous)
 
 
 @router.post(

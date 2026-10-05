@@ -8,15 +8,19 @@ applied change can be traced and undone by going back a version.
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 import psycopg
 from psycopg.types.json import Jsonb
+from pydantic import StringConstraints
 
 from mtg_deck_advisor.deck.state import DeckState
 
 PoolSource = Literal["text", "csv"]
+
+# A name a person gives a deck, wherever they give it.
+DeckName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 @dataclass(frozen=True)
@@ -101,6 +105,20 @@ def unused_name(conn: psycopg.Connection, base: str) -> str:
         n += 1
         candidate = f"{base} ({n})"
     return candidate
+
+
+def rename_deck(conn: psycopg.Connection, deck_id: UUID, name: str) -> str | None:
+    """Give the deck a name the user chose, and return its old name (None if no such deck).
+
+    Only the name changes. It's no longer a default name, so the first saved
+    version won't replace it.
+    """
+    row = conn.execute(
+        "UPDATE decks d SET name = %s, default_name = false FROM decks old "
+        "WHERE d.id = %s AND old.id = d.id RETURNING old.name",
+        (name, deck_id),
+    ).fetchone()
+    return None if row is None else str(row[0])
 
 
 def name_for_commander(conn: psycopg.Connection, deck_id: UUID, commander: UUID) -> str | None:

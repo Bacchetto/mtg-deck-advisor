@@ -8,7 +8,7 @@
     mtg-advisor proposal PROPOSAL
     mtg-advisor approve PROPOSAL [--note TEXT] | reject PROPOSAL --reason TEXT
     mtg-advisor apply PROPOSAL
-    mtg-advisor deck DECK
+    mtg-advisor deck DECK | rename DECK NAME
     mtg-advisor approve-export DECK [--version N] | export DECK [--version N]
     mtg-advisor ask "QUESTION"
 
@@ -48,6 +48,9 @@ class Api:
 
     def post(self, path: str, body: dict[str, Any] | None = None) -> Any:
         return self._send("POST", path, body or {}).json()
+
+    def patch(self, path: str, body: dict[str, Any]) -> Any:
+        return self._send("PATCH", path, body).json()
 
     def text(self, path: str) -> str:
         return self._send("GET", path).text
@@ -232,6 +235,11 @@ def deck(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
     p.result(api.get(f"/decks/{args.deck}"), show)
 
 
+def rename(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
+    renamed = api.patch(f"/decks/{args.deck}", {"name": args.name})
+    p.result(renamed, lambda r: p.line(f"{r['previous_name']!r} is now {r['name']!r}"))
+
+
 def approve_export(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
     version = args.version or _latest_version(api, args.deck)
     approval = api.post(f"/decks/{args.deck}/versions/{version}/export-approval")
@@ -362,6 +370,10 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument(target)
         command.set_defaults(handler=handler)
 
+    command = commands.add_parser("rename", help="rename a deck")
+    command.add_argument("deck")
+    command.add_argument("name")
+    command.set_defaults(handler=rename)
     command = commands.add_parser("approve", help="approve a pending proposal")
     command.add_argument("proposal")
     command.add_argument("--note")
