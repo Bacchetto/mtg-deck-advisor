@@ -7,6 +7,7 @@ applied change can be traced and undone by going back a version.
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -142,3 +143,26 @@ def _returned(row: tuple[Any, ...] | None) -> Any:
     if row is None:
         raise RuntimeError("INSERT ... RETURNING returned no row")
     return row[0]
+
+
+@dataclass(frozen=True)
+class PoolListing:
+    id: UUID
+    name: str
+    source: PoolSource
+    cards: int
+    distinct: int
+    created_at: datetime
+
+
+def list_pools(conn: psycopg.Connection) -> list[PoolListing]:
+    """Every pool, oldest first, with its card counts."""
+    rows = conn.execute(
+        """
+        SELECT p.id, p.name, p.source, coalesce(sum(c.count), 0)::int, count(c.oracle_id)::int,
+               p.created_at
+        FROM pools p LEFT JOIN pool_cards c ON c.pool_id = p.id
+        GROUP BY p.id ORDER BY p.created_at, p.id
+        """
+    ).fetchall()
+    return [PoolListing(*row) for row in rows]

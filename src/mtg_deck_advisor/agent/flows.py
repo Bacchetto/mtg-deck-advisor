@@ -111,48 +111,106 @@ def import_pool(
 # --- draft and refine ------------------------------------------------------------------
 
 
+class NotFoundError(LookupError):
+    """There is no pool or deck with that ID."""
+
+
+class NotReadyError(ValueError):
+    """The deck isn't in a state the flow can start from."""
+
+
+@dataclass(frozen=True)
+class PreparedRun:
+    """A run that has been recorded as started, with the prompt it will be given.
+
+    Preparing is quick and executing is slow, so an interface can prepare a
+    run, answer at once, and execute it in the background on another connection.
+    """
+
+    run_id: UUID
+    task: Task
+    pool_id: UUID | None
+    deck_id: UUID | None
+    prompt: str
+
+
 @dataclass(frozen=True)
 class DraftResult:
     deck_id: UUID
     run: RunResult
 
 
-def draft_deck(
-    services: AgentServices, pool_id: UUID, *, request: str = "", name: str = "Draft"
-) -> DraftResult:
-    """A new deck for the pool, and a run that proposes its first version."""
-    conn = services.conn
+def prepare_draft(
+    conn: psycopg.Connection, model: str, pool_id: UUID, *, request: str = "", name: str = "Draft"
+) -> PreparedRun:
+    """A new deck for the pool, and a started run that will propose its first version."""
     pool = _pool(conn, pool_id)
     deck_id = create_deck(conn, pool_id, name=name)
-    ctx = _context(services, "draft", pool, deck_id)
-    run = _run(services, ctx, _draft_prompt(conn, pool, request))
-    return DraftResult(deck_id=deck_id, run=run)
+    run_id = start_run(conn, "draft", model, pool_id=pool_id, deck_id=deck_id)
+    return PreparedRun(run_id, "draft", pool_id, deck_id, _draft_prompt(conn, pool, request))
 
 
-def refine_deck(services: AgentServices, deck_id: UUID, *, request: str) -> RunResult:
-    """A run that proposes changes to the deck's latest saved version."""
-    conn = services.conn
+def prepare_refine(
+    conn: psycopg.Connection, model: str, deck_id: UUID, *, request: str
+) -> PreparedRun:
+    """A started run that will propose changes to the deck's latest saved version."""
     deck = load_deck(conn, deck_id)
-    if deck is None or deck.state is None:
-        raise ValueError(f"deck {deck_id} has no saved version to refine")
-    ctx = _context(services, "refine", _pool(conn, deck.pool_id), deck_id)
+    if deck is None:
+        raise NotFoundError(f"there is no deck {deck_id}")
+    if deck.state is None:
+        raise NotReadyError(f"deck {deck_id} has no saved version to refine")
+    run_id = start_run(conn, "refine", model, pool_id=deck.pool_id, deck_id=deck_id)
     prompt = (
         f"Refine my saved deck (version {deck.version}): {request}\n\n"
         f"The deck, commander first:\n{untrusted(decklist(conn, deck.state))}"
     )
-    return _run(services, ctx, prompt)
+    return PreparedRun(run_id, "refine", deck.pool_id, deck_id, prompt)
+
+
+def execute_run(services: AgentServices, prepared: PreparedRun) -> RunResult:
+    """Run the agent for a prepared run, on the services' connection."""
+    pool = _pool(services.conn, prepared.pool_id) if prepared.pool_id else None
+    ctx = ToolContext(
+        conn=services.conn,
+        embedder=services.embedder,
+        reranker=services.reranker,
+        run_id=prepared.run_id,
+        task=prepared.task,
+        pool=pool,
+        deck_id=prepared.deck_id,
+    )
+    return _run(services, ctx, prepared.prompt)
+
+
+def draft_deck(
+    services: AgentServices, pool_id: UUID, *, request: str = "", name: str = "Draft"
+) -> DraftResult:
+    """A new deck for the pool, and a run that proposes its first version."""
+    model = services.client.model
+    prepared = prepare_draft(services.conn, model, pool_id, request=request, name=name)
+    assert prepared.deck_id is not None  # noqa: S101 (a draft always has its deck)
+    return DraftResult(deck_id=prepared.deck_id, run=execute_run(services, prepared))
+
+
+def refine_deck(services: AgentServices, deck_id: UUID, *, request: str) -> RunResult:
+    """A run that proposes changes to the deck's latest saved version."""
+    prepared = prepare_refine(services.conn, services.client.model, deck_id, request=request)
+    return execute_run(services, prepared)
+
+
+def commander_candidates(conn: psycopg.Connection, pool: Pool) -> list[tuple[str, str]]:
+    """The pool's cards that can lead a deck, by name, with their color identity."""
+    facts = load_card_facts(conn, pool.cards)
+    return [
+        (card.name, "".join(c for c in "WUBRG" if c in card.color_identity) or "colorless")
+        for card in sorted(facts.values(), key=lambda card: card.name)
+        if card.commander_eligibility.eligible and card.commander_legality == "legal"
+    ]
 
 
 def _draft_prompt(conn: psycopg.Connection, pool: Pool, request: str) -> str:
-    facts = load_card_facts(conn, pool.cards)
-    candidates = sorted(
-        (card for card in facts.values() if card.commander_eligibility.eligible),
-        key=lambda card: card.name,
-    )
     listing = "\n".join(
-        f"{card.name} ({''.join(c for c in 'WUBRG' if c in card.color_identity) or 'colorless'})"
-        for card in candidates
-        if card.commander_legality == "legal"
+        f"{name} ({identity})" for name, identity in commander_candidates(conn, pool)
     )
     return (
         "Draft a Commander deck from my card pool.\n"
@@ -220,7 +278,7 @@ def answer_rules_question(services: AgentServices, question: str) -> RulesAnswer
 def _pool(conn: psycopg.Connection, pool_id: UUID) -> Pool:
     pool = load_pool(conn, pool_id)
     if pool is None:
-        raise ValueError(f"there is no pool {pool_id}")
+        raise NotFoundError(f"there is no pool {pool_id}")
     return pool
 
 
