@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # 0.0.0.0, and Docker's port mapping decides what is exposed.
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+    # Where the CLI (mtg-advisor) finds the API.
+    api_url: str = "http://127.0.0.1:8000"
 
     # Model calls (ADR 0008). The provider and model are configuration, so
     # switching provider is a settings change with no code change (MOD-4).

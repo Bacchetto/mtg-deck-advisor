@@ -222,9 +222,34 @@ First live runs ([report](evals/reports/2026-10-04-agent-live-runs.md)), on a 30
 | Refine (swap three cards) | 4 | $0.06 | 19 s |
 | Rules question (four asked; one correctly "not found") | 2 each | under $0.01 each | 4–8 s |
 
-Until the CLI arrives (Milestone 6), run it step by step with `python scripts/agent_run.py`
-(`draft`, `show`, `approve`, `apply`, `refine`, `approve-export`, `export`, `rules`). The
-recorded runs replay with `MODEL_PROVIDER=replay` and no API key.
+### Using it: the API and the `mtg-advisor` CLI
+
+Everything goes through the HTTP API (documented at http://127.0.0.1:8000/docs). The
+`mtg-advisor` command is a thin client of it, installed with the package (`pip install -e .`),
+and finds the API at `API_URL`. Drafts and refines run on the server and take a minute or so;
+the CLI waits and shows progress (`--no-wait` to return at once, `mtg-advisor run RUN` to check later).
+
+```bash
+mtg-advisor pool add evals/datasets/pool_300.txt    # submit a pool (a list, or --csv)
+mtg-advisor draft POOL                               # the agent drafts; prints its proposals
+mtg-advisor proposal PROPOSAL                        # rationale, problems, decklist
+mtg-advisor approve PROPOSAL                         # your decision (or: reject --reason ...)
+mtg-advisor apply PROPOSAL                           # saved as version 1
+mtg-advisor refine DECK --request "Add removal"      # proposes changes to the saved deck
+mtg-advisor approve-export DECK && mtg-advisor export DECK > deck.txt
+mtg-advisor ask "How much commander damage loses the game?"
+```
+
+Applying or exporting without your approval is refused (`403`), and the attempt is audited.
+`--json` prints the API's answers.
+
+**No API key needed for a demo:** with `MODEL_PROVIDER=replay`, the recorded runs replay through the
+API and the CLI at no cost. Add `evals/datasets/pool_300.txt`, draft with no request, and refine
+with the request in [the run report](evals/reports/2026-10-04-agent-live-runs.md) to see the whole
+flow exactly as it ran live.
+
+**The API has no authentication yet.** It listens only on `127.0.0.1`. Users, scoped keys, rate limits
+and a spending cap (SEC-3 to SEC-5) come before any deployment, in Milestone 9.
 
 ## Development
 
