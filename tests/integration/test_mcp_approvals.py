@@ -14,6 +14,7 @@ from uuid import UUID
 
 import anyio
 import psycopg
+import pytest
 from mcp import Client, types
 
 from mtg_deck_advisor.guardrails.audit import audit_entries
@@ -42,9 +43,18 @@ class User:
         return types.ElicitResult(action=action, content=content)
 
 
-def calls(state: McpSession, user: User | None, *steps: Step) -> list[types.CallToolResult]:
+# The two ways a server asks: a request sent mid-call (the handshake-era
+# protocol, "legacy"), or an "input required" result the client answers by
+# calling again (the 2026-07-28 revision, the SDK's default). Claude Code
+# speaks both, so both are tested.
+MODES = pytest.mark.parametrize("mode", ["legacy", "auto"])
+
+
+def calls(
+    state: McpSession, user: User | None, *steps: Step, mode: str = "auto"
+) -> list[types.CallToolResult]:
     async def go() -> list[types.CallToolResult]:
-        async with Client(build_server(state), elicitation_callback=user) as client:
+        async with Client(build_server(state), elicitation_callback=user, mode=mode) as client:
             return [await client.call_tool(name, arguments) for name, arguments in steps]
 
     return anyio.run(go)
@@ -74,8 +84,9 @@ def actions(conn: psycopg.Connection, subject: str) -> list[tuple[str, str]]:
 # --- the whole build in one session ----------------------------------------------------
 
 
+@MODES
 def test_a_user_builds_a_deck_from_draft_to_export_without_leaving_the_client(
-    conn: psycopg.Connection, pool_id: UUID
+    conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
     state = session(conn)
     deck_id, proposal_id = drafted(conn, pool_id, state)
@@ -90,6 +101,7 @@ def test_a_user_builds_a_deck_from_draft_to_export_without_leaving_the_client(
         ("apply_proposal", {"proposal_id": proposal_id}),
         ("approve_export", {"deck_id": deck_id}),
         ("export_deck", {"deck_id": deck_id}),
+        mode=mode,
     )
 
     assert proposal_id in text(listed) and "pending" in text(listed)
@@ -137,8 +149,9 @@ def test_a_rejection_is_confirmed_by_the_user_too(conn: psycopg.Connection, pool
 # --- what the model can't do ------------------------------------------------------------
 
 
+@MODES
 def test_when_the_user_declines_nothing_is_approved(
-    conn: psycopg.Connection, pool_id: UUID
+    conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
     state = session(conn)
     _, proposal_id = drafted(conn, pool_id, state)
@@ -148,6 +161,7 @@ def test_when_the_user_declines_nothing_is_approved(
         User("decline"),
         ("approve_proposal", {"proposal_id": proposal_id}),
         ("apply_proposal", {"proposal_id": proposal_id}),
+        mode=mode,
     )
 
     assert "declined" in text(declined) and "nothing changed" in text(declined).lower()
@@ -158,8 +172,9 @@ def test_when_the_user_declines_nothing_is_approved(
     assert ("user", "approval_declined") in actions(conn, f"proposal:{proposal_id}")
 
 
+@MODES
 def test_a_client_that_cant_ask_the_user_cant_approve(
-    conn: psycopg.Connection, pool_id: UUID
+    conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
     state = session(conn)
     _, proposal_id = drafted(conn, pool_id, state)
@@ -169,6 +184,7 @@ def test_a_client_that_cant_ask_the_user_cant_approve(
         None,  # no elicitation support
         ("approve_proposal", {"proposal_id": proposal_id}),
         ("reject_proposal", {"proposal_id": proposal_id, "reason": "r"}),
+        mode=mode,
     )
 
     for result in (approved, rejected):
