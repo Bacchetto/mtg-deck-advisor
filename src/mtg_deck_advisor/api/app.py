@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from mtg_deck_advisor.agent.flows import build_services
 from mtg_deck_advisor.agent.runs import interrupt_running_runs
-from mtg_deck_advisor.api import routes_runs
+from mtg_deck_advisor.api import routes_proposals, routes_runs
 from mtg_deck_advisor.api.services import ServicesFactory, app_settings
 from mtg_deck_advisor.api.tracing import TraceMiddleware
 from mtg_deck_advisor.config import Settings, get_settings
@@ -71,6 +71,7 @@ def create_app(
     app.state.services = services or (lambda conn: build_services(conn, resolved))
     app.add_middleware(TraceMiddleware)
     app.include_router(routes_runs.router)
+    app.include_router(routes_proposals.router)
 
     @app.get(
         "/health",

@@ -159,11 +159,13 @@ def submit_pool(submission: PoolSubmission, conn: Connection) -> PoolCreated:
 
 @router.get("/pools", tags=["pools"])
 def get_pools(conn: Connection) -> list[PoolListing]:
+    """Every submitted pool, oldest first, with its card counts."""
     return [PoolListing(**vars(pool)) for pool in list_pools(conn)]
 
 
 @router.get("/pools/{pool_id}", tags=["pools"], responses={404: {}})
 def get_pool(pool_id: UUID, conn: Connection) -> PoolDetail:
+    """A pool's card counts and the cards in it that can be a commander."""
     pool = load_pool(conn, pool_id)
     if pool is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no pool {pool_id}")
@@ -233,6 +235,7 @@ def start_refine(
 
 @router.get("/runs/{run_id}", tags=["runs"], responses={404: {}})
 def get_run(run_id: UUID, conn: Connection) -> RunView:
+    """A run's progress or outcome: status, turns, cost, final text, and its proposals."""
     run = load_run(conn, run_id)
     if run is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no run {run_id}")
