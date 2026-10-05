@@ -1,4 +1,4 @@
-"""The agent's tools as an MCP server, driven by an in-process MCP client (#102; AGT-5)."""
+"""The agent's tools as an MCP server, driven by an in-process MCP client (#102, #107; AGT-5)."""
 
 # Fixtures imported from other test modules are named again as test parameters,
 # which is how pytest injects them; ruff reads that as a redefinition.
@@ -39,6 +39,15 @@ AGENT_TOOLS = [
     "propose_deck",
     "propose_changes",
 ]
+USER_STEPS = [
+    "list_proposals",
+    "show_proposal",
+    "approve_proposal",
+    "reject_proposal",
+    "apply_proposal",
+    "approve_export",
+    "export_deck",
+]
 
 
 @pytest.fixture
@@ -77,7 +86,7 @@ def text(result: types.CallToolResult) -> str:
 # --- the tool list --------------------------------------------------------------------
 
 
-def test_the_tools_are_the_agents_own_scoped_by_deck_and_none_approve(
+def test_the_tools_are_the_agents_own_scoped_by_deck_plus_the_users_steps(
     conn: psycopg.Connection,
 ) -> None:
     async def go() -> list[types.Tool]:
@@ -86,8 +95,11 @@ def test_the_tools_are_the_agents_own_scoped_by_deck_and_none_approve(
 
     tools = {tool.name: tool for tool in anyio.run(go)}
 
-    assert list(tools) == ["list_pools", "list_decks", "new_deck", *AGENT_TOOLS]
-    assert not [name for name in tools if any(w in name for w in ("approve", "apply", "export"))]
+    assert list(tools) == ["list_pools", "list_decks", "new_deck", *AGENT_TOOLS, *USER_STEPS]
+    # Consent comes from the user's answer to a form, never from an argument.
+    for name in ("approve_proposal", "reject_proposal", "approve_export"):
+        properties = set(tools[name].input_schema["properties"])
+        assert not properties & {"confirmed", "approved", "consent", "actor", "user"}, name
     search = tools["search_pool"].input_schema
     assert search["required"] == ["deck_id", "query"]
     assert "maximum 40" in search["properties"]["k"]["description"]
@@ -132,6 +144,9 @@ def test_a_client_can_find_a_pool_start_a_deck_research_and_propose(
     assert not rules.is_error and "903.4" in text(rules)
     assert not proposal.is_error, text(proposal)
     assert "waiting for the user's approval" in text(proposal)
+    # The client gets the proposal's ID, to show, approve or apply it.
+    row = conn.execute("SELECT id FROM proposals WHERE deck_id = %s", (deck_id,)).fetchone()
+    assert row is not None and f"proposal_id is {row[0]}" in text(proposal)
     # The proposal waits for the user, exactly like the agent's.
     status = conn.execute("SELECT status FROM proposals WHERE deck_id = %s", (deck_id,)).fetchone()
     assert status == ("pending",)
