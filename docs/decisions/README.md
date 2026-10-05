@@ -38,3 +38,4 @@ Each ADR is linked from the module docstring of the code it governs, so someone 
 | [0011](0011-retrieval-improvements-chosen-on-a-dev-set.md) | Retrieval improvements chosen on a dev set by a fixed rule, checked once on a held-out set | `retrieval`, embedding and reranking settings |
 | [0012](0012-native-tool-calling-with-provider-turns-kept-verbatim.md) | Native tool calling, with each provider turn kept verbatim | `llm` |
 | [0013](0013-an-agent-that-proposes-and-code-that-decides.md) | An agent that proposes, and code that decides: bounded loop, proposals, user approvals, delimited data | `agent`, `guardrails` |
+| [0014](0014-interfaces-background-runs-a-thin-cli-and-mcp.md) | Interfaces: background runs with polling, a CLI that only calls the API, MCP with the client as the agent | `api`, `cli`, `mcp_server` |

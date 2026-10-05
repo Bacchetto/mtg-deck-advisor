@@ -20,6 +20,8 @@ dependencies = [
     "tenacity>=9.1",
     # The official Claude SDK. 1.x is built on httpx2, like the rest of the project.
     "anthropic>=1.11",
+    # The official MCP SDK, for the MCP server (AGT-5).
+    "mcp>=2.3",
 ]
 
 [project.scripts]

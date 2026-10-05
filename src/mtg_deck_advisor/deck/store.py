@@ -190,3 +190,25 @@ def card_names(conn: psycopg.Connection, oracle_ids: Iterable[UUID]) -> dict[UUI
         "SELECT oracle_id, name FROM cards WHERE oracle_id = ANY(%s)", (list(oracle_ids),)
     ).fetchall()
     return dict(rows)
+
+
+@dataclass(frozen=True)
+class DeckListing:
+    id: UUID
+    pool_id: UUID
+    name: str
+    version: int | None
+
+
+def list_decks(conn: psycopg.Connection, pool_id: UUID | None = None) -> list[DeckListing]:
+    """Decks, oldest first, with their latest version (None if nothing is saved yet)."""
+    rows = conn.execute(
+        """
+        SELECT d.id, d.pool_id, d.name, max(v.version)
+        FROM decks d LEFT JOIN deck_versions v ON v.deck_id = d.id
+        WHERE %s::uuid IS NULL OR d.pool_id = %s
+        GROUP BY d.id ORDER BY d.created_at, d.id
+        """,
+        (pool_id, pool_id),
+    ).fetchall()
+    return [DeckListing(*row) for row in rows]

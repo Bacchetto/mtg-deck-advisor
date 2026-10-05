@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mtg-advisor": {
+      "type": "stdio",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "mtg_deck_advisor.mcp_server", "--client", "claude-code"]
+    }
+  }
+}

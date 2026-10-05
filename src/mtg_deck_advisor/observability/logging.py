@@ -7,7 +7,7 @@ single trace ID run through the whole log. See ADR 0001.
 
 import logging
 import sys
-from typing import Any
+from typing import Any, TextIO
 
 import structlog
 from structlog.typing import EventDict, Processor
@@ -24,11 +24,13 @@ def add_trace_id(_logger: Any, _method_name: str, event_dict: EventDict) -> Even
     return event_dict
 
 
-def configure_logging(settings: Settings) -> None:
+def configure_logging(settings: Settings, stream: TextIO | None = None) -> None:
     """Route structlog and standard-library logging through one formatter on stdout.
 
     Call once at process start. Logs go to stdout because containers and CI
-    collect a process's output; where they end up is the platform's job.
+    collect a process's output; where they end up is the platform's job. A
+    process whose stdout is a protocol (the MCP server over stdio) passes
+    `stream=sys.stderr` instead.
     """
     # Applied to every line, whether it came from structlog or the standard
     # library, before rendering.
@@ -70,7 +72,7 @@ def configure_logging(settings: Settings) -> None:
             renderer,
         ],
     )
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(stream or sys.stdout)
     handler.setFormatter(formatter)
 
     root = logging.getLogger()

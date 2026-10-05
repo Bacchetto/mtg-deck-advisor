@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 from collections.abc import Iterator
 from typing import Any
 
@@ -95,3 +96,20 @@ def test_console_format_is_human_readable_not_json(capsys: pytest.CaptureFixture
     assert "card_loaded" in output
     with pytest.raises(json.JSONDecodeError):
         json.loads(output.splitlines()[0])
+
+
+def test_logs_can_go_to_stderr_leaving_stdout_to_a_protocol(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # The MCP server speaks JSON-RPC on stdout; a log line there would corrupt it.
+    configure_logging(settings(log_format="json"), stream=sys.stderr)
+
+    structlog.get_logger("test").info("card_loaded")
+    logging.getLogger("library").warning("from the standard library")
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert [line["event"] for line in json_lines(captured.err)] == [
+        "card_loaded",
+        "from the standard library",
+    ]

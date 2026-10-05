@@ -12,6 +12,9 @@ service-account*.json
 INTERVIEW-NOTES.md
 WORKING-AGREEMENT.md
 
+# --- Personal Claude Code settings (e.g. enabling the project MCP server) ---
+.claude/settings.local.json
+
 # --- Python ---
 __pycache__/
 *.py[cod]
