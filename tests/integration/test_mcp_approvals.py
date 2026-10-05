@@ -1,15 +1,19 @@
-"""The user's steps through MCP: decisions confirmed by the user in a form (#107; GRD-2, GRD-5).
+"""The user's steps through MCP, with decisions the user allows in the client (#107; GRD-2).
 
-The model can call approve_proposal, but calling it isn't consent: the server
-asks the user directly with an MCP elicitation form, and only the user's
-Accept records an approval. Apply and export still need that record.
+A decision tool (approve, reject, approve an export) is marked as requiring
+user interaction, so Claude Code always shows the user an Allow/Deny prompt
+for it, which no setting, mode or hook can answer for them. The prompt shows
+the call's arguments, and the `confirming` argument must match the server's
+own summary of the decision, so the text the user allows can't be slanted by
+the model. Only clients known to honour the marking can make decisions.
 """
 
 # Fixtures imported from other test modules are named again as test parameters,
 # which is how pytest injects them; ruff reads that as a redefinition.
 # ruff: noqa: F811
 
-from typing import Any, Literal
+import re
+from typing import Any
 from uuid import UUID
 
 import anyio
@@ -23,49 +27,37 @@ from tests.integration.test_agent_tools import ATRAXA, LEGAL_CARDS, loaded  # no
 from tests.integration.test_mcp_server import conn, pool_id, session, text  # noqa: F401
 
 Step = tuple[str, dict[str, Any]]
-Answer = Literal["accept", "decline", "cancel"]
-
-
-class User:
-    """Answers the server's forms as a person would, and remembers what it was shown."""
-
-    def __init__(self, *answers: Answer, note: str = "") -> None:
-        self.answers = list(answers)
-        self.note = note
-        self.shown: list[str] = []
-
-    async def __call__(self, context: Any, params: types.ElicitRequestParams) -> types.ElicitResult:
-        self.shown.append(params.message)
-        action = self.answers.pop(0)
-        content: dict[str, Any] | None = (
-            {"note": self.note} if action == "accept" and self.note else None
-        )
-        return types.ElicitResult(action=action, content=content)
-
-
-# The two ways a server asks: a request sent mid-call (the handshake-era
-# protocol, "legacy"), or an "input required" result the client answers by
-# calling again (the 2026-07-28 revision, the SDK's default). Claude Code
-# speaks both, so both are tested.
+DECISION_TOOLS = ("approve_proposal", "reject_proposal", "approve_export")
+# The handshake-era protocol ("legacy") and the 2026-07-28 revision (the SDK's
+# default) identify the client differently; Claude Code speaks both.
 MODES = pytest.mark.parametrize("mode", ["legacy", "auto"])
 
 
 def calls(
-    state: McpSession, user: User | None, *steps: Step, mode: str = "auto"
+    state: McpSession, *steps: Step, mode: str = "auto", client: str = "claude-code"
 ) -> list[types.CallToolResult]:
+    info = types.Implementation(name=client, version="1.0")
+
     async def go() -> list[types.CallToolResult]:
-        async with Client(build_server(state), elicitation_callback=user, mode=mode) as client:
-            return [await client.call_tool(name, arguments) for name, arguments in steps]
+        async with Client(build_server(state), mode=mode, client_info=info) as session:
+            return [await session.call_tool(name, arguments) for name, arguments in steps]
 
     return anyio.run(go)
 
 
+def confirming(result: types.CallToolResult) -> str:
+    """The summary a result tells the client to confirm, as the server words it."""
+    match = re.search(r'confirming: "(.+)"$', text(result), re.MULTILINE)
+    assert match, text(result)
+    return match.group(1)
+
+
 def drafted(conn: psycopg.Connection, pool_id: UUID, state: McpSession) -> tuple[str, str]:
     """A new deck with a legal, pending proposal: its deck and proposal IDs."""
-    (created,) = calls(state, None, ("new_deck", {"pool_id": str(pool_id), "name": "MCP"}))
+    (created,) = calls(state, ("new_deck", {"pool_id": str(pool_id), "name": "MCP"}))
     deck_id = text(created).split()[-1].rstrip(".")
     proposal = {"deck_id": deck_id, "commander": ATRAXA, "cards": LEGAL_CARDS, "rationale": "Rats."}
-    (proposed,) = calls(state, None, ("propose_deck", proposal))
+    (proposed,) = calls(state, ("propose_deck", proposal))
     assert not proposed.is_error, text(proposed)
     row = conn.execute("SELECT id FROM proposals WHERE deck_id = %s", (deck_id,)).fetchone()
     assert row is not None
@@ -81,7 +73,24 @@ def actions(conn: psycopg.Connection, subject: str) -> list[tuple[str, str]]:
     return [(entry.actor, entry.action) for entry in audit_entries(conn, subject)]
 
 
-# --- the whole build in one session ----------------------------------------------------
+# --- the tools ---------------------------------------------------------------------------
+
+
+def test_only_the_decision_tools_require_the_users_interaction(conn: psycopg.Connection) -> None:
+    async def go() -> list[types.Tool]:
+        async with Client(build_server(session(conn))) as client:
+            return (await client.list_tools()).tools
+
+    tools = {tool.name: tool for tool in anyio.run(go)}
+
+    marked = {name for name, tool in tools.items() if tool.meta}
+    assert marked == set(DECISION_TOOLS)
+    for name in DECISION_TOOLS:
+        assert tools[name].meta == {"anthropic/requiresUserInteraction": True}
+        assert "confirming" in tools[name].input_schema["required"]
+
+
+# --- the whole build in one session -------------------------------------------------------
 
 
 @MODES
@@ -90,129 +99,117 @@ def test_a_user_builds_a_deck_from_draft_to_export_without_leaving_the_client(
 ) -> None:
     state = session(conn)
     deck_id, proposal_id = drafted(conn, pool_id, state)
-    user = User("accept", "accept", note="Looks good.")
 
-    listed, shown, approved, applied, export_ok, exported = calls(
+    listed, shown = calls(
         state,
-        user,
         ("list_proposals", {"deck_id": deck_id}),
         ("show_proposal", {"proposal_id": proposal_id}),
-        ("approve_proposal", {"proposal_id": proposal_id}),
+        mode=mode,
+    )
+    summary = confirming(shown)
+    approved, applied = calls(
+        state,
+        ("approve_proposal", {"proposal_id": proposal_id, "confirming": summary}),
         ("apply_proposal", {"proposal_id": proposal_id}),
-        ("approve_export", {"deck_id": deck_id}),
+        mode=mode,
+    )
+    export_summary = confirming(applied)
+    export_ok, exported = calls(
+        state,
+        ("approve_export", {"deck_id": deck_id, "confirming": export_summary}),
         ("export_deck", {"deck_id": deck_id}),
         mode=mode,
     )
 
     assert proposal_id in text(listed) and "pending" in text(listed)
     assert "60 Relentless Rats" in text(shown) and "Rats." in text(shown)
-    assert not approved.is_error and "approved" in text(approved).lower()
+    # The summaries are the server's own account of each decision.
+    assert summary == f"Approve: {ATRAXA} as commander, 100 cards, for deck 'MCP'"
+    assert export_summary == f"Export: version 1 of deck 'MCP', {ATRAXA} as commander, 100 cards"
+    assert not approved.is_error, text(approved)
     assert not applied.is_error and "version 1" in text(applied)
     assert not export_ok.is_error, text(export_ok)
     lines = text(exported).split("<untrusted>\n", 1)[1].split("\n</untrusted>", 1)[0].splitlines()
     assert lines[0] == f"1 {ATRAXA}"
     assert sum(int(line.split(" ", 1)[0]) for line in lines) == 100
-    # The forms are the server's own account of what is being approved.
-    proposal_form, export_form = user.shown
-    assert ATRAXA in proposal_form and "100 cards" in proposal_form
-    assert "version 1" in export_form
-    # Recorded as the user's decisions, with the note they typed.
     assert approvals(conn) == [
-        ("proposal", "approved", "user", "Looks good."),
-        ("export", "approved", "user", "Looks good."),
+        ("proposal", "approved", "user", None),
+        ("export", "approved", "user", None),
     ]
     assert actions(conn, f"proposal:{proposal_id}") == [
         ("agent", "propose"),
         ("user", "approve"),
         ("system", "apply"),
     ]
+    # Each decision records where it was made.
+    (approve,) = [
+        e for e in audit_entries(conn, f"proposal:{proposal_id}") if e.action == "approve"
+    ]
+    assert approve.details["via"] == {"channel": "mcp", "client": "claude-code"}
     assert ("user", "approve_export") in actions(conn, f"deck:{deck_id}")
     assert ("system", "export") in actions(conn, f"deck:{deck_id}")
 
 
-def test_a_rejection_is_confirmed_by_the_user_too(conn: psycopg.Connection, pool_id: UUID) -> None:
+def test_a_rejection_is_a_decision_too(conn: psycopg.Connection, pool_id: UUID) -> None:
     state = session(conn)
     _, proposal_id = drafted(conn, pool_id, state)
-    user = User("accept")
+    (shown,) = calls(state, ("show_proposal", {"proposal_id": proposal_id}))
+    summary = confirming(shown).replace("Approve:", "Reject:", 1)
 
     (rejected,) = calls(
         state,
-        user,
-        ("reject_proposal", {"proposal_id": proposal_id, "reason": "Too many rats."}),
+        (
+            "reject_proposal",
+            {"proposal_id": proposal_id, "confirming": summary, "reason": "Too many rats."},
+        ),
     )
 
     assert not rejected.is_error, text(rejected)
-    assert "Too many rats." in user.shown[0]
     assert approvals(conn) == [("proposal", "rejected", "user", "Too many rats.")]
 
 
-# --- what the model can't do ------------------------------------------------------------
+# --- what the model can't do ----------------------------------------------------------------
 
 
 @MODES
-def test_when_the_user_declines_nothing_is_approved(
+def test_the_confirmation_must_match_the_servers_summary(
     conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
+    # The user allows what the prompt shows; the prompt shows the arguments.
     state = session(conn)
     _, proposal_id = drafted(conn, pool_id, state)
 
-    declined, applied = calls(
+    (slanted,) = calls(
         state,
-        User("decline"),
-        ("approve_proposal", {"proposal_id": proposal_id}),
-        ("apply_proposal", {"proposal_id": proposal_id}),
+        (
+            "approve_proposal",
+            {"proposal_id": proposal_id, "confirming": "Approve: a quick fix, 3 cards"},
+        ),
         mode=mode,
     )
 
-    assert "declined" in text(declined) and "nothing changed" in text(declined).lower()
-    assert applied.is_error and "no approval" in text(applied)
+    assert slanted.is_error
+    assert f"Approve: {ATRAXA} as commander, 100 cards, for deck 'MCP'" in text(slanted)
     assert approvals(conn) == []
-    status = conn.execute("SELECT status FROM proposals WHERE id = %s", (proposal_id,)).fetchone()
-    assert status == ("pending",)
-    assert ("user", "approval_declined") in actions(conn, f"proposal:{proposal_id}")
 
 
 @MODES
-def test_a_cancelled_form_is_not_recorded_as_the_users_decision(
-    conn: psycopg.Connection, pool_id: UUID, mode: str
-) -> None:
-    # A client can dismiss a form, or fail to show it at all, and answer
-    # "cancel". The user decided nothing, so nothing may say they did.
-    state = session(conn)
-    _, proposal_id = drafted(conn, pool_id, state)
-
-    (cancelled,) = calls(
-        state,
-        User("cancel"),
-        ("approve_proposal", {"proposal_id": proposal_id}),
-        mode=mode,
-    )
-
-    assert not cancelled.is_error
-    assert "dismissed or not shown" in text(cancelled)
-    assert "declined" not in text(cancelled)
-    assert approvals(conn) == []
-    entries = actions(conn, f"proposal:{proposal_id}")
-    assert ("system", "approval_cancelled") in entries
-    assert not [entry for entry in entries if entry[0] == "user"]
-
-
-@MODES
-def test_a_client_that_cant_ask_the_user_cant_approve(
+def test_clients_not_known_to_ask_the_user_cant_decide(
     conn: psycopg.Connection, pool_id: UUID, mode: str
 ) -> None:
     state = session(conn)
-    _, proposal_id = drafted(conn, pool_id, state)
+    deck_id, proposal_id = drafted(conn, pool_id, state)
+    (shown,) = calls(state, ("show_proposal", {"proposal_id": proposal_id}))
 
-    approved, rejected = calls(
+    approved, exported = calls(
         state,
-        None,  # no elicitation support
-        ("approve_proposal", {"proposal_id": proposal_id}),
-        ("reject_proposal", {"proposal_id": proposal_id, "reason": "r"}),
+        ("approve_proposal", {"proposal_id": proposal_id, "confirming": confirming(shown)}),
+        ("approve_export", {"deck_id": deck_id, "confirming": "x"}),
         mode=mode,
+        client="some-other-client",
     )
 
-    for result in (approved, rejected):
+    for result in (approved, exported):
         assert result.is_error and "mtg-advisor" in text(result)
     assert approvals(conn) == []
 
@@ -220,32 +217,32 @@ def test_a_client_that_cant_ask_the_user_cant_approve(
 def test_consent_cant_be_passed_as_an_argument(conn: psycopg.Connection, pool_id: UUID) -> None:
     state = session(conn)
     _, proposal_id = drafted(conn, pool_id, state)
-    user = User()  # would fail if it were asked
+    (shown,) = calls(state, ("show_proposal", {"proposal_id": proposal_id}))
 
     (result,) = calls(
         state,
-        user,
-        ("approve_proposal", {"proposal_id": proposal_id, "confirmed": True, "actor": "user"}),
+        (
+            "approve_proposal",
+            {"proposal_id": proposal_id, "confirming": confirming(shown), "actor": "user"},
+        ),
     )
 
     assert result.is_error and "Invalid arguments" in text(result)
-    assert user.shown == []
     assert approvals(conn) == []
 
 
-def test_steps_that_cant_happen_are_refused_before_asking(
-    conn: psycopg.Connection, pool_id: UUID
-) -> None:
+def test_steps_that_cant_happen_are_refused(conn: psycopg.Connection, pool_id: UUID) -> None:
     state = session(conn)
     deck_id, _ = drafted(conn, pool_id, state)
-    user = User()
 
     unknown, malformed, unsaved_export, no_export = calls(
         state,
-        user,
-        ("approve_proposal", {"proposal_id": "00000000-0000-0000-0000-000000000000"}),
+        (
+            "approve_proposal",
+            {"proposal_id": "00000000-0000-0000-0000-000000000000", "confirming": "x"},
+        ),
         ("show_proposal", {"proposal_id": "nope"}),
-        ("approve_export", {"deck_id": deck_id}),  # nothing saved yet
+        ("approve_export", {"deck_id": deck_id, "confirming": "x"}),  # nothing saved yet
         ("export_deck", {"deck_id": deck_id}),
     )
 
@@ -253,4 +250,4 @@ def test_steps_that_cant_happen_are_refused_before_asking(
     assert malformed.is_error
     assert unsaved_export.is_error and "nothing saved" in text(unsaved_export)
     assert no_export.is_error
-    assert user.shown == []
+    assert approvals(conn) == []
