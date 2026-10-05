@@ -218,8 +218,8 @@ First live runs ([report](evals/reports/2026-10-04-agent-live-runs.md)), on a 30
 
 | Run | Turns | Cost | Time |
 |---|---|---|---|
-| Draft (ended in a legal 100-card deck) | 6 | $0.13 | 76 s |
-| Refine (swap three cards) | 5 | $0.07 | 38 s |
+| Draft (ended in a legal 100-card deck) | 5 | $0.12 | 51 s |
+| Refine (swap three cards) | 4 | $0.06 | 19 s |
 | Rules question (four asked; one correctly "not found") | 2 each | under $0.01 each | 4–8 s |
 
 Until the CLI arrives (Milestone 6), run it step by step with `python scripts/agent_run.py`
