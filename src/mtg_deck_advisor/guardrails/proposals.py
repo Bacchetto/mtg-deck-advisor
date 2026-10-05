@@ -14,6 +14,7 @@ from uuid import UUID
 import psycopg
 from psycopg.types.json import Jsonb
 
+from mtg_deck_advisor.deck.store import card_names
 from mtg_deck_advisor.guardrails.audit import record_audit
 
 ProposalKind = Literal["deck", "changes"]
@@ -82,13 +83,39 @@ class ProposalRecord:
     decided_at: datetime | None
 
 
+PROPOSAL_COLUMNS = """
+    id, run_id, deck_id, kind, status, payload, base_version, rationale, citations,
+    coalesce(validation->'problems', '[]'::jsonb), created_at, decided_at
+"""
+
+
 def load_proposal(conn: psycopg.Connection, proposal_id: UUID) -> ProposalRecord | None:
     row = conn.execute(
-        """
-        SELECT id, run_id, deck_id, kind, status, payload, base_version, rationale, citations,
-               coalesce(validation->'problems', '[]'::jsonb), created_at, decided_at
-        FROM proposals WHERE id = %s
-        """,
+        f"SELECT {PROPOSAL_COLUMNS} FROM proposals WHERE id = %s",  # noqa: S608 (a constant)
         (proposal_id,),
     ).fetchone()
     return ProposalRecord(*row) if row else None
+
+
+def deck_proposals(conn: psycopg.Connection, deck_id: UUID) -> list[ProposalRecord]:
+    """Every proposal for a deck, oldest first."""
+    rows = conn.execute(
+        f"SELECT {PROPOSAL_COLUMNS} FROM proposals "  # noqa: S608 (a constant)
+        "WHERE deck_id = %s ORDER BY created_at, id",
+        (deck_id,),
+    ).fetchall()
+    return [ProposalRecord(*row) for row in rows]
+
+
+def named_changes(
+    conn: psycopg.Connection, proposal: ProposalRecord
+) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    """A change set's adds and removes as (card name, count); empty for a whole deck."""
+    if proposal.kind != "changes":
+        return [], []
+    add, remove = proposal.payload["add"], proposal.payload["remove"]
+    names = card_names(conn, [UUID(card) for card in (*add, *remove)])
+    return (
+        [(names[UUID(card)], count) for card, count in add.items()],
+        [(names[UUID(card)], count) for card, count in remove.items()],
+    )
