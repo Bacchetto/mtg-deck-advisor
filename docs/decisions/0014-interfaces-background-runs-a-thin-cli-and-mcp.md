@@ -1,6 +1,6 @@
 # 0014 - Interfaces: background runs, a thin CLI, and MCP with the client as the agent
 
-**Status:** Accepted, 2026-10-05
+**Status:** Accepted, 2026-10-05. Amended by [ADR 0015](0015-decisions-through-mcp-permission-prompts.md): the MCP server can now record decisions the user allows in Claude Code's permission prompt.
 **Applies to:** `mtg_deck_advisor.api`, `mtg_deck_advisor.cli`, `mtg_deck_advisor.mcp_server`
 
 ## Context

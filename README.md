@@ -253,8 +253,17 @@ flow exactly as it ran live.
 The same tools the agent uses are available to an MCP client, whose own model then does the
 deck building, under the same checks
 ([ADR 0014](docs/decisions/0014-interfaces-background-runs-a-thin-cli-and-mcp.md)). The client
-gets `list_pools`, `list_decks`, `new_deck`, and the agent's six tools scoped by deck. There is no
-tool to approve, apply or export: its proposals wait for you in `mtg-advisor` like any other.
+gets `list_pools`, `list_decks`, `new_deck`, the agent's six tools scoped by deck, and your own
+steps: `list_proposals`, `show_proposal`, `apply_proposal`, `export_deck`, and the decisions
+`approve_proposal`, `reject_proposal` and `approve_export`. So a deck can be built from draft to
+export without leaving the client.
+
+**Decisions stay yours.** The decision tools are marked as requiring your interaction, so Claude
+Code always asks you to **Allow** them, whatever your permission settings or mode, and the prompt
+shows the server's own summary of the decision, such as *"Approve: Bard, King of Dale as commander,
+100 cards, for deck 'MCP test'"*. Deny, and nothing changes. Only clients known to ask first may
+decide (`MCP_DECISION_CLIENTS`, by default Claude Code); others are sent to `mtg-advisor`
+([ADR 0015](docs/decisions/0015-decisions-through-mcp-permission-prompts.md)).
 
 The server needs the database and Ollama running, like the API.
 
@@ -274,7 +283,8 @@ put the settings the server needs (at least `DATABASE_URL`, and `OLLAMA_BASE_URL
 default) in the server's `env` block.
 
 Then ask, for example: "List my card pools, start a deck from the one called Demo pool, and propose
-a legal Commander deck." Review and approve the result with `mtg-advisor proposal ID`.
+a legal Commander deck." Then "approve it", "save it" and "export it": each decision brings up
+Claude Code's permission prompt for you to allow.
 
 **The API has no authentication yet.** It listens only on `127.0.0.1`. Users, scoped keys, rate limits
 and a spending cap (SEC-3 to SEC-5) come before any deployment, in Milestone 9.

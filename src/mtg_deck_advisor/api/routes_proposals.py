@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from mtg_deck_advisor.api.services import Connection
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import card_names, deck_versions, decklist, load_deck
+from mtg_deck_advisor.deck.store import deck_versions, decklist, load_deck
 from mtg_deck_advisor.guardrails.approvals import (
     Approval,
     ApprovalError,
@@ -30,7 +30,7 @@ from mtg_deck_advisor.guardrails.approvals import (
     export_deck,
     reject_proposal,
 )
-from mtg_deck_advisor.guardrails.proposals import load_proposal
+from mtg_deck_advisor.guardrails.proposals import load_proposal, named_changes
 
 router = APIRouter()
 
@@ -125,16 +125,14 @@ def get_proposal(proposal_id: UUID, conn: Connection) -> ProposalView:
     proposal = load_proposal(conn, proposal_id)
     if proposal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no proposal {proposal_id}")
-    payload = proposal.payload
     changes = None
     if proposal.kind == "changes":
-        ids = [UUID(card) for card in (*payload["add"], *payload["remove"])]
-        names = card_names(conn, ids)
+        add, remove = named_changes(conn, proposal)
         changes = Changes(
-            add=[CardCount(name=names[UUID(c)], count=n) for c, n in payload["add"].items()],
-            remove=[CardCount(name=names[UUID(c)], count=n) for c, n in payload["remove"].items()],
+            add=[CardCount(name=name, count=count) for name, count in add],
+            remove=[CardCount(name=name, count=count) for name, count in remove],
         )
-    deck = payload.get("deck")
+    deck = proposal.payload.get("deck")
     return ProposalView(
         id=proposal.id,
         run_id=proposal.run_id,
