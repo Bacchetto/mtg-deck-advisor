@@ -28,7 +28,7 @@ from uuid import UUID
 
 import structlog
 
-from mtg_deck_advisor.agent.runs import RunStatus, finish_run
+from mtg_deck_advisor.agent.runs import RunStatus, finish_run, record_progress
 from mtg_deck_advisor.agent.tools import ToolContext, execute, tool_specs
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.llm.client import ModelClient
@@ -111,6 +111,8 @@ def run_agent(
 
             results = tuple(execute(ctx, call, turn=turns) for call in response.tool_calls)
             messages.append(Message(role="user", tool_results=results))
+            cost = client.spent_usd - spent_before
+            record_progress(ctx.conn, ctx.run_id, turns=turns, cost_usd=cost)
             ctx.conn.commit()
     except Exception as exc:
         # A bug, not a model failure: record the run as it stands, then raise.

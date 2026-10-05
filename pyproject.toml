@@ -22,6 +22,9 @@ dependencies = [
     "anthropic>=1.11",
 ]
 
+[project.scripts]
+mtg-advisor = "mtg_deck_advisor.cli:run"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2",

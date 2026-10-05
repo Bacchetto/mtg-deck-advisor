@@ -7,7 +7,7 @@ The first real runs of the Milestone 5 agent (#91), on Claude Sonnet 5.5 with `e
 
 Each paid run was estimated and approved by the owner first. Each proposal was approved by the owner before it was applied.
 
-Commands: `scripts/agent_run.py`.
+Commands: `scripts/agent_run.py`, since replaced by the `mtg-advisor` CLI (Milestone 6). The round 2 refine's request was: "Replace Tine Shrike, Curse of Conformity and Dawn-Blessed Pennant with cards from my pool that fit the go-wide plan better, and add removal if the pool has any you left out. Keep it at 100 cards."
 
 There were two rounds:
 - **The first round** found a schema problem: the tool's limit on how many cards a search returns was invisible to the model.

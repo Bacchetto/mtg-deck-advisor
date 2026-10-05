@@ -77,6 +77,14 @@ def finish_run(
     )
 
 
+def record_progress(conn: psycopg.Connection, run_id: UUID, *, turns: int, cost_usd: float) -> None:
+    """Save a running run's turns and cost so far, for anyone polling it."""
+    conn.execute(
+        "UPDATE agent_runs SET turns = %s, cost_usd = %s WHERE id = %s",
+        (turns, cost_usd, run_id),
+    )
+
+
 def record_tool_call(
     conn: psycopg.Connection,
     run_id: UUID,
