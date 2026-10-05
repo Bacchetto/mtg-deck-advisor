@@ -19,7 +19,15 @@ from pydantic import BaseModel, Field
 
 from mtg_deck_advisor.api.services import Connection
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import DeckName, deck_versions, decklist, load_deck, rename_deck
+from mtg_deck_advisor.deck.store import (
+    DeckName,
+    deck_versions,
+    decklist,
+    list_decks,
+    load_deck,
+    rename_deck,
+    set_archived,
+)
 from mtg_deck_advisor.guardrails.approvals import (
     Approval,
     ApprovalError,
@@ -113,8 +121,23 @@ class DeckView(BaseModel):
     pool_id: UUID
     name: str
     version: int | None = Field(description="The latest version; none until one is applied.")
+    archived: bool = Field(description="Hidden from lists; can't change until unarchived.")
     versions: list[VersionView]
     decklist: str | None
+
+
+class DeckSummary(BaseModel):
+    id: UUID
+    pool_id: UUID
+    name: str
+    version: int | None = Field(description="The latest version; none until one is applied.")
+    archived: bool
+
+
+class DeckArchived(BaseModel):
+    id: UUID
+    name: str
+    archived: bool
 
 
 class DeckRename(BaseModel):
@@ -207,9 +230,45 @@ def get_deck(deck_id: UUID, conn: Connection) -> DeckView:
         pool_id=deck.pool_id,
         name=deck.name,
         version=deck.version,
+        archived=deck.archived,
         versions=[VersionView(**vars(v)) for v in deck_versions(conn, deck_id)],
         decklist=decklist(conn, deck.state) if deck.state else None,
     )
+
+
+@router.get("/decks", tags=["decks"])
+def get_decks(
+    conn: Connection, pool_id: UUID | None = None, include_archived: bool = False
+) -> list[DeckSummary]:
+    """Decks, oldest first, with their latest version. Archived decks only if asked for."""
+    decks = list_decks(conn, pool_id, include_archived=include_archived)
+    return [DeckSummary(**vars(deck)) for deck in decks]
+
+
+@router.post("/decks/{deck_id}/archive", tags=["decks"], responses=REFUSALS)
+def archive(deck_id: UUID, conn: Connection) -> DeckArchived:
+    """Hide a deck from lists, keeping all of its history. It can't change until unarchived."""
+    return _set_archived(conn, deck_id, archived=True)
+
+
+@router.post("/decks/{deck_id}/unarchive", tags=["decks"], responses=REFUSALS)
+def unarchive(deck_id: UUID, conn: Connection) -> DeckArchived:
+    """Bring an archived deck back, as it was."""
+    return _set_archived(conn, deck_id, archived=False)
+
+
+def _set_archived(conn: Connection, deck_id: UUID, *, archived: bool) -> DeckArchived:
+    action = "archive" if archived else "unarchive"
+    with conn.transaction():
+        changed = set_archived(conn, deck_id, archived)
+        if changed is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"there is no deck {deck_id}")
+        if not changed:
+            already = "archived" if archived else "not archived"
+            raise HTTPException(status.HTTP_409_CONFLICT, f"deck {deck_id} is already {already}")
+        record_audit(conn, "user", action, f"deck:{deck_id}")
+    deck = load_deck(conn, deck_id)
+    return DeckArchived(id=deck_id, name=deck.name if deck else "", archived=archived)
 
 
 @router.patch("/decks/{deck_id}", tags=["decks"], responses={404: REFUSALS[404]})

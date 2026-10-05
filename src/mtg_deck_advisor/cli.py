@@ -8,7 +8,8 @@
     mtg-advisor proposal PROPOSAL
     mtg-advisor approve PROPOSAL [--note TEXT] | reject PROPOSAL --reason TEXT
     mtg-advisor apply PROPOSAL
-    mtg-advisor deck DECK | rename DECK NAME
+    mtg-advisor decks [--pool POOL] [--archived]
+    mtg-advisor deck DECK | rename DECK NAME | archive DECK | unarchive DECK
     mtg-advisor approve-export DECK [--version N] | export DECK [--version N]
     mtg-advisor ask "QUESTION"
 
@@ -235,6 +236,29 @@ def deck(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
     p.result(api.get(f"/decks/{args.deck}"), show)
 
 
+def decks(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
+    query = f"?include_archived={str(args.archived).lower()}"
+    if args.pool:
+        query += f"&pool_id={args.pool}"
+
+    def show(listing: Any) -> None:
+        if not listing:
+            p.line(
+                "no decks" + ("" if args.archived else " (archived ones are hidden: --archived)")
+            )
+        for d in listing:
+            saved = f"version {d['version']}" if d["version"] else "nothing saved yet"
+            p.line(f"{d['id']}  {d['name']}: {saved}" + (" (archived)" if d["archived"] else ""))
+
+    p.result(api.get(f"/decks{query}"), show)
+
+
+def archive(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
+    action = args.action
+    result = api.post(f"/decks/{args.deck}/{action}")
+    p.result(result, lambda r: p.line(f"{r['name']!r} is {action}d"))
+
+
 def rename(api: Api, args: argparse.Namespace, p: Printer, sleep: Sleep) -> None:
     renamed = api.patch(f"/decks/{args.deck}", {"name": args.name})
     p.result(renamed, lambda r: p.line(f"{r['previous_name']!r} is now {r['name']!r}"))
@@ -370,6 +394,17 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument(target)
         command.set_defaults(handler=handler)
 
+    command = commands.add_parser("decks", help="list decks (archived ones only with --archived)")
+    command.add_argument("--pool", help="only this pool's decks")
+    command.add_argument("--archived", action="store_true", help="include archived decks")
+    command.set_defaults(handler=decks)
+    for name, help_text in (
+        ("archive", "hide a deck from lists, keeping its history"),
+        ("unarchive", "bring an archived deck back"),
+    ):
+        command = commands.add_parser(name, help=help_text)
+        command.add_argument("deck")
+        command.set_defaults(handler=archive, action=name)
     command = commands.add_parser("rename", help="rename a deck")
     command.add_argument("deck")
     command.add_argument("name")

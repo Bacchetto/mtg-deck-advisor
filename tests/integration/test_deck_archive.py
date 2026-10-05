@@ -31,7 +31,7 @@ from tests.integration.test_api_runs import (
 )
 from tests.integration.test_cli import Cli
 from tests.integration.test_deck_names import accept, draft
-from tests.integration.test_mcp_approvals import approvals, calls, drafted
+from tests.integration.test_mcp_approvals import approvals, calls, confirming, drafted
 from tests.integration.test_mcp_server import conn, pool_id, session, text  # noqa: F401
 
 
@@ -182,7 +182,7 @@ def test_through_mcp_an_archived_deck_cant_change(conn: psycopg.Connection, pool
     deck_id, proposal_id = drafted(conn, pool_id, state)
     (shown,) = calls(state, ("show_proposal", {"proposal_id": proposal_id}))
     calls(state, ("archive_deck", {"deck_id": deck_id, "confirming": "Archive deck 'MCP'"}))
-    summary = text(shown).rsplit('confirming: "', 1)[1].rstrip('"')
+    summary = confirming(shown)
 
     analysed, approved = calls(
         state,

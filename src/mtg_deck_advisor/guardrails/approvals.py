@@ -56,6 +56,19 @@ class StaleProposalError(ApprovalError):
     """The deck has changed since the proposal was made against it."""
 
 
+class ArchivedDeckError(ProposalStateError):
+    """The deck is archived, so it can't change or be exported until it's unarchived."""
+
+
+def require_active(conn: psycopg.Connection, deck_id: UUID) -> None:
+    """Raise ArchivedDeckError if the deck is archived."""
+    deck = load_deck(conn, deck_id)
+    if deck is not None and deck.archived:
+        raise ArchivedDeckError(
+            f"deck {deck_id} ({deck.name!r}) is archived; unarchive it to change or export it"
+        )
+
+
 @dataclass(frozen=True)
 class Approval:
     id: UUID
@@ -133,6 +146,10 @@ def _check_apply(conn: psycopg.Connection, proposal_id: UUID) -> _Applicable | A
     deck_id, status, base_version, payload = _lock_proposal(conn, proposal_id)
     if status == "applied":
         return ProposalStateError(f"proposal {proposal_id} has already been applied")
+    try:
+        require_active(conn, deck_id)
+    except ArchivedDeckError as exc:
+        return exc
     approval = _proposal_approval(conn, proposal_id)
     if approval is None or approval.decision != "approved":
         return ApprovalRequiredError(
@@ -167,6 +184,7 @@ def approve_export(
     deck = load_deck(conn, deck_id, version=version)
     if deck is None or deck.version is None:
         raise ProposalStateError(f"deck {deck_id} has no version {version or ''} to export")
+    require_active(conn, deck_id)
     with conn.transaction():
         row = conn.execute(
             """
@@ -190,6 +208,15 @@ def export_deck(conn: psycopg.Connection, deck_id: UUID, *, version: int | None 
     deck = load_deck(conn, deck_id, version=version)
     if deck is None or deck.state is None or deck.version is None:
         raise ProposalStateError(f"deck {deck_id} has no version {version or ''} to export")
+    if deck.archived:
+        _refuse(
+            conn,
+            subject,
+            "export_refused",
+            ArchivedDeckError(
+                f"deck {deck_id} ({deck.name!r}) is archived; unarchive it to change or export it"
+            ),
+        )
     approved = conn.execute(
         "SELECT 1 FROM approvals WHERE kind = 'export' AND deck_id = %s AND deck_version = %s "
         "AND decision = 'approved'",
@@ -219,7 +246,8 @@ def _decide(
 ) -> Approval:
     subject = f"proposal:{proposal_id}"
     with conn.transaction():
-        _, status, _, _ = _lock_proposal(conn, proposal_id)
+        deck_id, status, _, _ = _lock_proposal(conn, proposal_id)
+        require_active(conn, deck_id)
         if status != "pending":
             raise ProposalStateError(
                 f"proposal {proposal_id} is {status}; only a pending proposal can be decided"
