@@ -77,7 +77,9 @@ class CaseResult(BaseModel):
     # budget) or "error" (the case itself failed).
     status: str
     success: bool
+    # The agent's cost; grading (a model judging the result) is counted apart.
     cost_usd: float = 0.0
+    grading_cost_usd: float = 0.0
     latency_s: float = 0.0
     turns: int = 0
     tools: ToolCounts = ToolCounts()
@@ -101,7 +103,13 @@ class EvalRun(BaseModel):
 
     @property
     def total_cost_usd(self) -> float:
+        """What the agent cost, without grading."""
         return sum(result.cost_usd for result in self.results)
+
+    @property
+    def spent_usd(self) -> float:
+        """Everything this run paid for: the agent and the grading. The budget is checked on it."""
+        return sum(result.cost_usd + result.grading_cost_usd for result in self.results)
 
     def save(self, directory: Path = RUNS) -> Path:
         stamp = self.started_at.astimezone(UTC).strftime("%Y-%m-%dT%H%M%S")
@@ -204,7 +212,7 @@ def run_suite[C](
         budget_usd=budget_usd,
     )
     for case in cases:
-        if run.total_cost_usd >= budget_usd:
+        if run.spent_usd >= budget_usd:
             run.results.append(CaseResult(case_id=case_id(case), status="skipped", success=False))
             continue
         started = time.perf_counter()
@@ -229,6 +237,7 @@ class Summary(BaseModel):
     # Of the cases that ran.
     success_rate: float
     total_cost_usd: float
+    grading_cost_usd: float
     mean_cost_usd: float
     median_latency_s: float
     mean_turns: float
@@ -246,6 +255,7 @@ def summarize(run: EvalRun) -> Summary:
         skipped=len(run.results) - len(ran),
         success_rate=sum(r.success for r in ran) / len(ran) if ran else 0.0,
         total_cost_usd=round(run.total_cost_usd, 6),
+        grading_cost_usd=round(sum(r.grading_cost_usd for r in run.results), 6),
         mean_cost_usd=round(statistics.mean(r.cost_usd for r in ran), 6) if ran else 0.0,
         median_latency_s=statistics.median(r.latency_s for r in ran) if ran else 0.0,
         mean_turns=statistics.mean(r.turns for r in ran) if ran else 0.0,
@@ -285,14 +295,14 @@ def comparison_report(
     out.write("\n## Results\n\n")
     out.write(
         "| Variant | Cases | Success | Total cost | Mean cost | Median latency | Mean turns "
-        "| Tool errors | Rejected proposals | Skipped |\n"
-        "|---|---|---|---|---|---|---|---|---|---|\n"
+        "| Tool errors | Rejected proposals | Skipped | Grading cost |\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|\n"
     )
     for s in map(summarize, runs):
         out.write(
             f"| {s.variant} | {s.ran} | {s.success_rate:.0%} | ${s.total_cost_usd:.4f} | "
             f"${s.mean_cost_usd:.4f} | {s.median_latency_s:.1f} s | {s.mean_turns:.1f} | "
-            f"{s.tool_errors} | {s.tool_rejections} | {s.skipped} |\n"
+            f"{s.tool_errors} | {s.tool_rejections} | {s.skipped} | ${s.grading_cost_usd:.4f} |\n"
         )
     out.write("\n## Per case\n\n")
     out.write("| Case | " + " | ".join(run.variant.name for run in runs) + " |\n")
