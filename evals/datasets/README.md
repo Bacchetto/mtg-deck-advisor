@@ -9,6 +9,7 @@ Labelled data for the evals. Each set is drafted by Claude from checkable source
 | `retrieval_rules.csv` | Rules questions and the rule numbers that answer them | the retrieval eval (Milestone 4) |
 | `pool_300.txt` | A fixed pool of 300 cards for the in-pool card queries | the retrieval eval |
 | `retrieval_cards_test.csv`, `retrieval_rules_test.csv`, `pool_300_test.txt` | The same, held out | the retrieval eval's baseline and final runs only |
+| `pool_tcgplayer_collection.csv` | A real collection: 524 cards (447 different), exported from the TCGplayer app | TCGplayer CSV import; evaluation pool for Milestone 7 |
 
 ## Retrieval sets
 
@@ -57,3 +58,6 @@ This checks that every card exists and is Commander-legal, that pool queries onl
 **`pool_300.txt`:** a random sample of 300 Commander-legal cards. It was drawn once (Postgres `setseed(0.52)`, then `ORDER BY random() LIMIT 300`) and is committed so it never changes.
 
 **`pool_300_test.txt`:** drawn the same way with `setseed(0.71)`, excluding the dev pool. One drawn card, Surging Flame, was already labelled in the dev set. It was swapped for one more random draw (`setseed(0.72)`, Michelangelo, the Heart), which was judged against every pool query and answers none of them.
+
+
+**`pool_tcgplayer_collection.csv`:** the project owner's own collection, exported from the TCGplayer app on 2026-10-05, unedited. Unlike the random pools it's a real player's cards: whole precons, several copies of some cards, and the TCGplayer format's quirks (names in "Product Name", counts in "Add to Quantity", variant tags such as "Sol Ring (C18)" and "(Showcase)", foil and normal rows for the same card). All 462 rows resolve: 524 cards, 447 different.
