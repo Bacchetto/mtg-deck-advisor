@@ -57,9 +57,6 @@ data/*
 *.gguf
 *.safetensors
 
-# --- Eval run output (keep curated datasets; timestamped reports are committed deliberately) ---
-evals/runs/
-
 # --- Logs / traces ---
 logs/
 *.log
@@ -81,5 +78,9 @@ docker-compose.override.yml
 Thumbs.db
 desktop.ini
 
-# --- Eval runs (per-query results; reports are committed, runs are not) ---
-evals/runs/
+# --- Eval runs ---
+# The free retrieval runs are regenerated at will, so only their reports are
+# committed. Paid suites' runs (rules_qa, deck tasks...) are committed: they
+# hold the answers that hand checks and rescoring use, which would cost money
+# to produce again.
+evals/runs/dev/
