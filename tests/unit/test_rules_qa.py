@@ -11,6 +11,7 @@ from mtg_deck_advisor.evaluation.rules_qa import (
     RulesCase,
     citation_scores,
     load_cases,
+    rescore,
     rules_metrics,
     rules_section,
 )
@@ -73,7 +74,7 @@ def test_an_answer_must_be_answerable_or_say_why_not() -> None:
         (["903.4", "903.4c"], True, 1.0),  # its parent is fine too
         (["207.2"], False, 1.0),  # labelled also acceptable, but not the answering rule
         (["903.4c", "100.1"], True, 0.5),  # an unrelated rule
-        (["903.4a"], False, 0.0),  # a sibling isn't the answer
+        (["903.4a"], False, 1.0),  # a sibling: on topic, but not the answer
         ([], False, None),
     ],
 )
@@ -81,6 +82,13 @@ def test_citations_are_scored_against_the_labelled_rules(
     cited: list[str], hit: bool, precision: float | None
 ) -> None:
     assert citation_scores(case(), cited) == (hit, precision)
+
+
+def test_a_rule_from_another_variant_isnt_acceptable() -> None:
+    # Brawl's commander rule (903.12c) allows planeswalkers; Commander's (903.3) doesn't.
+    commander = case(relevant=["903.3"], also_acceptable=[])
+
+    assert citation_scores(commander, ["903.3", "903.12c"]) == (True, 0.5)
 
 
 def test_a_rules_descendants_are_acceptable() -> None:
@@ -141,3 +149,33 @@ def test_suite_metrics_separate_correctness_citations_and_abstention() -> None:
         "false_abstention": pytest.approx(1 / 3),
     }
     assert "| sonnet | 50% | 50% | 75% | 50% | 33% |" in rules_section([run])
+
+
+def test_a_saved_run_is_rescored_against_the_current_labels_without_a_model() -> None:
+    labelled = case(relevant=["903.4c"], also_acceptable=[])
+    answered = CaseResult(
+        case_id="R04",
+        status="completed",
+        success=False,
+        details={
+            "answerable": True,
+            "found": True,
+            "cited": ["903.4c", "903.4a"],
+            "verdict": "correct",
+        },
+        scores={"correct": 1.0, "citation_hit": 1.0, "citation_precision": 0.5},
+    )
+    run = EvalRun(
+        suite="rules_qa",
+        variant=Variant(name="sonnet", model="claude-sonnet-5-5"),
+        started_at=datetime(2026, 10, 6, tzinfo=UTC),
+        budget_usd=1.0,
+        results=[answered],
+    )
+
+    rescored = rescore(run, [labelled])
+
+    (result,) = rescored.results
+    assert result.scores["citation_precision"] == 1.0  # the sibling is acceptable now
+    assert result.success
+    assert run.results[0].success is False  # the original run is left as it was

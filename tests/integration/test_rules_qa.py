@@ -153,3 +153,25 @@ def test_a_wrong_not_found_is_a_false_abstention(conn: psycopg.Connection) -> No
 
     assert not result.success
     assert result.details["found"] is False and result.scores == {"correct": 0.0}
+
+
+def test_a_grade_that_cant_be_read_is_recorded_not_raised(conn: psycopg.Connection) -> None:
+    unreadable = ProviderResponse(
+        text="",
+        stop_reason="max_tokens",
+        usage=Usage(input_tokens=400, output_tokens=1500),
+        model="claude-sonnet-5-5",
+    )
+
+    result = evaluate(
+        conn,
+        ANSWERABLE,
+        calls(call("search_rules", question="reminder text color identity", k=5)),
+        answer("No, reminder text is ignored.\nCitations: 903.4c"),
+        grader=FakeProvider(unreadable, unreadable),
+    )
+
+    assert result.status == "completed" and not result.success
+    assert "grading_error" in result.details
+    assert result.cost_usd > 0 and result.grading_cost_usd > 0  # both still counted
+    assert "correct" not in result.scores  # not graded, so not scored as wrong
