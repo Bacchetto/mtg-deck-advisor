@@ -197,3 +197,57 @@ def test_a_misspelling_without_punctuation_still_gets_a_suggestion(loaded: Setti
     [unknown] = resolve_names(loaded, "Atraxa Praetor Voice").unknown
 
     assert unknown.suggestions[0] == "Atraxa, Praetors' Voice"
+
+
+# --- names with variant tags (#117) -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("typed", "card"),
+    [
+        ("Sol Ring (C18)", "Sol Ring"),
+        ("Sol Ring (Showcase)", "Sol Ring"),
+        (
+            "Delver of Secrets (Showcase) (Step-and-Compleat Foil)",
+            "Delver of Secrets // Insectile Aberration",
+        ),
+        ("Atraxa Praetors Voice (Halo Foil)", "Atraxa, Praetors' Voice"),
+    ],
+)
+def test_trailing_variant_tags_are_ignored_when_the_name_matches_nothing(
+    loaded: Settings, typed: str, card: str
+) -> None:
+    [match] = resolve_names(loaded, typed).matched
+
+    assert match.card.name == card
+    assert match.entry.name == typed  # the entry keeps what the user's file said
+
+
+def test_a_real_name_ending_in_parentheses_wins_over_the_name_without_them(
+    loaded: Settings,
+) -> None:
+    # A real card can end in parentheses, such as "Hazmat Suit (Used)".
+    line = next(
+        line
+        for line in (FIXTURES / "oracle_cards_sample.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if json.loads(line)["name"] == "Sol Ring"
+    )
+    raw = json.loads(line) | {"name": "Sol Ring (Used)", "oracle_id": str(uuid.uuid4())}
+    used = normalise(raw)
+    assert used is not None
+    with connect(loaded) as conn:
+        apply_cards(conn, [*fixture_cards(), used])
+
+    assert matched_names(resolve_names(loaded, "Sol Ring (Used)", "Sol Ring (C18)")) == [
+        "Sol Ring (Used)",
+        "Sol Ring",
+    ]
+
+
+def test_a_tagged_name_that_still_matches_nothing_is_unknown_as_given(loaded: Settings) -> None:
+    pool = resolve_names(loaded, "Not A Real Card (Showcase)")
+
+    [unknown] = pool.unknown
+    assert unknown.entry.name == "Not A Real Card (Showcase)"
