@@ -41,8 +41,16 @@ SECTION_HEADER = re.compile(
     re.IGNORECASE,
 )
 
-NAME_HEADERS = frozenset({"name", "card name", "card", "cardname"})
-QUANTITY_HEADERS = frozenset({"quantity", "count", "qty", "amount"})
+# Recognised column headers, compared loosely (`_header_key`). "product name"
+# and the two quantity columns are TCGplayer's app export.
+NAME_HEADERS = ("name", "card name", "card", "cardname", "product name")
+# In order of preference: a row's quantity is the first of these it fills in.
+# A TCGplayer export can leave "total quantity" empty and count the cards in
+# "add to quantity".
+QUANTITY_HEADERS = ("quantity", "count", "qty", "amount", "total quantity", "add to quantity")
+# Which game a row is for, in exports covering several (TCGplayer's).
+GAME_HEADER = "product line"
+MAGIC = "magic: the gathering"
 
 
 class PoolEntry(BaseModel):
@@ -151,6 +159,11 @@ def _delimiter(header_line: str) -> str:
     return max((",", ";", "\t"), key=header_line.count)
 
 
+def _cell(row: list[str], column: int | None) -> str:
+    """A row's value in a column, or "" if it has no such column."""
+    return row[column].strip() if column is not None and column < len(row) else ""
+
+
 def parse_csv(text: str) -> ParsedPool:
     """Entries from a CSV export with a recognisable name column and optional quantity."""
     if rejected := _too_large(text):
@@ -167,7 +180,8 @@ def parse_csv(text: str) -> ParsedPool:
         header = next(reader)
         keys = [_header_key(cell) for cell in header]
         name_column = next((i for i, key in enumerate(keys) if key in NAME_HEADERS), None)
-        quantity_column = next((i for i, key in enumerate(keys) if key in QUANTITY_HEADERS), None)
+        quantity_columns = [keys.index(key) for key in QUANTITY_HEADERS if key in keys]
+        game_column = keys.index(GAME_HEADER) if GAME_HEADER in keys else None
         if name_column is None:
             collector.problem(
                 1,
@@ -181,10 +195,16 @@ def parse_csv(text: str) -> ParsedPool:
             if not any(cell.strip() for cell in row):
                 continue
             raw = ",".join(row)
-            name = row[name_column].strip() if name_column < len(row) else ""
-            quantity_text = ""
-            if quantity_column is not None and quantity_column < len(row):
-                quantity_text = row[quantity_column].strip()
+            game = _cell(row, game_column)
+            if game and game.casefold() != MAGIC:
+                collector.problem(
+                    reader.line_num, f"not a Magic: The Gathering card ({game}); skipped", raw
+                )
+                continue
+            name = _cell(row, name_column)
+            quantity_text = next(
+                (text for column in quantity_columns if (text := _cell(row, column))), ""
+            )
             if quantity_text and not quantity_text.isdigit():
                 collector.problem(reader.line_num, "quantity is not a whole number", raw)
                 continue

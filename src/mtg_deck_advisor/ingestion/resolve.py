@@ -17,9 +17,15 @@ real card; the single Commander-legal (or banned) candidate wins, and
 otherwise the entry is reported as ambiguous rather than guessed. Names that
 match nothing get "did you mean" suggestions by trigram similarity.
 
+Names still unfound are tried once more with trailing parenthesised tags
+removed, as some exports add them ("Sol Ring (C18)", "Cosmic Rebirth
+(Showcase)"). Only then, so a real name ending in parentheses ("Hazmat Suit
+(Used)") always matches itself.
+
 Every entry ends up in exactly one of matched, ambiguous or unknown.
 """
 
+import re
 from collections import defaultdict
 from collections.abc import Sequence
 from typing import Literal
@@ -33,6 +39,8 @@ from mtg_deck_advisor.ingestion.cards import CommanderLegality, fold_name, loose
 from mtg_deck_advisor.ingestion.pool import PoolEntry
 
 MAX_SUGGESTIONS = 3
+# One or more parenthesised tags at the end of a name.
+TRAILING_TAGS = re.compile(r"(?:\s*\([^()]*\))+\s*$")
 
 
 class ResolvedCard(BaseModel):
@@ -125,11 +133,12 @@ def _suggestions(conn: psycopg.Connection, key: str) -> list[str]:
     return [name for (name,) in rows]
 
 
-def resolve(conn: psycopg.Connection, entries: Sequence[PoolEntry]) -> ResolvedPool:
-    """Resolve every entry, keeping the input order within each group."""
-    keys = {entry.name: _lookup_keys(entry.name) for entry in entries}
-
-    # Run the steps in order, each with one query for every name still unfound.
+def _find(
+    conn: psycopg.Connection, names: dict[str, str]
+) -> dict[str, tuple[MatchedBy, list[ResolvedCard]]]:
+    """Run the steps in order for `names` (entry name to the name to look up),
+    each step with one query for every name still unfound."""
+    keys = {name: _lookup_keys(lookup) for name, lookup in names.items()}
     found: dict[str, tuple[MatchedBy, list[ResolvedCard]]] = {}
     for matched_by, column, loose in STEPS:
         step_key = {
@@ -142,6 +151,20 @@ def resolve(conn: psycopg.Connection, entries: Sequence[PoolEntry]) -> ResolvedP
         for name in keys:
             if name not in found and step_key[name] in step:
                 found[name] = (matched_by, step[step_key[name]])
+    return found
+
+
+def resolve(conn: psycopg.Connection, entries: Sequence[PoolEntry]) -> ResolvedPool:
+    """Resolve every entry, keeping the input order within each group."""
+    keys = {entry.name: _lookup_keys(entry.name) for entry in entries}
+    found = _find(conn, {name: name for name in keys})
+    untagged = {
+        name: stripped
+        for name in keys
+        if name not in found and (stripped := TRAILING_TAGS.sub("", name)) not in ("", name)
+    }
+    if untagged:
+        found |= _find(conn, untagged)
 
     pool = ResolvedPool(matched=[], ambiguous=[], unknown=[])
     suggestions: dict[str, list[str]] = {}
