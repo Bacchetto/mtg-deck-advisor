@@ -13,8 +13,10 @@ the result is scored three ways:
   the two are compared (EVL-3).
 - **Citations**, checked by code: the answer must cite at least one of the
   question's relevant rules (a "hit"), and each rule it cites must be
-  acceptable (precision): a relevant rule, its parent, a rule below it, or
-  one labelled `also_acceptable` (a rule the relevant one cross-references).
+  acceptable (precision): a relevant rule, its parent, a rule below it, a
+  lettered sub-rule beside it, or one labelled `also_acceptable` (a rule the
+  relevant one cross-references). A saved run can be rescored against
+  reviewed labels without calling a model again (`--rescore`).
 - **"Not found"**: the 10 questions the Comprehensive Rules don't answer
   must get "NOT FOUND". Answering them, or saying "not found" to an
   answerable question, are both measured.
@@ -28,6 +30,7 @@ import argparse
 import statistics
 import sys
 from collections.abc import Callable, Sequence
+from datetime import date
 from pathlib import Path
 from typing import Literal, Self
 
@@ -47,6 +50,7 @@ from mtg_deck_advisor.evaluation.runner import (
     variant_services,
 )
 from mtg_deck_advisor.llm.client import ModelClient
+from mtg_deck_advisor.llm.errors import InvalidOutputError
 from mtg_deck_advisor.llm.types import Message, ModelRequest
 
 RULES_QA = Path("evals/datasets/rules_qa.jsonl")
@@ -106,8 +110,15 @@ def _parent(number: str) -> str | None:
 
 
 def _in_family(number: str, rule: str) -> bool:
-    """`number` is `rule`, its parent, or a rule below it."""
+    """`number` is `rule`, its parent, a rule below it, or a lettered sub-rule beside it.
+
+    Siblings count only among lettered sub-rules (702.124d beside 702.124a,
+    both about partner). Numbered rules beside each other can be about other
+    things entirely: 903.12 (Brawl) sits beside 903.5 (Commander's deck rules).
+    """
     if number in (rule, _parent(rule)):
+        return True
+    if number[-1].isalpha() and rule[-1].isalpha() and _parent(number) == _parent(rule):
         return True
     below = number[len(rule) :] if number.startswith(rule) else ""
     return bool(below) and (below[0].isalpha() or below[0] == ".")
@@ -146,7 +157,8 @@ def grade_answer(grader: ModelClient, case: RulesCase, answer: str) -> Grade:
         purpose="rules_grading",
         system=(
             "You grade answers to Magic: The Gathering rules questions for correctness, "
-            "following this rubric exactly.\n\n" + RUBRIC.read_text(encoding="utf-8")
+            "following this rubric exactly. Keep the reason to one or two sentences.\n\n"
+            + RUBRIC.read_text(encoding="utf-8")
         ),
         messages=(
             Message(
@@ -157,7 +169,8 @@ def grade_answer(grader: ModelClient, case: RulesCase, answer: str) -> Grade:
                 ),
             ),
         ),
-        max_tokens=600,
+        # Room for a full grade; 600 cut some off mid-JSON in the first baseline.
+        max_tokens=1500,
     )
     return grader.generate_structured(request, Grade).value
 
@@ -180,20 +193,25 @@ def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase)
     graded_before = grader.spent_usd
     success = False
     if case.answerable and answered.found and answered.answer is not None:
-        grade = grade_answer(grader, case, answered.answer)
         hit, precision = citation_scores(case, cited)
         scores = {
-            "correct": VERDICT_SCORES[grade.verdict],
             "citation_hit": float(hit),
             "citation_precision": precision if precision is not None else 0.0,
         }
-        details |= {
-            "verdict": grade.verdict,
-            "missing_facts": grade.missing_facts,
-            "contradictions": grade.contradictions,
-            "grade_reason": grade.reason,
-        }
-        success = grade.verdict == "correct" and hit and precision == 1.0
+        try:
+            grade = grade_answer(grader, case, answered.answer)
+        except InvalidOutputError as exc:
+            # Kept as an ungraded case, with its costs, rather than lost.
+            details["grading_error"] = str(exc)
+        else:
+            scores["correct"] = VERDICT_SCORES[grade.verdict]
+            details |= {
+                "verdict": grade.verdict,
+                "missing_facts": grade.missing_facts,
+                "contradictions": grade.contradictions,
+                "grade_reason": grade.reason,
+            }
+            success = grade.verdict == "correct" and hit and precision == 1.0
     elif case.answerable:
         scores = {"correct": 0.0}
     else:
@@ -204,6 +222,25 @@ def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase)
     result.scores = scores
     result.grading_cost_usd = grader.spent_usd - graded_before
     return result
+
+
+def rescore(run: EvalRun, cases: Sequence[RulesCase]) -> EvalRun:
+    """The run scored again against the current labels, by code alone; the run is unchanged.
+
+    Citation hits, precision and success are recomputed from each saved
+    answer's citations and grade. Nothing is asked of a model, so it's free.
+    """
+    by_id = {case.id: case for case in cases}
+    rescored = run.model_copy(deep=True)
+    for result in rescored.results:
+        case = by_id.get(result.case_id)
+        if case is None or not case.answerable or not result.details.get("found"):
+            continue
+        hit, precision = citation_scores(case, result.details.get("cited", []))
+        result.scores["citation_hit"] = float(hit)
+        result.scores["citation_precision"] = precision if precision is not None else 0.0
+        result.success = result.details.get("verdict") == "correct" and hit and precision == 1.0
+    return rescored
 
 
 # --- metrics and reports -------------------------------------------------------------------
@@ -224,7 +261,9 @@ def rules_metrics(run: EvalRun) -> dict[str, float]:
         return bool(r.details.get("abstained", not r.details.get("found")))
 
     return {
-        "correctness": _mean([r.scores.get("correct", 0.0) for r in answerable]),
+        "correctness": _mean(
+            [r.scores.get("correct", 0.0) for r in answerable if "grading_error" not in r.details]
+        ),
         "citation_hit": _mean([r.scores.get("citation_hit", 0.0) for r in answered]),
         "citation_precision": _mean([r.scores.get("citation_precision", 0.0) for r in answered]),
         "abstention": _mean([float(abstained(r)) for r in unanswerable]),
@@ -267,56 +306,96 @@ def main(argv: Sequence[str] | None = None) -> int:
     from mtg_deck_advisor.observability.logging import configure_logging
 
     parser = argparse.ArgumentParser(prog="python -m mtg_deck_advisor.evaluation.rules_qa")
-    parser.add_argument("--variant", action="append", choices=list(VARIANTS), required=True)
+    parser.add_argument("--variant", action="append", choices=list(VARIANTS), default=[])
     parser.add_argument("--ids", nargs="*", help="only these question IDs")
     parser.add_argument("--budget", type=float, default=1.0, help="US dollars, for all variants")
     parser.add_argument("--yes", action="store_true", help="don't ask before spending")
+    parser.add_argument(
+        "--rescore", type=Path, help="score a saved run again against the current labels (free)"
+    )
+    parser.add_argument(
+        "--rerun-errors",
+        action="store_true",
+        help="with --rescore: run again the cases that errored or couldn't be graded (paid)",
+    )
     args = parser.parse_args(argv)
+    if not args.variant and not args.rescore:
+        parser.error("give --variant to run, or --rescore RUN.json")
 
     settings = get_settings()
     configure_logging(settings)
     cases = [c for c in load_cases() if not args.ids or c.id in args.ids]
-    variants = [VARIANTS[name] for name in args.variant]
-    estimate = estimate_usd(variants, len(cases))
-    print(f"{len(cases)} questions x {len(variants)} variant(s), graded by {GRADER_MODEL}.")
-    if not confirm_spend(estimate, budget_usd=args.budget, yes=args.yes):
-        return 1
+    saved: EvalRun | None = EvalRun.load(args.rescore) if args.rescore else None
+    if saved is not None:
+        variants = [saved.variant]
+        retry = {
+            r.case_id
+            for r in saved.results
+            if args.rerun_errors and (r.status == "error" or "grading_error" in r.details)
+        }
+        todo = [c for c in cases if c.id in retry]
+    else:
+        variants = [VARIANTS[name] for name in args.variant]
+        todo = cases
+    if todo:
+        estimate = estimate_usd(variants, len(todo))
+        print(f"{len(todo)} questions x {len(variants)} variant(s), graded by {GRADER_MODEL}.")
+        if not confirm_spend(estimate, budget_usd=args.budget, yes=args.yes):
+            return 1
 
     runs: list[EvalRun] = []
     per_variant = args.budget / len(variants)
-    with connect(settings) as conn:
-        embedder = build_embedder(settings)
-        recorder = DatabaseRecorder(settings)
-        grader = ModelClient(
-            build_provider(settings), GRADER_MODEL, recorder=recorder, cost_cap_usd=args.budget
-        )
-        for variant in variants:
-            services = variant_services(
-                conn,
-                variant,
-                provider=build_provider(settings),
-                embedder=embedder,
-                reranker=None,  # rules search doesn't rerank
-                recorder=recorder,
-                cost_cap_usd=settings.agent_cost_cap_usd,
-                max_turns=settings.agent_max_turns,
+    if todo:
+        with connect(settings) as conn:
+            embedder = build_embedder(settings)
+            recorder = DatabaseRecorder(settings)
+            grader = ModelClient(
+                build_provider(settings), GRADER_MODEL, recorder=recorder, cost_cap_usd=args.budget
             )
-            run = run_suite(
-                "rules_qa",
-                cases,
-                variant,
-                _evaluator(conn, services, grader),
-                budget_usd=per_variant,
-                case_id=lambda case: case.id,
-            )
-            print(f"{variant.name}: saved {run.save()}, spent ${run.spent_usd:.4f}")
-            runs.append(run)
+            for variant in variants:
+                services = variant_services(
+                    conn,
+                    variant,
+                    provider=build_provider(settings),
+                    embedder=embedder,
+                    reranker=None,  # rules search doesn't rerank
+                    recorder=recorder,
+                    cost_cap_usd=settings.agent_cost_cap_usd,
+                    max_turns=settings.agent_max_turns,
+                )
+                runs.append(
+                    run_suite(
+                        "rules_qa",
+                        todo,
+                        variant,
+                        _evaluator(conn, services, grader),
+                        budget_usd=per_variant,
+                        case_id=lambda case: case.id,
+                    )
+                )
 
     notes = (
-        f"Set: `{RULES_QA}` ({len(cases)} questions). Correctness graded by {GRADER_MODEL} with "
-        f'[the rubric]({Path("..") / RUBRIC.relative_to("evals")}). Citations and "not found" '
-        "are checked by code."
+        f"Set: `{RULES_QA.as_posix()}` ({len(cases)} questions). Correctness graded by "
+        f"{GRADER_MODEL} with [the rubric](../rubrics/{RUBRIC.name}). Citations and "
+        '"not found" are checked by code.'
     )
+    if saved is not None and args.rescore is not None:
+        merged = saved
+        if runs:
+            again = {r.case_id: r for r in runs[0].results}
+            merged = saved.model_copy(
+                update={"results": [again.get(r.case_id, r) for r in saved.results]}
+            )
+        rescored = rescore(merged, load_cases())
+        rescored.save(args.rescore.parent.parent)  # back to evals/runs/rules_qa/<same name>
+        runs = [rescored]
+        notes += f" Rescored on {date.today().isoformat()} against the labels as reviewed" + (
+            f"; run again: {', '.join(sorted(again))}." if todo else "."
+        )
+    else:
+        for run in runs:
+            print(f"{run.variant.name}: saved {run.save()}, spent ${run.spent_usd:.4f}")
+
     report = comparison_report("Rules Q&A", runs, notes=notes) + "\n" + rules_section(runs)
     path = save_report(report, "rules-qa")
     print(report)
