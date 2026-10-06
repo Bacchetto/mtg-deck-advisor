@@ -208,3 +208,60 @@ def test_empty_csv_is_a_problem() -> None:
 
     assert pool.entries == []
     assert pool.problems[0].message
+
+
+# --- TCGplayer app exports (#117) ---------------------------------------------
+
+TCGPLAYER_HEADER = (
+    "Product ID,TCGplayer Id,Product Line,Set Name,Product Name,Title,Number,Rarity,"
+    "Condition,Printing,TCG Market Price,TCG Direct Low,TCG Low Price With Shipping,"
+    "TCG Low Price,Total Quantity,Add to Quantity,TCG Marketplace Price,Photo URL"
+)
+
+
+def tcgplayer_row(
+    name: str, add: str = "1", total: str = "", line: str = "Magic: The Gathering"
+) -> str:
+    return (
+        f"1,2,{line},Foundations,{name},,619,Uncommon,Near Mint,Normal,3.27,,,,"
+        f"{total},{add},,https://tcgplayer-cdn.tcgplayer.com/product/1_in_200x200.jpg"
+    )
+
+
+def test_a_tcgplayer_export_reads_product_names_and_quantities() -> None:
+    csv = "\n".join(
+        [
+            TCGPLAYER_HEADER,
+            tcgplayer_row("Bolt Bend"),
+            tcgplayer_row("Sol Ring (C18)", add="2"),
+            tcgplayer_row('"Atraxa, Praetors\' Voice"', add="3"),
+        ]
+    )
+
+    assert entries(parse_csv(csv)) == [
+        ("Bolt Bend", 1),
+        ("Sol Ring (C18)", 2),  # tags are resolution's to handle
+        ("Atraxa, Praetors' Voice", 3),
+    ]
+    assert parse_csv(csv).problems == []
+
+
+def test_a_tcgplayer_total_quantity_is_used_when_filled_in() -> None:
+    csv = "\n".join([TCGPLAYER_HEADER, tcgplayer_row("Sol Ring", add="1", total="4")])
+
+    assert entries(parse_csv(csv)) == [("Sol Ring", 4)]
+
+
+def test_rows_from_other_games_are_skipped_as_problems() -> None:
+    csv = "\n".join(
+        [
+            TCGPLAYER_HEADER,
+            tcgplayer_row("Pikachu", line="Pokemon"),
+            tcgplayer_row("Sol Ring"),
+        ]
+    )
+    pool = parse_csv(csv)
+
+    assert entries(pool) == [("Sol Ring", 1)]
+    [problem] = pool.problems
+    assert problem.line == 2 and "not a Magic: The Gathering card" in problem.message

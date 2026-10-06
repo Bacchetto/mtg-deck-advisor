@@ -237,6 +237,11 @@ new attempt), `[c]hange "..."` (a refine), `[e]xport` to a file, or `[q]uit`. A 
 is drafted again into the same deck. `mtg-advisor build --deck DECK` picks a deck up where you left it.
 Nothing is approved or exported unless you type it.
 
+Pools can be a pasted list (`1 Sol Ring`, with or without set codes) or a CSV export with a name
+column, including the TCGplayer app's collection export: names come from "Product Name", counts
+from "Total Quantity" or "Add to Quantity", other games' rows are skipped, and variant tags such
+as "(Showcase)" are ignored when matching.
+
 The same steps, one command each:
 
 ```bash
