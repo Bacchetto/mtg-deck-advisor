@@ -229,6 +229,16 @@ Everything goes through the HTTP API (documented at http://127.0.0.1:8000/docs).
 and finds the API at `API_URL`. Drafts and refines run on the server and take a minute or so;
 the CLI waits and shows progress (`--no-wait` to return at once, `mtg-advisor run RUN` to check later).
 
+**The whole build in one command:** `mtg-advisor build pool.txt` submits the pool (or takes a pool ID,
+or lets you choose from your pools), asks what to build around (a commander or a theme; `?` lists
+the commanders your pool can use), drafts, shows the proposal, and then
+waits for you: `[a]pprove` (approve and save), `[r]eject` (with a reason, which is passed on to a
+new attempt), `[c]hange "..."` (a refine), `[e]xport` to a file, or `[q]uit`. A rejected first draft
+is drafted again into the same deck. `mtg-advisor build --deck DECK` picks a deck up where you left it.
+Nothing is approved or exported unless you type it.
+
+The same steps, one command each:
+
 ```bash
 mtg-advisor pool add evals/datasets/pool_300.txt    # submit a pool (a list, or --csv)
 mtg-advisor draft POOL [--name NAME]                 # the agent drafts; prints its proposals

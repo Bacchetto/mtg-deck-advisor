@@ -239,6 +239,8 @@ def test_the_openapi_document_covers_every_endpoint(app_for: Callable[..., TestC
         "/decks": {"get"},
         "/decks/{deck_id}": {"get", "patch"},
         "/decks/{deck_id}/archive": {"post"},
+        "/decks/{deck_id}/drafts": {"post"},
+        "/decks/{deck_id}/proposals": {"get"},
         "/decks/{deck_id}/unarchive": {"post"},
         "/decks/{deck_id}/refinements": {"post"},
         "/decks/{deck_id}/versions/{version}/export-approval": {"post"},
