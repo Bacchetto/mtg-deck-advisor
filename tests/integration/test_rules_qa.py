@@ -9,7 +9,7 @@ import json
 import psycopg
 
 from mtg_deck_advisor.evaluation.rules_qa import RulesCase, evaluate_case
-from mtg_deck_advisor.evaluation.runner import Variant, variant_services
+from mtg_deck_advisor.evaluation.runner import CaseResult, Variant, variant_services
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.fake import FakeEmbedder, FakeProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
@@ -56,7 +56,7 @@ def grade(verdict: str, missing: list[str] | None = None) -> ProviderResponse:
 
 def evaluate(
     conn: psycopg.Connection, case: RulesCase, *agent: ProviderResponse, grader: FakeProvider
-):
+) -> CaseResult:
     variant = Variant(name="sonnet", model="claude-sonnet-5-5")
     services = variant_services(
         conn,
@@ -134,7 +134,7 @@ def test_answering_an_unanswerable_question_fails(conn: psycopg.Connection) -> N
     result = evaluate(
         conn,
         UNANSWERABLE,
-        calls(call("search_rules", question="proxies", k=5)),
+        calls(call("search_rules", question="color identity commander", k=5)),
         answer("Yes, proxies are fine.\nCitations: 903.4"),
         grader=FakeProvider(),
     )
