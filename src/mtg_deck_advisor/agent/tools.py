@@ -47,7 +47,7 @@ from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.llm.roles import load_roles
 from mtg_deck_advisor.llm.types import ToolCall, ToolResult, ToolSpec
 from mtg_deck_advisor.retrieval.rerank import Reranker
-from mtg_deck_advisor.retrieval.search import CardFilters, search_cards, search_rules
+from mtg_deck_advisor.retrieval.search import CardFilters, SearchMode, search_cards, search_rules
 
 log = structlog.get_logger(__name__)
 
@@ -96,6 +96,9 @@ class ToolContext:
     pool: Pool | None
     deck_id: UUID | None
     reranker: Reranker[UUID] | None = None
+    # How the search tools search; the defaults are what ships (evals vary them).
+    card_search_mode: SearchMode = "hybrid"
+    rules_search_mode: SearchMode = "vector"
     # The deck as the latest proposal in this run would leave it.
     draft: DeckState | None = None
     # Cards and rules this run's tool results have shown the model, so a
@@ -209,7 +212,13 @@ def _search_pool(ctx: ToolContext, args: SearchPoolArgs) -> Output:
     except ValidationError as exc:
         raise ToolError(f"Invalid search filters: {_describe(exc)}") from exc
     hits = search_cards(
-        ctx.conn, ctx.embedder, args.query, filters, k=args.k, reranker=ctx.reranker
+        ctx.conn,
+        ctx.embedder,
+        args.query,
+        filters,
+        k=args.k,
+        mode=ctx.card_search_mode,
+        reranker=ctx.reranker,
     )
     if not hits:
         return Output("No cards in the user's pool match that search.")
@@ -249,7 +258,7 @@ def _get_card(ctx: ToolContext, args: GetCardArgs) -> Output:
 
 
 def _search_rules(ctx: ToolContext, args: SearchRulesArgs) -> Output:
-    hits = search_rules(ctx.conn, ctx.embedder, args.question, k=args.k)
+    hits = search_rules(ctx.conn, ctx.embedder, args.question, k=args.k, mode=ctx.rules_search_mode)
     if not hits:
         return Output("No rules match that question.")
     ctx.seen_rules.update(hit.number for hit in hits)

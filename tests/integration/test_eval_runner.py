@@ -25,6 +25,7 @@ from mtg_deck_advisor.evaluation.runner import (
 )
 from mtg_deck_advisor.llm.fake import FakeEmbedder, FakeProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
+from mtg_deck_advisor.retrieval.search import search_rules
 from tests.integration.test_agent_flows import answer, call, calls, conn  # noqa: F401
 from tests.integration.test_agent_tools import loaded  # noqa: F401
 
@@ -108,7 +109,7 @@ def test_a_variant_sets_how_the_agents_tools_search(
     conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     modes: list[str] = []
-    real = tools.search_rules
+    real = search_rules
 
     def spy(*args: Any, **kwargs: Any) -> Any:
         modes.append(kwargs.get("mode", "vector"))

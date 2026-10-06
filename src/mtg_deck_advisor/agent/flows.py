@@ -13,6 +13,7 @@ the user.
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -41,6 +42,7 @@ from mtg_deck_advisor.llm.factory import build_embedder, build_provider
 from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.llm.recording import DatabaseRecorder
 from mtg_deck_advisor.retrieval.rerank import Reranker, build_reranker
+from mtg_deck_advisor.retrieval.search import SearchMode
 
 CITATIONS_LINE = re.compile(r"^\s*citations?\s*:(.*)$", re.IGNORECASE | re.MULTILINE)
 RULE_NUMBERS = re.compile(r"\b\d{3}(?:\.\d+[a-z]*)?\b")
@@ -57,6 +59,10 @@ class AgentServices:
     reranker: Reranker[UUID] | None = None
     max_turns: int = 30
     max_tokens: int = DEFAULT_MAX_TOKENS
+    # What evals vary; the defaults are what ships.
+    system: Callable[[Task], str] = system_prompt
+    card_search_mode: SearchMode = "hybrid"
+    rules_search_mode: SearchMode = "vector"
 
 
 def build_services(conn: psycopg.Connection, settings: Settings) -> AgentServices:
@@ -205,6 +211,8 @@ def execute_run(services: AgentServices, prepared: PreparedRun) -> RunResult:
         task=prepared.task,
         pool=pool,
         deck_id=prepared.deck_id,
+        card_search_mode=services.card_search_mode,
+        rules_search_mode=services.rules_search_mode,
     )
     return _run(services, ctx, prepared.prompt)
 
@@ -327,6 +335,8 @@ def _context(
         task=task,
         pool=pool,
         deck_id=deck_id,
+        card_search_mode=services.card_search_mode,
+        rules_search_mode=services.rules_search_mode,
     )
 
 
@@ -334,7 +344,7 @@ def _run(services: AgentServices, ctx: ToolContext, prompt: str) -> RunResult:
     return run_agent(
         services.client,
         ctx,
-        system=system_prompt(ctx.task),
+        system=services.system(ctx.task),
         prompt=prompt,
         max_turns=services.max_turns,
         max_tokens=services.max_tokens,
