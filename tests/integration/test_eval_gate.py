@@ -32,9 +32,9 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     QueryFilters,
     RuleQuestion,
 )
-from mtg_deck_advisor.evaluation.snapshot import export_snapshot, load_snapshot
+from mtg_deck_advisor.evaluation.snapshot import QueryKind, export_snapshot, load_snapshot
 from mtg_deck_advisor.llm.fake import FakeEmbedder
-from mtg_deck_advisor.retrieval import search
+from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 from mtg_deck_advisor.retrieval.search import search_cards, search_rules
 from tests.integration.test_agent_tools import (  # noqa: F401
     ATRAXA,
@@ -93,7 +93,7 @@ def second_url(postgres: PostgresContainer) -> Iterator[str]:
             admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
 
 
-def queries(eval_set: EvalSet) -> list[tuple[str, str]]:
+def queries(eval_set: EvalSet) -> list[tuple[QueryKind, str]]:
     return [("cards", q.query) for q in eval_set.card_queries] + [
         ("rules", q.question) for q in eval_set.rule_questions
     ]
@@ -105,30 +105,34 @@ def exported(loaded: Settings, directory: Path) -> None:
         export_snapshot(conn, FakeEmbedder(), directory, card_ids=card_ids, queries=queries(SET))
 
 
-def test_a_loaded_snapshot_searches_exactly_like_its_source(
+def test_a_loaded_snapshot_searches_like_its_source_to_half_precision(
     loaded: Settings, second_url: str, tmp_path: Path
 ) -> None:
     exported(loaded, tmp_path)
     copy = Settings(_env_file=None, database_url=second_url)
     upgrade(copy)
+    card_query, rule_question = SET.card_queries[0].query, SET.rule_questions[0].question
 
     with connect(copy) as conn:
         embedder = load_snapshot(conn, tmp_path)
-        loaded_cards = [h.name for h in search_cards(conn, embedder, SET.card_queries[0].query)]
-        loaded_rules = [
-            h.number for h in search_rules(conn, embedder, SET.rule_questions[0].question)
-        ]
+        loaded_cards = search_cards(conn, embedder, card_query, mode="vector")
+        loaded_top = search_cards(conn, embedder, card_query)[0].name
+        loaded_rules = search_rules(conn, embedder, rule_question)
     with connect(loaded) as conn:
-        source_cards = [
-            h.name for h in search_cards(conn, FakeEmbedder(), SET.card_queries[0].query)
-        ]
-        source_rules = [
-            h.number for h in search_rules(conn, FakeEmbedder(), SET.rule_questions[0].question)
-        ]
+        source_cards = search_cards(conn, FakeEmbedder(), card_query, mode="vector")
+        source_top = search_cards(conn, FakeEmbedder(), card_query)[0].name
+        source_rules = search_rules(conn, FakeEmbedder(), rule_question)
 
     assert embedder.model == "fake-embedder"
-    assert loaded_cards == source_cards and "Sol Ring" in loaded_cards
-    assert loaded_rules == source_rules
+    assert loaded_top == source_top == "Sol Ring"
+    # The same scores, to half precision: only near-ties can swap places.
+    for loaded_scores, source_scores in (
+        ([h.score for h in loaded_cards], [h.score for h in source_cards]),
+        ([h.score for h in loaded_rules], [h.score for h in source_rules]),
+    ):
+        assert len(loaded_scores) == len(source_scores)
+        for a, b in zip(loaded_scores, source_scores, strict=True):
+            assert abs(a - b) < 0.002
 
 
 def test_the_snapshot_records_what_made_it(loaded: Settings, tmp_path: Path) -> None:
@@ -161,9 +165,9 @@ def test_a_degraded_search_fails_the_gate(
     thresholds = {name: value - 0.02 for name, value in baseline.items()}
 
     # A broken fusion: the best match comes last.
-    real = search.reciprocal_rank_fusion
     monkeypatch.setattr(
-        search, "reciprocal_rank_fusion", lambda *a, **kw: list(reversed(real(*a, **kw)))
+        "mtg_deck_advisor.retrieval.search.reciprocal_rank_fusion",
+        lambda *a, **kw: list(reversed(reciprocal_rank_fusion(*a, **kw))),
     )
     with connect(loaded) as conn:
         degraded = retrieval_metrics(conn, FakeEmbedder(), SET)

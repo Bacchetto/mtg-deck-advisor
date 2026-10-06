@@ -1,0 +1,47 @@
+# The free eval gate's thresholds (python -m mtg_deck_advisor.evaluation.gate, #119).
+#
+# Each metric fails the build when it drops below its threshold here.
+#
+# Retrieval is scored on the committed embedding snapshot (evals/snapshot/):
+# - about 4,100 cards and every rule
+# - no reranker
+# The scores are deterministic, so each threshold sits just 0.02 below the
+# snapshot baseline measured on 2026-10-06. Any regression that loses a
+# query's answer fails; a small, deliberate trade-off can pass.
+#
+# These numbers aren't comparable with the retrieval reports, which search all
+# 32,000 cards with the reranker. When a deliberate change moves a baseline,
+# rerun the gate with --baseline and update this file in the same PR, saying why.
+#
+# Baseline (2026-10-06):
+# - dev cards:  recall@10 0.840, MRR@10 0.762
+# - dev rules:  recall@10 1.000, MRR@10 0.761
+# - test cards: recall@10 0.798, MRR@10 0.819
+# - test rules: recall@10 1.000, MRR@10 0.752
+
+[dev.cards]
+"recall@10" = 0.82
+"mrr@10" = 0.74
+
+[dev.rules]
+"recall@10" = 0.98
+"mrr@10" = 0.74
+
+[test.cards]
+"recall@10" = 0.77
+"mrr@10" = 0.79
+
+[test.rules]
+"recall@10" = 0.98
+"mrr@10" = 0.73
+
+# Every labelled deck must get exactly its expected violations
+# (evals/datasets/validator_decks.jsonl).
+[validator]
+accuracy = 1.0
+
+# Every entry of every committed pool must resolve to a card.
+[resolution]
+pool_300 = 1.0
+pool_300_test = 1.0
+pool_tcgplayer_collection = 1.0

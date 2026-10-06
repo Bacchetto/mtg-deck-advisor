@@ -190,6 +190,14 @@ Rerun the eval with `python scripts/evaluate_retrieval.py` (dev set, local and f
 that chose each setting are in `scripts/retrieval_experiments.py` and
 [evals/reports/retrieval-experiments/](evals/reports/retrieval-experiments/).
 
+**The eval gate in CI.** Every pull request runs `python -m mtg_deck_advisor.evaluation.gate`. It's free
+and needs no local model: it loads a committed embedding snapshot (`evals/snapshot/`: about 4,100 cards,
+every rule, and the eval queries) into a throwaway Postgres. It then scores retrieval, the deck validator
+on labelled decks, and pool resolution, and fails the build below any threshold in `evals/thresholds.toml`
+([ADR 0016](docs/decisions/0016-evaluation-a-free-snapshot-gate-and-a-capped-live-eval.md)). After
+changing a labelled query or what gets embedded, export the snapshot again with
+`python -m mtg_deck_advisor.evaluation.snapshot` (about 40 s; Ollama must be running).
+
 ## The agent
 
 The agent drafts a Commander deck from your card pool, refines it on request, and answers
