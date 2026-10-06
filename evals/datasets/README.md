@@ -10,6 +10,7 @@ Labelled data for the evals. Each set is drafted by Claude from checkable source
 | `pool_300.txt` | A fixed pool of 300 cards for the in-pool card queries | the retrieval eval |
 | `retrieval_cards_test.csv`, `retrieval_rules_test.csv`, `pool_300_test.txt` | The same, held out | the retrieval eval's baseline and final runs only |
 | `pool_tcgplayer_collection.csv` | A real collection: 524 cards (447 different), exported from the TCGplayer app | TCGplayer CSV import; evaluation pool for Milestone 7 |
+| `validator_decks.jsonl` | 12 decks, each with the Commander violations it must get | the eval gate (`evaluation/gate.py`) |
 
 ## Retrieval sets
 
@@ -61,3 +62,6 @@ This checks that every card exists and is Commander-legal, that pool queries onl
 
 
 **`pool_tcgplayer_collection.csv`:** the project owner's own collection, exported from the TCGplayer app on 2026-10-05, unedited. Unlike the random pools it's a real player's cards: whole precons, several copies of some cards, and the TCGplayer format's quirks (names in "Product Name", counts in "Add to Quantity", variant tags such as "Sol Ring (C18)" and "(Showcase)", foil and normal rows for the same card). All 462 rows resolve: 524 cards, 447 different.
+
+
+**`validator_decks.jsonl`:** built from the recorded Adeline draft (`pool_300`, the no-key demo's deck), legal as it is, and changed one way per case: a card short or over, a second copy, an off-color card, a card the pool lacks, a banned card (Mana Crypt), an Un-card (Adorable Kitten), a non-legendary commander, and two problems at once. Each case's `expected` lists exactly the violation codes the validator must report; `pool` is the pool file it's checked against, or null for the deck's own cards (the format's rules only).

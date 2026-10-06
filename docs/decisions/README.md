@@ -40,3 +40,4 @@ Each ADR is linked from the module docstring of the code it governs, so someone 
 | [0013](0013-an-agent-that-proposes-and-code-that-decides.md) | An agent that proposes, and code that decides: bounded loop, proposals, user approvals, delimited data | `agent`, `guardrails` |
 | [0014](0014-interfaces-background-runs-a-thin-cli-and-mcp.md) | Interfaces: background runs with polling, a CLI that only calls the API, MCP with the client as the agent | `api`, `cli`, `mcp_server` |
 | [0015](0015-decisions-through-mcp-permission-prompts.md) | Decisions through MCP, allowed by the user in Claude Code's own permission prompt | `mcp_server` |
+| [0016](0016-evaluation-a-free-snapshot-gate-and-a-capped-live-eval.md) | Evaluation: a free gate on a committed embedding snapshot for every PR, and a capped live eval on main | `evaluation`, `evals/`, CI |
