@@ -4,56 +4,73 @@ An AI-assisted Magic: The Gathering deck advisor, built as a project to demonstr
 production AI engineering: RAG with citations, a bounded tool-calling agent, deterministic
 guardrails with human approval, and an evaluation suite that gates CI.
 
-> Status: early scaffolding.
+It builds a legal Commander deck from the cards you own. Submit your card pool (a list, or a
+CSV export such as TCGplayer's) and say what to build around. The agent drafts a deck and cites
+its cards and rules. You then approve, reject or refine its proposals, and export the decklist.
+You can drive it from the `mtg-advisor` CLI, the HTTP API, or an MCP client such as Claude Code.
+See [docs/project-plan.md](docs/project-plan.md) for the product, architecture, and milestones.
 
-The first version builds a legal Commander deck from the cards a user owns: submit a card
-pool and a commander, get a cited draft, then refine it by approving or rejecting the
-agent's proposed changes. See [docs/project-plan.md](docs/project-plan.md) for the product,
-architecture, and milestones.
+## Status
 
-## Goals
+**Working end to end.** Milestones 0 to 6 are done: ingestion, the deck validator, the model
+layer, retrieval, the agent with its guardrails, and the API, CLI and MCP interfaces.
+**Milestone 7, evaluation, is in progress.** A free eval gate already runs on every pull request.
+The rules Q&A and deck-build eval sets, injection cases and a capped live eval are next. After
+that come demo readiness (Milestone 8) and the optional items (Milestone 9). Progress is tracked
+in the [milestone issues](https://github.com/Bacchetto/mtg-deck-advisor/issues?q=label%3Amilestone).
+
+## What's built
 
 The full requirements, with IDs and acceptance criteria, are in
-[docs/requirements.md](docs/requirements.md). The core of the project:
+[docs/requirements.md](docs/requirements.md). Each choice is recorded in a decision record
+under [docs/decisions/](docs/decisions/).
 
-- **Retrieval (RAG):** semantic search over data combined with exact metadata filters,
-  chunked long-form documents, answers that cite their source, and an explicit "not found"
-  instead of an invented answer.
-- **Agent:** a loop that uses native tool calling, capped by a turn limit and a token budget.
-  Code owns application state, and invalid tool calls are returned to the model as errors.
-- **Guardrails:** the model proposes and deterministic code decides. Anything with side effects
-  needs explicit user approval, and retrieved content is treated as untrusted.
-- **Evaluation:** labelled retrieval and answer test sets (recall@k, MRR, citation accuracy),
-  model-graded evals checked against hand grading, and a regression eval that fails CI.
-
-Supporting work:
-
-- **Ingestion:** cached, retry-aware loading from an external API and from files. Re-running
-  it is idempotent, using content hashing.
-- **Model integration:** one internal interface for all model calls, schema-validated outputs,
-  and providers switchable by config (hosted and local).
-- **Observability:** every model and tool call is logged with tokens, cost, and latency, and
-  linked by trace ID.
-- **Engineering:** strict typing, test-first development, integration tests against Postgres
-  with pgvector, Docker Compose, CI with security scans, and a demo mode that needs no API key.
+- **Retrieval (RAG):** hybrid vector and keyword search over about 32,000 cards and 3,166
+  rules, with exact filters, and card searches reranked by a local model. It was tuned on a dev
+  set and checked once on a held-out set: card recall@10 went from 0.63 to 0.72 and MRR@10
+  from 0.54 to 0.79 ([Search](#search)).
+- **Agent:** native tool calling on Claude, capped by a turn limit and a cost cap checked
+  before each call. Every run is recorded with its transcript, tool calls and cost. A live
+  draft of a legal 100-card deck took 5 turns and cost $0.12 ([The agent](#the-agent)).
+- **Guardrails:** the model proposes and deterministic code decides. Proposals are checked
+  against the Commander rules, your pool and the run's own lookups. Applying and exporting
+  need your approval, every step goes into an append-only audit log, and card text reaches
+  the model marked as untrusted.
+- **Interfaces:** an HTTP API with runs in the background, the `mtg-advisor` CLI, and an MCP
+  server whose decision tools always ask you first ([Using it](#using-it-the-api-and-the-mtg-advisor-cli)).
+- **Evaluation:** labelled retrieval sets (dev and held-out), with reports. A CI gate scores
+  retrieval, the validator and pool resolution on a committed embedding snapshot, and fails
+  the build below its thresholds.
+- **Ingestion:** cached, retry-aware loading from Scryfall and the Comprehensive Rules.
+  Re-running it is idempotent, using content hashing.
+- **Model integration:** one internal interface for all model calls, with providers switchable
+  by config: Claude, local models through Ollama, and a replay provider for a demo with no API key.
+- **Observability:** every model and tool call is logged with tokens, cost and latency, linked
+  by trace ID.
+- **Engineering:** strict typing (mypy), test-first development, integration tests against
+  Postgres with pgvector, Docker Compose, and CI with security scans and an image build.
 
 ## Layout
 
 ```
 src/mtg_deck_advisor/
   ingestion/      external API + file loaders, caching, idempotent upserts  (ING)
-  retrieval/      chunking, embeddings, hybrid search, cited answers        (RAG)
+  deck/           deck state, card facts, versioned deck storage
+  retrieval/      chunking, embeddings, hybrid search, reranking            (RAG)
   llm/            single internal interface for all model calls             (MOD)
-  agent/          tool-calling agent loop and tools                         (AGT)
-  guardrails/     validation, approvals, audit log                          (GRD)
+  agent/          tool-calling agent loop, tools and flows                  (AGT)
+  guardrails/     deck validator, proposal checks, approvals, audit log     (GRD)
+  evaluation/     embedding snapshot and the CI eval gate                   (EVL)
   observability/  logging, tracing, cost/latency metrics                    (OBS)
+  db/             migrations and connections
   api/            HTTP API                                                  (ENG-5)
+  cli.py          the mtg-advisor CLI, a thin client of the API
   mcp_server/     MCP server exposing agent tools                           (AGT-5)
 tests/unit/         fast tests, model calls mocked
 tests/integration/  tests against real services (Postgres + pgvector)
-evals/              labelled datasets and eval reports
-scripts/            seed and utility scripts
-docs/               design notes
+evals/              labelled datasets, embedding snapshot, thresholds, reports
+scripts/            eval, experiment and utility scripts
+docs/               project plan, requirements, decision records
 ```
 
 ## Running it
