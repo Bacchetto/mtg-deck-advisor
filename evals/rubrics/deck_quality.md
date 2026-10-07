@@ -25,7 +25,7 @@ Does the deck do one recognisable thing, and do its cards serve that?
 ### 2. Fit to the request
 Does the deck do what was asked? This is skipped when there was no request.
 - **1:** ignores the request: the wrong commander, or no sign of the theme or change.
-- **3:** follows the request in name only. For example, it has the named commander but isn't built around it, or the theme is a handful of cards.
+- **2:** follows the request in name only. For example, it has the named commander but isn't built around it, or the theme is a handful of cards.
 - **5:** built around the request. For a change to a saved deck, it makes the change asked for, and only that.
 
 ### 3. Mana base
@@ -37,7 +37,7 @@ Can the deck cast its spells?
 ### 4. Ramp
 Does it accelerate its mana enough for its curve?
 - **1:** none, or one or two pieces in a deck with an expensive curve.
-- **3:** about 5-7 pieces, or fewer that suit a cheap curve.
+- **3:** about 5-7 pieces, or fewer if the deck has a cheap curve.
 - **5:** about 8-12 pieces that suit the deck, such as mana rocks, land search and mana creatures, or a curve low enough not to need them.
 
 ### 5. Card draw
