@@ -26,19 +26,11 @@ from typing import TextIO
 
 from pydantic import BaseModel
 
-from mtg_deck_advisor.evaluation.deck_tasks import CRITERIA
-from mtg_deck_advisor.evaluation.runner import CaseResult, EvalRun
+from mtg_deck_advisor.evaluation.criteria import CRITERIA, LABELS
+from mtg_deck_advisor.evaluation.results import CaseResult, EvalRun
 
 HAND_GRADES = Path("evals/hand_grades/decks.jsonl")
 SCALE = range(1, 6)
-LABELS = {
-    "plan": "plan coherence",
-    "fit": "fit to the request",
-    "mana": "mana base",
-    "ramp": "ramp",
-    "draw": "card draw",
-    "interaction": "interaction",
-}
 
 
 class HandGrade(BaseModel):

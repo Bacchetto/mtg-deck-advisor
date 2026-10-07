@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field, model_validator
 from mtg_deck_advisor.agent.flows import AgentServices, draft_deck, import_pool, refine_deck
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.deck.store import create_deck, save_version, set_archived
+from mtg_deck_advisor.evaluation.criteria import CRITERIA as CRITERIA
 from mtg_deck_advisor.evaluation.runner import (
     CaseResult,
     EvalRun,
@@ -56,8 +57,6 @@ DECK_TASKS = Path("evals/datasets/deck_tasks.jsonl")
 DATASETS = Path("evals/datasets")
 RUBRIC = Path("evals/rubrics/deck_quality.md")
 GRADER_MODEL = "claude-opus-5-5"
-# The rubric's criteria, in its order. "fit" is skipped when there's no request.
-CRITERIA = ("plan", "fit", "mana", "ramp", "draw", "interaction")
 
 VARIANTS = {
     "sonnet": Variant(name="sonnet", model="claude-sonnet-5-5"),
