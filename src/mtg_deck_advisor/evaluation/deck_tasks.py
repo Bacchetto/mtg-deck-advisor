@@ -38,6 +38,7 @@ from mtg_deck_advisor.evaluation.runner import (
     Variant,
     comparison_report,
     confirm_spend,
+    merge_results,
     result_from_run,
     run_suite,
     save_report,
@@ -339,16 +340,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     from mtg_deck_advisor.retrieval.rerank import build_reranker
 
     parser = argparse.ArgumentParser(prog="python -m mtg_deck_advisor.evaluation.deck_tasks")
-    parser.add_argument("--variant", action="append", choices=list(VARIANTS), required=True)
+    parser.add_argument("--variant", action="append", choices=list(VARIANTS), default=[])
     parser.add_argument("--ids", nargs="*", help="only these task IDs")
     parser.add_argument("--budget", type=float, default=3.0, help="US dollars, for all variants")
     parser.add_argument("--yes", action="store_true", help="don't ask before spending")
+    parser.add_argument(
+        "--rerun", type=Path, help="run --ids again for a saved run, and merge them into it"
+    )
     args = parser.parse_args(argv)
+    if bool(args.variant) == bool(args.rerun):
+        parser.error("give --variant to run, or --rerun RUN.json with --ids")
+    if args.rerun and not args.ids:
+        parser.error("--rerun needs --ids: the tasks to run again")
 
     settings = get_settings()
     configure_logging(settings)
     tasks = [t for t in load_tasks() if not args.ids or t.id in args.ids]
-    variants = [VARIANTS[name] for name in args.variant]
+    saved = EvalRun.load(args.rerun) if args.rerun else None
+    variants = [saved.variant] if saved else [VARIANTS[name] for name in args.variant]
     print(f"{len(tasks)} tasks x {len(variants)} variant(s), graded by {GRADER_MODEL}.")
     if not confirm_spend(estimate_usd(variants, tasks), budget_usd=args.budget, yes=args.yes):
         return 1
@@ -361,31 +370,41 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         embedder, reranker = build_embedder(settings), build_reranker(settings)
         for variant in variants:
-            services = variant_services(
-                conn,
-                variant,
-                provider=build_provider(settings),
-                embedder=embedder,
-                reranker=reranker,
-                recorder=recorder,
-                cost_cap_usd=settings.agent_cost_cap_usd,
-                max_turns=settings.agent_max_turns,
-            )
+
+            def services_for(variant: Variant = variant) -> AgentServices:
+                return variant_services(
+                    conn,
+                    variant,
+                    provider=build_provider(settings),
+                    embedder=embedder,
+                    reranker=reranker,
+                    recorder=recorder,
+                    cost_cap_usd=settings.agent_cost_cap_usd,
+                    max_turns=settings.agent_max_turns,
+                )
+
             run = run_suite(
                 "deck_tasks",
                 tasks,
                 variant,
-                _evaluator(conn, services, grader),
+                make_evaluator(conn, services_for, grader),
                 budget_usd=args.budget / len(variants),
                 case_id=lambda task: task.id,
             )
-            print(f"{variant.name}: saved {run.save()}, spent ${run.spent_usd:.4f}")
+            if saved is not None and args.rerun is not None:
+                run = merge_results(saved, run)
+                run.save(args.rerun.parent.parent)  # back to the same file
+                print(f"{variant.name}: merged into {args.rerun}")
+            else:
+                print(f"{variant.name}: saved {run.save()}, spent ${run.spent_usd:.4f}")
             runs.append(run)
 
     notes = (
-        f"Tasks: `{DECK_TASKS.as_posix()}` ({len(tasks)}). Quality graded by {GRADER_MODEL} "
-        f"with [the rubric](../rubrics/{RUBRIC.name}); legality is checked by code."
+        f"Tasks: `{DECK_TASKS.as_posix()}` ({len(load_tasks())}). Quality graded by "
+        f"{GRADER_MODEL} with [the rubric](../rubrics/{RUBRIC.name}); legality is checked by code."
     )
+    if saved is not None:
+        notes += f" Run again and merged: {', '.join(sorted(t.id for t in tasks))}."
     report = comparison_report("Deck tasks", runs, notes=notes) + "\n" + deck_section(runs)
     path = save_report(report, "deck-tasks")
     print(report)
@@ -393,14 +412,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _evaluator(
-    conn: psycopg.Connection, services: AgentServices, grader: ModelClient
+def make_evaluator(
+    conn: psycopg.Connection,
+    services_for: Callable[[], AgentServices],
+    grader: ModelClient,
+    *,
+    datasets: Path = DATASETS,
 ) -> Callable[[DeckTask], CaseResult]:
-    """Run a task, then commit, so its records are kept whatever happens next."""
+    """Run each task with services of its own, then commit.
+
+    Fresh services mean a fresh model client, so each run has its own cost
+    cap, as a run through the API does; one client shared by the suite would
+    spend the cap across every task. Committing keeps each task's records
+    whatever happens to the next.
+    """
     pools: dict[str, UUID] = {}
 
     def evaluate(task: DeckTask) -> CaseResult:
-        result = run_task(services, grader, task, pools=pools)
+        result = run_task(services_for(), grader, task, datasets=datasets, pools=pools)
         conn.commit()
         return result
 

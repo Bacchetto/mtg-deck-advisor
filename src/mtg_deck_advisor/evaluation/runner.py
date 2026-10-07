@@ -228,6 +228,18 @@ def run_suite[C](
     return run
 
 
+def merge_results(saved: EvalRun, again: EvalRun) -> EvalRun:
+    """The saved run with the results of cases run again in place of the old ones.
+
+    It's still the saved run (same start, variant and file name); the saved
+    run itself is left as it was.
+    """
+    redone = {result.case_id: result for result in again.results}
+    return saved.model_copy(
+        update={"results": [redone.get(r.case_id, r) for r in saved.results]}, deep=True
+    )
+
+
 class Summary(BaseModel):
     variant: str
     model: str
