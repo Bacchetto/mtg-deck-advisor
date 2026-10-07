@@ -1,6 +1,7 @@
 """The deck task set, deck grades, agreement statistics and blind hand grading (#122, EVL-3)."""
 
 import io
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from mtg_deck_advisor.evaluation.runner import CaseResult, EvalRun, Variant
 STARTED = datetime(2026, 10, 7, tzinfo=UTC)
 
 
-def graded(case_id: str, scores: dict[str, int | None], *, success: bool = True) -> CaseResult:
+def graded(case_id: str, scores: Mapping[str, int | None], *, success: bool = True) -> CaseResult:
     return CaseResult(
         case_id=case_id,
         status="completed",
@@ -135,7 +136,7 @@ def test_the_queue_is_blind_shuffled_and_skips_what_is_done() -> None:
 def test_a_session_shows_only_the_deck_and_saves_each_grade(tmp_path: Path) -> None:
     runs = {"a.json": run("sonnet-secret-variant", graded("T01", ALL_FOUR))}
     out = io.StringIO()
-    answers = iter(["4 3 5 2 3 4", ""])
+    answers = iter(["4 5 2 3 4", ""])  # no request, so no fit score
     path = tmp_path / "hand.jsonl"
 
     grade_session(
@@ -162,7 +163,8 @@ def test_agreement_is_exact_within_one_and_weighted_kappa() -> None:
     same = agreement(model, model, ["plan"])["plan"]
     off = agreement(model, [{"plan": 5}, {"plan": 3}, {"plan": 2}, {"plan": 3}], ["plan"])["plan"]
 
-    assert (same.n, same.exact, same.within_one, same.kappa) == (4, 1.0, 1.0, pytest.approx(1.0))
+    assert (same.n, same.exact, same.within_one) == (4, 1.0, 1.0)
+    assert same.kappa == pytest.approx(1.0)
     assert (off.exact, off.within_one) == (0.5, 0.75)
     assert 0 < off.kappa < 1
 

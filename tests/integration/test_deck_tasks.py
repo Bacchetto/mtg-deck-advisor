@@ -96,7 +96,7 @@ def test_a_draft_with_a_legal_proposal_succeeds_and_is_graded(
 
     assert result.success and result.status == "completed"
     assert result.scores["ramp"] == 2.0 and "fit" not in result.scores
-    assert result.scores["quality"] == (4 * 5 + 2) / 6
+    assert result.scores["quality"] == (4 * 4 + 2) / 5  # fit is skipped: five criteria
     assert result.details["commander"] == ATRAXA
     assert result.grading_cost_usd > 0
     # The grader saw each card's text and the counts, and no request.
