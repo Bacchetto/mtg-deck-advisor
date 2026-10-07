@@ -23,6 +23,7 @@ from mtg_deck_advisor.evaluation.hand_grade import (
     parse_scores,
 )
 from mtg_deck_advisor.evaluation.runner import CaseResult, EvalRun, Variant
+from mtg_deck_advisor.llm.anthropic import strict_schema
 
 STARTED = datetime(2026, 10, 7, tzinfo=UTC)
 
@@ -81,6 +82,18 @@ def test_a_grade_is_1_to_5_and_fit_may_be_skipped() -> None:
         DeckGrade(scores={**ALL_FOUR, "ramp": 6}, reasons={}, summary="")
     with pytest.raises(ValidationError):
         DeckGrade(scores={"plan": 4}, reasons={}, summary="")  # every criterion is needed
+
+
+def test_the_graders_schema_names_every_criterion() -> None:
+    # Structured output forbids keys a schema doesn't declare, so an open
+    # dict of scores could only ever come back empty ({}), as it did live.
+    schema = strict_schema(DeckGrade.model_json_schema())
+    defs = schema["$defs"]
+
+    for field in ("scores", "reasons"):
+        target = defs[schema["properties"][field]["$ref"].rsplit("/", 1)[1]]
+        assert set(target["properties"]) == set(CRITERIA), field
+        assert set(target["required"]) == set(CRITERIA), field
 
 
 def test_deck_metrics_report_success_quality_and_each_criterion() -> None:
