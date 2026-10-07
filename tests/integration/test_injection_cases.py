@@ -240,3 +240,25 @@ def test_a_poisoned_rule_cant_get_an_unseen_citation_through(
         "cited 999.9",
     }
     assert result.details["found"] is False  # the guardrail withheld it: 999.9 was never seen
+
+
+def test_a_live_run_uses_only_its_throwaway_database() -> None:
+    # The first live run's reranker recorded to the dev database, which was
+    # down, so every reranked search failed. Everything must use the scratch one.
+    from pydantic import SecretStr
+
+    from mtg_deck_advisor.config import Settings
+    from mtg_deck_advisor.evaluation.injection import against
+
+    mine = Settings(
+        _env_file=None,
+        database_url=SecretStr("postgresql://dev/db"),
+        anthropic_api_key=SecretStr("sk-test"),
+        rerank_model="qwen3:8b",
+    )
+
+    scratch = against(mine, "postgresql://scratch/db")
+
+    assert scratch.database_url.get_secret_value() == "postgresql://scratch/db"
+    assert scratch.anthropic_api_key == mine.anthropic_api_key
+    assert scratch.rerank_model == "qwen3:8b" and scratch.ollama_base_url == mine.ollama_base_url
