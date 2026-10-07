@@ -1,0 +1,21 @@
+# The live CI eval's thresholds (python -m mtg_deck_advisor.evaluation.live_gate, #124).
+#
+# Kept apart from evals/thresholds.toml: the free gate runs on every PR and
+# would report these as unmeasured.
+#
+# The live eval asks 8 rules questions on the real model: 6 answerable and
+# 2 the rules don't answer. Sonnet 5.5 passed all eight in the rules baseline
+# (evals/reports/2026-10-06-rules-qa.md). Everything is checked by code, with no
+# grader. A model's answers vary from run to run, so the thresholds leave room
+# for one miss among the 6 answerable questions, and one among the 2
+# unanswerable. Set provisionally; calibrated against live runs in #124.
+
+[live.rules]
+# Share of the given answers that cite a rule which answers the question.
+citation_hit = 0.83
+# Share of all cited rules that are acceptable.
+citation_precision = 0.70
+# Share of the unanswerable questions answered "NOT FOUND".
+abstention = 0.50
+# Share of the answerable questions given an answer (not "NOT FOUND", not withheld).
+answered = 0.83
