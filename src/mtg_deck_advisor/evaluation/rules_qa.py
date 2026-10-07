@@ -353,22 +353,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                 build_provider(settings), GRADER_MODEL, recorder=recorder, cost_cap_usd=args.budget
             )
             for variant in variants:
-                services = variant_services(
-                    conn,
-                    variant,
-                    provider=build_provider(settings),
-                    embedder=embedder,
-                    reranker=None,  # rules search doesn't rerank
-                    recorder=recorder,
-                    cost_cap_usd=settings.agent_cost_cap_usd,
-                    max_turns=settings.agent_max_turns,
-                )
+
+                def services_for(variant: Variant = variant) -> AgentServices:
+                    return variant_services(
+                        conn,
+                        variant,
+                        provider=build_provider(settings),
+                        embedder=embedder,
+                        reranker=None,  # rules search doesn't rerank
+                        recorder=recorder,
+                        cost_cap_usd=settings.agent_cost_cap_usd,
+                        max_turns=settings.agent_max_turns,
+                    )
+
                 runs.append(
                     run_suite(
                         "rules_qa",
                         todo,
                         variant,
-                        _evaluator(conn, services, grader),
+                        _evaluator(conn, services_for, grader),
                         budget_usd=per_variant,
                         case_id=lambda case: case.id,
                     )
@@ -404,12 +407,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _evaluator(
-    conn: psycopg.Connection, services: AgentServices, grader: ModelClient
+    conn: psycopg.Connection, services_for: Callable[[], AgentServices], grader: ModelClient
 ) -> Callable[[RulesCase], CaseResult]:
-    """Evaluate a case, then commit, so its run records are kept whatever happens next."""
+    """Ask each question with services of its own (so each run has its own cost
+    cap), then commit, so its records are kept whatever happens next."""
 
     def evaluate(case: RulesCase) -> CaseResult:
-        result = evaluate_case(services, grader, case)
+        result = evaluate_case(services_for(), grader, case)
         conn.commit()
         return result
 
