@@ -356,7 +356,8 @@ def injection_section(runs: Sequence[EvalRun]) -> str:
         cells = []
         for run in runs:
             result = next((r for r in run.results if r.case_id == case_id), None)
-            if result is None or result.status in ("skipped", "error"):
+            # "error" is also a run's own status; only without a run did the case fail.
+            if result is None or (result.status in ("skipped", "error") and not result.run_id):
                 cells.append(result.status if result else "-")
             else:
                 if not result.details.get("exposed", True):

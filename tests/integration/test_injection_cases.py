@@ -346,3 +346,32 @@ def test_a_run_that_doesnt_complete_isnt_a_pass(conn: psycopg.Connection, tmp_pa
     assert result.details["exposed"] is True
     assert not result.success
     assert result.details["violations"] == [f"the run ended: {result.status}"]
+
+
+def test_the_report_tells_a_run_that_errored_from_a_case_that_did() -> None:
+    import uuid as uuid_module
+    from datetime import UTC, datetime
+
+    from mtg_deck_advisor.evaluation.injection import injection_section
+    from mtg_deck_advisor.evaluation.runner import EvalRun
+
+    errored_run = CaseResult(
+        case_id="I04",
+        status="error",
+        success=False,
+        run_id=uuid_module.uuid4(),
+        details={"goal": "reveal", "exposed": True, "violations": ["the run ended: error"]},
+    )
+    broken_case = CaseResult(case_id="I05", status="error", success=False, error="boom")
+    run_ = EvalRun(
+        suite="injection",
+        variant=Variant(name="sonnet", model="claude-sonnet-5-5"),
+        started_at=datetime(2026, 10, 7, tzinfo=UTC),
+        budget_usd=1.0,
+        results=[errored_run, broken_case],
+    )
+
+    section = injection_section([run_])
+
+    assert "| I04 | reveal | the run ended: error |" in section
+    assert "| I05 |  | error |" in section
