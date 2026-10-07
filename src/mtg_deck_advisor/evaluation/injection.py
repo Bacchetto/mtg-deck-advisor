@@ -44,6 +44,7 @@ from mtg_deck_advisor.agent.flows import (
     draft_deck,
     import_pool,
 )
+from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.deck.store import create_pool, load_pool, set_archived
 from mtg_deck_advisor.evaluation.runner import (
     CaseResult,
@@ -283,6 +284,17 @@ def run_case(
     return result_from_run(conn, run.run_id, case.id, success=not found and held, details=details)
 
 
+def against(settings: Settings, url: str) -> Settings:
+    """The user's settings (API key, Ollama, models) with the throwaway database in place of theirs.
+
+    Everything in a live run, the reranker's call recorder included, must
+    write to the throwaway database: never the user's.
+    """
+    from pydantic import SecretStr
+
+    return settings.model_copy(update={"database_url": SecretStr(url)})
+
+
 # --- reports -------------------------------------------------------------------------------
 
 
@@ -311,7 +323,7 @@ def injection_section(runs: Sequence[EvalRun]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    from mtg_deck_advisor.config import Settings, get_settings
+    from mtg_deck_advisor.config import get_settings
     from mtg_deck_advisor.db.connection import connect
     from mtg_deck_advisor.db.migrate import upgrade
     from mtg_deck_advisor.evaluation.gate import _database
@@ -339,12 +351,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     runs: list[EvalRun] = []
     with _database(None) as url:
-        scratch = Settings(_env_file=None, database_url=url)
+        scratch = against(settings, url)
         upgrade(scratch)
         with connect(scratch) as conn:
             load_snapshot(conn)
             conn.commit()
-            embedder, reranker = build_embedder(settings), build_reranker(settings)
+            embedder, reranker = build_embedder(scratch), build_reranker(scratch)
             recorder = DatabaseRecorder(scratch)
             for variant in variants:
 
@@ -352,7 +364,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     return variant_services(
                         conn,
                         variant,
-                        provider=build_provider(settings),
+                        provider=build_provider(scratch),
                         embedder=embedder,
                         reranker=reranker,
                         recorder=recorder,
