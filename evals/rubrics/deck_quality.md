@@ -14,7 +14,7 @@ Used to grade the decks the agent builds in the deck-build task set (`evals/data
 
 ## Criteria
 
-Each is scored from 1 to 5. The anchors describe 1, 3 and 5; 2 and 4 fall between them.
+Each is scored from 1 to 5. The anchors describe 1, 3 and 5 (fit to the request also describes 2); the other scores fall between them.
 
 ### 1. Plan coherence
 Does the deck do one recognisable thing, and do its cards serve that?
@@ -26,6 +26,7 @@ Does the deck do one recognisable thing, and do its cards serve that?
 Does the deck do what was asked? This is skipped when there was no request.
 - **1:** ignores the request: the wrong commander, or no sign of the theme or change.
 - **2:** follows the request in name only. For example, it has the named commander but isn't built around it, or the theme is a handful of cards.
+- **3:** clearly follows the request, but it's only part of the deck: the named commander leads a plan of its own, or the theme is about a third of the cards.
 - **5:** built around the request. For a change to a saved deck, it makes the change asked for, and only that.
 
 ### 3. Mana base
