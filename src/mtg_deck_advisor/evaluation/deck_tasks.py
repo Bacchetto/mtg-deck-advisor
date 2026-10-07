@@ -23,11 +23,11 @@ import statistics
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 import psycopg
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from mtg_deck_advisor.agent.flows import AgentServices, draft_deck, import_pool, refine_deck
 from mtg_deck_advisor.deck.state import DeckState
@@ -103,26 +103,40 @@ def load_tasks(path: Path = DECK_TASKS) -> list[DeckTask]:
     return [DeckTask.model_validate_json(line) for line in lines if line.strip()]
 
 
-class DeckGrade(BaseModel):
-    # Each criterion's score, 1-5; "fit" is null when there was no request.
-    scores: dict[str, int | None]
-    reasons: dict[str, str]
-    summary: str
+Score = Annotated[int, Field(ge=1, le=5)]
 
-    @model_validator(mode="after")
-    def _scored(self) -> Self:
-        if set(self.scores) != set(CRITERIA):
-            raise ValueError(f"scores must be given for exactly {', '.join(CRITERIA)}")
-        for name, score in self.scores.items():
-            if score is None and name != "fit":
-                raise ValueError(f"{name} must be scored")
-            if score is not None and not 1 <= score <= 5:
-                raise ValueError(f"{name} must be 1 to 5, not {score}")
-        return self
+
+class CriterionScores(BaseModel):
+    """One field per rubric criterion. Explicit fields, not a dict: structured
+    output forbids undeclared keys, so an open dict could only come back empty."""
+
+    plan: Score
+    fit: Score | None = Field(description="Null when there was no request.")
+    mana: Score
+    ramp: Score
+    draw: Score
+    interaction: Score
+
+
+class CriterionReasons(BaseModel):
+    plan: str
+    fit: str
+    mana: str
+    ramp: str
+    draw: str
+    interaction: str
+
+
+class DeckGrade(BaseModel):
+    scores: CriterionScores
+    # One sentence per criterion, naming cards or counts.
+    reasons: CriterionReasons
+    summary: str
 
     @property
     def quality(self) -> float:
-        return statistics.mean(s for s in self.scores.values() if s is not None)
+        given: list[int] = [s for s in self.scores.model_dump().values() if s is not None]
+        return statistics.mean(given)
 
 
 # --- what the grader sees --------------------------------------------------------------------
@@ -250,9 +264,10 @@ def run_task(
         except InvalidOutputError as exc:
             details["grading_error"] = str(exc)
         else:
-            scores = {name: float(s) for name, s in grade.scores.items() if s is not None}
+            given = grade.scores.model_dump().items()
+            scores = {name: float(score) for name, score in given if score is not None}
             scores["quality"] = grade.quality
-            details["reasons"] = grade.reasons
+            details["reasons"] = grade.reasons.model_dump()
             details["summary"] = grade.summary
     set_archived(conn, deck_id, True)
     record_audit(conn, "system", "archive", f"deck:{deck_id}", {"reason": "eval deck"})
