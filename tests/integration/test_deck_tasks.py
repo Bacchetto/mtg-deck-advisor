@@ -9,8 +9,9 @@ from pathlib import Path
 
 import psycopg
 
-from mtg_deck_advisor.evaluation.deck_tasks import CRITERIA, DeckTask, run_task
-from mtg_deck_advisor.evaluation.runner import CaseResult, Variant, variant_services
+from mtg_deck_advisor.agent.flows import AgentServices
+from mtg_deck_advisor.evaluation.deck_tasks import CRITERIA, DeckTask, make_evaluator, run_task
+from mtg_deck_advisor.evaluation.runner import CaseResult, Variant, run_suite, variant_services
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.fake import FakeEmbedder, FakeProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
@@ -169,3 +170,50 @@ def test_a_refine_starts_from_the_saved_deck_and_grades_the_result(
     assert result.success, result.details
     assert "Delver of Secrets" in result.details["deck_text"]
     assert result.details["version"] == 1  # the harness saved the start; nothing was applied
+
+
+def test_each_task_gets_its_own_agent_budget(conn: psycopg.Connection, tmp_path: Path) -> None:
+    # The cost cap is per run. Sharing one client across a suite made later
+    # tasks stop at "budget" once earlier ones had spent the cap between them.
+    pool_file(tmp_path)
+    made: list[AgentServices] = []
+
+    def services_for() -> AgentServices:
+        provider = FakeProvider(
+            calls(call("propose_deck", commander=ATRAXA, cards=LEGAL_CARDS, rationale="Rats.")),
+            answer("Drafted."),
+        )
+        made.append(
+            variant_services(
+                conn,
+                Variant(name="sonnet", model="claude-sonnet-5-5"),
+                provider=provider,
+                embedder=FakeEmbedder(),
+                reranker=None,
+                recorder=MemoryRecorder(),
+                cost_cap_usd=1.0,
+                max_turns=10,
+            )
+        )
+        return made[-1]
+
+    grading = ModelClient(
+        FakeProvider(grade(fit=None), grade(fit=None)),
+        "claude-opus-5-5",
+        recorder=MemoryRecorder(),
+        cost_cap_usd=1.0,
+    )
+    evaluate = make_evaluator(conn, services_for, grading, datasets=tmp_path)
+
+    run = run_suite(
+        "deck_tasks",
+        [task(id="T01"), task(id="T02")],
+        Variant(name="sonnet", model="claude-sonnet-5-5"),
+        evaluate,
+        budget_usd=1.0,
+        case_id=lambda t: t.id,
+    )
+
+    assert [r.success for r in run.results] == [True, True]
+    assert len(made) == 2 and made[0].client is not made[1].client
+    assert made[1].client.spent_usd == run.results[1].cost_usd  # only its own task

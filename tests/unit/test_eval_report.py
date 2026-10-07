@@ -11,6 +11,7 @@ from mtg_deck_advisor.evaluation.runner import (
     Variant,
     comparison_report,
     confirm_spend,
+    merge_results,
     save_report,
     summarize,
 )
@@ -115,3 +116,17 @@ def test_an_estimate_over_the_budget_is_refused_outright() -> None:
 
     assert not confirm_spend(2.0, budget_usd=1.0, yes=True, ask=lambda _: "y", out=out)
     assert "over the budget" in out.getvalue()
+
+
+def test_cases_run_again_replace_their_results_and_keep_the_rest() -> None:
+    saved = run("sonnet", result("T01"), result("T02", success=False, status="budget"))
+    again = run("sonnet", result("T02", cost=0.05))
+
+    merged = merge_results(saved, again)
+
+    assert [(r.case_id, r.status, r.cost_usd) for r in merged.results] == [
+        ("T01", "completed", 0.01),
+        ("T02", "completed", 0.05),
+    ]
+    assert merged.started_at == saved.started_at  # it's still the same run
+    assert saved.results[1].status == "budget"  # the saved run is left as it was
