@@ -185,15 +185,22 @@ def export_snapshot(
 
     wanted = sorted({(kind, query) for kind, query in queries})
     texts = [query_text(model, kind, query) for kind, query in wanted]
-    vectors = embedder.embed(texts) if texts else []
+    # Keep the vectors the snapshot already has: re-embedding a query can move
+    # it slightly, and with it the gate's baseline. Embed only the new ones.
+    previous = directory / "queries.jsonl.gz"
+    kept: dict[str, str] = (
+        {r["text"]: r["embedding"] for r in _read_jsonl(previous)} if previous.exists() else {}
+    )
+    new = [text for text in texts if text not in kept]
+    fresh = dict(zip(new, map(encode_vector, embedder.embed(new) if new else []), strict=True))
     query_records = [
-        {"kind": kind, "query": query, "text": text, "embedding": encode_vector(vector)}
-        for (kind, query), text, vector in zip(wanted, texts, vectors, strict=True)
+        {"kind": kind, "query": query, "text": text, "embedding": kept.get(text) or fresh[text]}
+        for (kind, query), text in zip(wanted, texts, strict=True)
     ]
 
     manifest = {
         "model": model,
-        "dimensions": len(vectors[0]) if vectors else None,
+        "dimensions": len(decode_vector(query_records[0]["embedding"])) if query_records else None,
         "exported": date.today().isoformat(),
         "counts": {
             "cards": _write_jsonl(directory / "cards.jsonl.gz", cards),
@@ -359,6 +366,10 @@ def main() -> int:
     for eval_set in sets:
         queries += [("cards", q.query) for q in eval_set.card_queries]
         queries += [("rules", q.question) for q in eval_set.rule_questions]
+    # The rules Q&A set's questions too: the live CI eval pins searches to them.
+    from mtg_deck_advisor.evaluation.rules_qa import load_cases
+
+    queries += [("rules", case.question) for case in load_cases()]
 
     with connect(settings) as conn:
         card_ids = select_cards(conn, names)

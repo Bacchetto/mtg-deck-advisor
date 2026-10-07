@@ -175,8 +175,14 @@ def grade_answer(grader: ModelClient, case: RulesCase, answer: str) -> Grade:
     return grader.generate_structured(request, Grade).value
 
 
-def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase) -> CaseResult:
-    """Ask the question through the real flow, then score the answer."""
+def evaluate_case(
+    services: AgentServices, grader: ModelClient | None, case: RulesCase
+) -> CaseResult:
+    """Ask the question through the real flow, then score the answer.
+
+    Without a grader only code scores it (citations and "not found"), as the
+    live CI eval does: an answerable question then succeeds on its citations.
+    """
     answered = answer_rules_question(services, case.question)
     cited = [rule.number for rule in answered.citations]
     abstained = not answered.found and answered.reason.upper().startswith("NOT FOUND")
@@ -190,7 +196,7 @@ def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase)
         "cited": cited,
     }
     scores: dict[str, float] = {}
-    graded_before = grader.spent_usd
+    graded_before = grader.spent_usd if grader else 0.0
     success = False
     if case.answerable and answered.found and answered.answer is not None:
         hit, precision = citation_scores(case, cited)
@@ -198,20 +204,23 @@ def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase)
             "citation_hit": float(hit),
             "citation_precision": precision if precision is not None else 0.0,
         }
-        try:
-            grade = grade_answer(grader, case, answered.answer)
-        except InvalidOutputError as exc:
-            # Kept as an ungraded case, with its costs, rather than lost.
-            details["grading_error"] = str(exc)
+        if grader is None:
+            success = hit and precision == 1.0
         else:
-            scores["correct"] = VERDICT_SCORES[grade.verdict]
-            details |= {
-                "verdict": grade.verdict,
-                "missing_facts": grade.missing_facts,
-                "contradictions": grade.contradictions,
-                "grade_reason": grade.reason,
-            }
-            success = grade.verdict == "correct" and hit and precision == 1.0
+            try:
+                grade = grade_answer(grader, case, answered.answer)
+            except InvalidOutputError as exc:
+                # Kept as an ungraded case, with its costs, rather than lost.
+                details["grading_error"] = str(exc)
+            else:
+                scores["correct"] = VERDICT_SCORES[grade.verdict]
+                details |= {
+                    "verdict": grade.verdict,
+                    "missing_facts": grade.missing_facts,
+                    "contradictions": grade.contradictions,
+                    "grade_reason": grade.reason,
+                }
+                success = grade.verdict == "correct" and hit and precision == 1.0
     elif case.answerable:
         scores = {"correct": 0.0}
     else:
@@ -220,7 +229,7 @@ def evaluate_case(services: AgentServices, grader: ModelClient, case: RulesCase)
         services.conn, answered.run.run_id, case.id, success=success, details=details
     )
     result.scores = scores
-    result.grading_cost_usd = grader.spent_usd - graded_before
+    result.grading_cost_usd = (grader.spent_usd - graded_before) if grader else 0.0
     return result
 
 
