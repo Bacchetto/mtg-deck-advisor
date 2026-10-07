@@ -10,7 +10,7 @@ embedding model. These tests use fixture cards and the hashing FakeEmbedder.
 # ruff: noqa: F811
 
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 import psycopg
@@ -32,7 +32,12 @@ from mtg_deck_advisor.evaluation.retrieval_set import (
     QueryFilters,
     RuleQuestion,
 )
-from mtg_deck_advisor.evaluation.snapshot import QueryKind, export_snapshot, load_snapshot
+from mtg_deck_advisor.evaluation.snapshot import (
+    QueryKind,
+    _read_jsonl,
+    export_snapshot,
+    load_snapshot,
+)
 from mtg_deck_advisor.llm.fake import FakeEmbedder
 from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 from mtg_deck_advisor.retrieval.search import search_cards, search_rules
@@ -199,3 +204,36 @@ def test_the_validator_must_find_exactly_the_labelled_violations(loaded: Setting
     assert metrics == {"validator.accuracy": pytest.approx(2 / 3)}
     assert failures == ["V3: expected no violations, found deck_size"]
     assert COHORT in legal  # a card with a hyphen and an accent resolves by name
+
+
+class ShiftedEmbedder(FakeEmbedder):
+    """Gives slightly different vectors, as a model can on a later run."""
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        self.calls.append(list(texts))
+        return [[x + 0.01 for x in self._vector(text)] for text in texts]
+
+
+def test_exporting_again_keeps_the_vectors_already_in_the_snapshot(
+    loaded: Settings, tmp_path: Path
+) -> None:
+    # Re-embedding a query can move it slightly, and with it the gate's
+    # baseline. Only queries the snapshot hasn't seen are embedded.
+    exported(loaded, tmp_path)
+    before = {r["text"]: r["embedding"] for r in _read_jsonl(tmp_path / "queries.jsonl.gz")}
+    shifted = ShiftedEmbedder()
+
+    with connect(loaded) as conn:
+        card_ids = [row[0] for row in conn.execute("SELECT oracle_id FROM cards")]
+        export_snapshot(
+            conn,
+            shifted,
+            tmp_path,
+            card_ids=card_ids,
+            queries=[*queries(SET), ("rules", "A new one?")],
+        )
+
+    after = {r["text"]: r["embedding"] for r in _read_jsonl(tmp_path / "queries.jsonl.gz")}
+    assert {text: after[text] for text in before} == before
+    assert len(after) == len(before) + 1
+    assert shifted.calls == [[text for text in after if text not in before]]
