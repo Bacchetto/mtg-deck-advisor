@@ -39,88 +39,23 @@ from pydantic import BaseModel
 from mtg_deck_advisor.agent.flows import AgentServices
 from mtg_deck_advisor.agent.prompts import system_prompt
 from mtg_deck_advisor.agent.runs import Task
+
+# Re-exported: the run records live in results.py, so reading runs stays light.
+from mtg_deck_advisor.evaluation.results import CaseResult as CaseResult
+from mtg_deck_advisor.evaluation.results import EvalRun as EvalRun
+from mtg_deck_advisor.evaluation.results import ToolCounts as ToolCounts
+from mtg_deck_advisor.evaluation.results import Variant as Variant
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.ollama import Embedder
 from mtg_deck_advisor.llm.recording import CallRecorder
 from mtg_deck_advisor.llm.types import Provider
 from mtg_deck_advisor.retrieval.rerank import Reranker
-from mtg_deck_advisor.retrieval.search import SearchMode
 
-RUNS = Path("evals/runs")
 REPORTS = Path("evals/reports")
 
 # System prompts a variant can name. "default" is what ships; others are
 # registered by the evals that compare against them.
 PROMPT_VARIANTS: dict[str, Callable[[Task], str]] = {"default": system_prompt}
-
-
-class Variant(BaseModel):
-    name: str
-    model: str
-    # A key of PROMPT_VARIANTS.
-    prompt: str = "default"
-    card_search: SearchMode = "hybrid"
-    # Rerank card searches with the local reranker (when one is configured).
-    rerank: bool = True
-    rules_search: SearchMode = "vector"
-
-
-class ToolCounts(BaseModel):
-    ok: int = 0
-    error: int = 0
-    rejected: int = 0
-
-
-class CaseResult(BaseModel):
-    case_id: str
-    # The run's status ("completed", "cost_capped"...), or "skipped" (over
-    # budget) or "error" (the case itself failed).
-    status: str
-    success: bool
-    # The agent's cost; grading (a model judging the result) is counted apart.
-    cost_usd: float = 0.0
-    grading_cost_usd: float = 0.0
-    latency_s: float = 0.0
-    turns: int = 0
-    tools: ToolCounts = ToolCounts()
-    run_id: UUID | None = None
-    # What the suite wants to keep: the answer, the proposal, the citations...
-    details: dict[str, Any] = {}
-    # Grades added later (rubric scores, hand checks).
-    scores: dict[str, float] = {}
-    error: str | None = None
-
-
-class EvalRun(BaseModel):
-    suite: str
-    variant: Variant
-    started_at: datetime
-    finished_at: datetime | None = None
-    # The commit the code was at, so a result can be traced to its code.
-    commit: str | None = None
-    budget_usd: float
-    results: list[CaseResult] = []
-
-    @property
-    def total_cost_usd(self) -> float:
-        """What the agent cost, without grading."""
-        return sum(result.cost_usd for result in self.results)
-
-    @property
-    def spent_usd(self) -> float:
-        """Everything this run paid for: the agent and the grading. The budget is checked on it."""
-        return sum(result.cost_usd + result.grading_cost_usd for result in self.results)
-
-    def save(self, directory: Path = RUNS) -> Path:
-        stamp = self.started_at.astimezone(UTC).strftime("%Y-%m-%dT%H%M%S")
-        path = directory / self.suite / f"{stamp}-{self.variant.name}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        return path
-
-    @classmethod
-    def load(cls, path: Path) -> "EvalRun":
-        return cls.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def variant_services(
