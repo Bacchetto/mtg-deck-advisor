@@ -16,7 +16,7 @@ cleanup() { $project down --volumes --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
 # Migrate, seed and start the API: the README's `docker compose up` step.
-$project up --detach --build --wait app
+$project up -d --build --wait
 
 # The README's `mtg-advisor build` step, with its answers: the Demo collection,
 # Enter to let the agent choose, approve, change, approve, export to the
