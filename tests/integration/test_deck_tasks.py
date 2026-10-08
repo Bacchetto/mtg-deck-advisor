@@ -217,3 +217,90 @@ def test_each_task_gets_its_own_agent_budget(conn: psycopg.Connection, tmp_path:
     assert [r.success for r in run.results] == [True, True]
     assert len(made) == 2 and made[0].client is not made[1].client
     assert made[1].client.spent_usd == run.results[1].cost_usd  # only its own task
+
+
+# --- grading a refine on its change (#136) -----------------------------------------------
+
+
+def refined(conn: psycopg.Connection, tmp_path: Path, grader: FakeProvider) -> CaseResult:
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    change = calls(
+        call(
+            "propose_changes",
+            add=[{"name": "Delver of Secrets"}],
+            remove=[{"name": "Island"}],
+            rationale="A cheap flier.",
+        )
+    )
+    return run(
+        conn,
+        tmp_path,
+        task(id="T09", kind="refine", request="Add a cheap flier.", start=start),
+        change,
+        answer("Swapped."),
+        grader=grader,
+    )
+
+
+def test_a_refines_grader_sees_the_starting_deck_and_the_change(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    # The grader saw only the final deck, so it couldn't tell what a refine
+    # changed: "without the original list it can't be confirmed" (T13).
+    result = refined(conn, tmp_path, FakeProvider(grade()))
+
+    text = result.details["deck_text"]
+    assert "The change from the starting deck" in text
+    assert "Lands: 37 → 36" in text
+    assert "Cut: 1 Island" in text
+    assert "Added: 1 Delver of Secrets" in text
+
+
+def test_a_drafts_grader_text_has_no_change_section(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    result = run(
+        conn,
+        tmp_path,
+        task(),
+        calls(call("propose_deck", commander=ATRAXA, cards=LEGAL_CARDS, rationale="r")),
+        answer("Drafted."),
+        grader=FakeProvider(grade()),
+    )
+
+    assert "The change from the starting deck" not in result.details["deck_text"]
+
+
+def test_regrading_a_saved_run_grades_its_refines_on_their_change(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    from datetime import UTC, datetime
+
+    from mtg_deck_advisor.evaluation.deck_tasks import regrade
+    from mtg_deck_advisor.evaluation.runner import EvalRun
+
+    first = refined(conn, tmp_path, FakeProvider(grade(fit=2)))
+    # A run saved before the change section existed: its text has none.
+    first.details["deck_text"] = first.details["deck_text"].split("\n\nThe change from")[0]
+    draft = CaseResult(case_id="T01", status="completed", success=True, scores={"fit": 3.0})
+    saved = EvalRun(
+        suite="deck_tasks",
+        variant=Variant(name="sonnet", model="claude-sonnet-5-5"),
+        started_at=datetime(2026, 10, 8, tzinfo=UTC),
+        budget_usd=1.0,
+        results=[draft, first],
+    )
+    grader = FakeProvider(grade(fit=5))
+    grading = ModelClient(grader, "claude-opus-5-5", recorder=MemoryRecorder(), cost_cap_usd=1.0)
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    tasks = [task(id="T09", kind="refine", request="Add a cheap flier.", start=start)]
+
+    regraded = regrade(conn, grading, saved, tasks)
+
+    refine = next(r for r in regraded.results if r.case_id == "T09")
+    assert refine.scores["fit"] == 5.0
+    assert "Cut: 1 Island" in refine.details["deck_text"]
+    assert refine.grading_cost_usd > 0
+    assert next(r for r in regraded.results if r.case_id == "T01").scores == {"fit": 3.0}
+    assert regraded.variant.name == "sonnet-regraded"
+    assert len(grader.calls) == 1  # only the refine was graded again
