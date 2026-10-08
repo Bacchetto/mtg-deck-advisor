@@ -24,8 +24,8 @@ EXCERPT = Path(__file__).parent.parent / "fixtures" / "rules" / "comprehensive_r
 VARIANT_RULES = (
     "903.12c In Brawl, a planeswalker card can be your commander, a commander "
     "chosen from planeswalker cards.\n"
-    "810.8c In Two-Headed Giant, commander damage is dealt to the team, and a "
-    "commander can be a planeswalker.\n"
+    "903.13f In Commander Draft, a commander can be a planeswalker card, and a "
+    "commander deck has 40 cards.\n"
 )
 
 
@@ -53,14 +53,14 @@ def test_a_commander_question_gets_no_other_variants_rules(
 ) -> None:
     found = numbers(rules, "Can a planeswalker be my commander?", mode)
 
-    assert "903.12c" not in found and "810.8c" not in found
+    assert "903.12c" not in found and "903.13f" not in found
 
 
 def test_a_question_naming_a_variant_gets_its_rules(rules: Settings) -> None:
     found = numbers(rules, "Can a planeswalker be my commander in Brawl?")
 
     assert "903.12c" in found
-    assert "810.8c" not in found
+    assert "903.13f" not in found
 
 
 def test_every_variant_can_still_be_searched_on_request(rules: Settings) -> None:
@@ -69,4 +69,4 @@ def test_every_variant_can_still_be_searched_on_request(rules: Settings) -> None
             conn, FakeEmbedder(), "Can a planeswalker be my commander?", all_variants=True
         )
 
-    assert {"903.12c", "810.8c"} <= {hit.number for hit in hits}
+    assert {"903.12c", "903.13f"} <= {hit.number for hit in hits}

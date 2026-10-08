@@ -55,6 +55,7 @@ from mtg_deck_advisor.retrieval.embeddings import vector_literal
 from mtg_deck_advisor.retrieval.fusion import reciprocal_rank_fusion
 from mtg_deck_advisor.retrieval.rerank import RERANK_DEPTH, Reranker
 from mtg_deck_advisor.retrieval.text import query_text
+from mtg_deck_advisor.retrieval.variants import excluded_pattern
 
 COLORS = "WUBRG"
 TYPE_WORD = re.compile(r"^[A-Za-z'-]+$")
@@ -296,14 +297,20 @@ def search_rules(
     *,
     k: int = DEFAULT_K,
     mode: SearchMode = "vector",
+    all_variants: bool = False,
 ) -> list[RuleHit]:
     """The k best rules for the query.
 
     Vector by default: on the eval's rules questions, which are sentences of
     common words ("player", "creature"), the keyword arm only added noise
     (recall@10 0.89 vector, 0.68 hybrid).
+
+    Other variants' rules (Brawl, Commander Draft, the team variants...) are
+    left out unless the query names the variant, or `all_variants` is set
+    (`retrieval.variants`, #138).
     """
     limit = CANDIDATES if mode == "hybrid" else k
+    excluded = None if all_variants else excluded_pattern(query)
     vector: list[tuple[str, float]] = []
     keyword: list[tuple[str, float]] = []
     if mode != "keyword":
@@ -313,10 +320,11 @@ def search_rules(
             SELECT e.number, 1 - (e.embedding <=> %s::vector)
             FROM rule_embeddings e JOIN rules r USING (number)
             WHERE e.model = %s AND r.removed_at IS NULL
+              AND (%s::text IS NULL OR r.number !~ %s::text)
             ORDER BY e.embedding <=> %s::vector
             LIMIT %s
             """,
-            (embedded, embedder.model, embedded, limit),
+            (embedded, embedder.model, excluded, excluded, embedded, limit),
         ).fetchall()
         vector = [(row[0], row[1]) for row in rows]
     if mode != "vector":
@@ -325,11 +333,13 @@ def search_rules(
             SELECT r.number, ts_rank_cd(r.search_vector, q.query, 1) AS rank
             FROM rules r, (SELECT {tsquery} AS query) q
             WHERE r.search_vector @@ q.query AND r.removed_at IS NULL
+              AND (%s::text IS NULL OR r.number !~ %s::text)
             ORDER BY rank DESC, r.number
             LIMIT %s
             """
         ).format(tsquery=TSQUERY)
-        keyword = [(row[0], row[1]) for row in conn.execute(statement, [query, limit]).fetchall()]
+        params = [query, excluded, excluded, limit]
+        keyword = [(row[0], row[1]) for row in conn.execute(statement, params).fetchall()]
     ranked = _combine(vector, keyword, mode, k)
 
     rows = conn.execute(
