@@ -2,6 +2,7 @@
 
     python -m mtg_deck_advisor.evaluation.hand_grade evals/runs/deck_tasks/*.json
     python -m mtg_deck_advisor.evaluation.hand_grade --agreement evals/runs/deck_tasks/*.json
+    python -m mtg_deck_advisor.evaluation.hand_grade --rules evals/runs/rules_qa/*.json
 
 The owner grades the same decks the model graded, with the same rubric
 (`evals/rubrics/deck_quality.md`), seeing what the model grader saw: the
@@ -17,12 +18,13 @@ disagreement counts for more).
 """
 
 import argparse
+import json
 import random
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 from pydantic import BaseModel
 
@@ -128,10 +130,10 @@ class Agreement(BaseModel):
     kappa: float
 
 
-def _kappa(pairs: Sequence[tuple[int, int]]) -> float:
-    """Cohen's kappa with quadratic weights, over the 1-5 scale."""
-    k, n = len(SCALE), len(pairs)
-    observed = [[0.0] * k for _ in SCALE]
+def _kappa(pairs: Sequence[tuple[int, int]], k: int = len(SCALE)) -> float:
+    """Cohen's kappa with quadratic weights, over a 1..k scale (the 1-5 one by default)."""
+    n = len(pairs)
+    observed = [[0.0] * k for _ in range(k)]
     for a, b in pairs:
         observed[a - 1][b - 1] += 1 / n
     rows = [sum(row) for row in observed]
@@ -193,14 +195,170 @@ def agreement_section(runs: Mapping[str, EvalRun], grades: Sequence[HandGrade]) 
     return "\n".join(lines) + "\n"
 
 
+# --- rules answers ---------------------------------------------------------------------------
+
+RULES_HAND_GRADES = Path("evals/hand_grades/rules.jsonl")
+RULES_QA = Path("evals/datasets/rules_qa.jsonl")
+VERDICTS = {"c": "correct", "p": "partly correct", "i": "incorrect"}
+# Ordered from worst to best, for kappa's 1..3 scale.
+VERDICT_ORDER = ("incorrect", "partly correct", "correct")
+
+
+class RulesHandGrade(BaseModel):
+    run: str
+    case_id: str
+    verdict: str
+    grader: str
+    graded_at: datetime
+
+
+def load_rules_grades(path: Path = RULES_HAND_GRADES) -> list[RulesHandGrade]:
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [RulesHandGrade.model_validate_json(line) for line in lines if line.strip()]
+
+
+def parse_verdict(text: str) -> str:
+    """A verdict typed as its letter or in full."""
+    typed = text.strip().casefold()
+    if typed in VERDICTS:
+        return VERDICTS[typed]
+    if typed in VERDICTS.values():
+        return typed
+    raise ValueError("type c, p or i (correct, partly correct, incorrect)")
+
+
+def rules_queue(
+    runs: Mapping[str, EvalRun],
+    done: set[tuple[str, str]],
+    seed: int = 0,
+    *,
+    stratify: bool = False,
+) -> list[tuple[str, CaseResult]]:
+    """Every answer the model grader graded, from all the runs, in one shuffled order.
+
+    With `stratify`: only the answers the grader didn't call correct, plus as
+    many it did (chosen at random), so the owner can't tell which is which.
+    The grader marks few answers down, and a plain sample hardly tests it there.
+    """
+    rng = random.Random(seed)  # noqa: S311 (an order to grade in, not a secret)
+    queue = [
+        (path, result)
+        for path, run in sorted(runs.items())
+        for result in run.results
+        if "verdict" in result.details and (path, result.case_id) not in done
+    ]
+    if stratify:
+        down = [item for item in queue if item[1].details["verdict"] != "correct"]
+        correct = [item for item in queue if item[1].details["verdict"] == "correct"]
+        queue = down + rng.sample(correct, min(len(down), len(correct)))
+    rng.shuffle(queue)
+    return queue
+
+
+def _questions(path: Path) -> dict[str, dict[str, Any]]:
+    """The rules Q&A set by ID, read as plain JSON (loading rules_qa would load the agent)."""
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return {row["id"]: row for row in rows}
+
+
+def rules_session(
+    queue: Sequence[tuple[str, CaseResult]],
+    *,
+    ask: Callable[[str], str] = input,
+    out: TextIO = sys.stdout,
+    path: Path = RULES_HAND_GRADES,
+    grader: str = "owner",
+    dataset: Path = RULES_QA,
+) -> int:
+    """Show each answer with its question and key facts, and save the verdict typed for it."""
+    questions = _questions(dataset)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    saved = 0
+    for number, (run_path, result) in enumerate(queue, 1):
+        case = questions[result.case_id]
+        facts = "\n".join(f"  - {fact}" for fact in case["key_facts"])
+        out.write(
+            f"\n=== Answer {number} of {len(queue)} ===\n\nQuestion: {case['question']}\n\n"
+            f"Key facts:\n{facts}\n\nAnswer:\n{result.details.get('answer')}\n\n"
+            "Grade it by evals/rubrics/rules_answer.md: c = correct, p = partly correct, "
+            "i = incorrect. Enter to stop.\n"
+        )
+        while True:
+            answer = ask("> ").strip()
+            if not answer:
+                out.write(f"Stopped. {saved} graded this session.\n")
+                return saved
+            try:
+                verdict = parse_verdict(answer)
+            except ValueError as exc:
+                out.write(f"{exc}.\n")
+                continue
+            break
+        grade = RulesHandGrade(
+            run=run_path,
+            case_id=result.case_id,
+            verdict=verdict,
+            grader=grader,
+            graded_at=datetime.now(UTC),
+        )
+        with path.open("a", encoding="utf-8") as lines:
+            lines.write(grade.model_dump_json() + "\n")
+        saved += 1
+    out.write(f"All done. {saved} graded this session.\n")
+    return saved
+
+
+def rules_agreement(
+    runs: Mapping[str, EvalRun], grades: Sequence[RulesHandGrade | Mapping[str, Any]]
+) -> Agreement:
+    """How often the owner's verdicts match the model grader's: exact, within one, kappa."""
+    results = {(path, r.case_id): r for path, run in runs.items() for r in run.results}
+    pairs: list[tuple[int, int]] = []
+    for grade in grades:
+        given = grade if isinstance(grade, Mapping) else grade.model_dump()
+        result = results.get((given["run"], given["case_id"]))
+        if result is None or "verdict" not in result.details:
+            continue
+        model = VERDICT_ORDER.index(result.details["verdict"]) + 1
+        pairs.append((model, VERDICT_ORDER.index(given["verdict"]) + 1))
+    if not pairs:
+        return Agreement(n=0, exact=0.0, within_one=0.0, kappa=0.0)
+    return Agreement(
+        n=len(pairs),
+        exact=sum(a == b for a, b in pairs) / len(pairs),
+        within_one=sum(abs(a - b) <= 1 for a, b in pairs) / len(pairs),
+        kappa=_kappa(pairs, k=len(VERDICT_ORDER)),
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m mtg_deck_advisor.evaluation.hand_grade")
     parser.add_argument("runs", nargs="+", type=Path, help="deck task run files")
     parser.add_argument("--grader", default="owner")
     parser.add_argument("--agreement", action="store_true", help="report agreement instead")
+    parser.add_argument("--rules", action="store_true", help="grade rules answers, not decks")
+    parser.add_argument(
+        "--stratify",
+        action="store_true",
+        help="with --rules: the answers the grader marked down, mixed with as many it didn't",
+    )
     args = parser.parse_args(argv)
 
     runs = {path.as_posix(): EvalRun.load(path) for path in args.runs}
+    if args.rules:
+        rules_grades = load_rules_grades()
+        if args.agreement:
+            a = rules_agreement(runs, rules_grades)
+            print(
+                f"{a.n} answers graded by both: exact {a.exact:.0%}, "
+                f"within one {a.within_one:.0%}, weighted kappa {a.kappa:.2f}"
+            )
+            return 0
+        done = {(g.run, g.case_id) for g in rules_grades}
+        rules_session(rules_queue(runs, done, stratify=args.stratify), grader=args.grader)
+        return 0
     grades = load_hand_grades()
     if args.agreement:
         print(agreement_section(runs, grades))
