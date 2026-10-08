@@ -1,0 +1,50 @@
+{
+  "request_hash": "4b4245b1aec26e44097edffb63583e71c6750c1a317d4f4277e8082d59bae015",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:43+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: draw cards\n\nCandidates:\n1. Hedron Archive | Artifact | {T}: Add {C}{C}. / {2}, {T}, Sacrifice this artifact: Draw two cards.\n2. Nasty End | Instant | As an additional cost to cast this spell, sacrifice a creature. / Draw two cards. If the sacrificed creature was legendary, draw three cards instead.\n3. Render Inert | Sorcery | Remove up to five counters from target permanent. / Draw a card.\n4. Mind Stone | Artifact | {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\n5. Scroll of Avacyn | Artifact | {1}, Sacrifice this artifact: Draw a card. If you control an Angel, you gain 5 life.\n6. Fountain of Renewal | Artifact | At the beginning of your upkeep, you gain 1 life. / {3}, Sacrifice this artifact: Draw a card.\n7. Night's Whisper | Sorcery | You draw two cards and lose 2 life.\n8. Energybending | Instant — Lesson | Lands you control gain all basic land types until end of turn. / Draw a card.\n9. Commander's Sphere | Artifact | {T}: Add one mana of any color in your commander's color identity. / Sacrifice this artifact: Draw a card.\n10. Phyrexian Gargantua | Creature — Phyrexian Horror | When this creature enters, you draw two cards and you lose 2 life.\n11. Vampiric Rites | Enchantment | {1}{B}, Sacrifice a creature: You gain 1 life and draw a card.\n12. Gate to the Afterlife | Artifact | Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card. / {2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.\n13. Phyrexian Rager | Creature — Phyrexian Horror | When this creature enters, you draw a card and you lose 1 life.\n14. Skyscanner | Artifact Creature — Thopter | Flying / When this creature enters, draw a card.\n15. Undead Augur | Creature — Zombie Wizard | Whenever this creature or another Zombie you control dies, you draw a card and lose 1 life.\n16. Slate of Ancestry | Artifact | {4}, {T}, Discard your hand: Draw a card for each creature you control.\n17. Idol of Oblivion | Artifact | {T}: Draw a card. Activate only if you created a token this turn. / {8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.\n18. Decree of Pain | Sorcery | Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way. / Cycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.) / When you cycle this card, all creatures get -2/-2 until end of turn.\n19. Tsabo's Web | Artifact | When this artifact enters, draw a card. / Each land with an activated ability that isn't a mana ability doesn't untap during its controller's untap step.\n20. Well of Lost Dreams | Artifact | Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\n  \"ranking\": [\n    1,\n    2,\n    7,\n    10,\n    13,\n    14,\n    15,\n    16,\n    20,\n    18\n  ]\n}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 873,
+      "output_tokens": 59,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "request_hash": "f0021d55476a131996c13c3ad60852df1580ef248516d3aaf5ef49232be51908",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:16:59+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: card draw\n\nCandidates:\n1. Hedron Archive | Artifact | {T}: Add {C}{C}. / {2}, {T}, Sacrifice this artifact: Draw two cards.\n2. Render Inert | Sorcery | Remove up to five counters from target permanent. / Draw a card.\n3. Nasty End | Instant | As an additional cost to cast this spell, sacrifice a creature. / Draw two cards. If the sacrificed creature was legendary, draw three cards instead.\n4. Mind Stone | Artifact | {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\n5. Scroll of Avacyn | Artifact | {1}, Sacrifice this artifact: Draw a card. If you control an Angel, you gain 5 life.\n6. Fountain of Renewal | Artifact | At the beginning of your upkeep, you gain 1 life. / {3}, Sacrifice this artifact: Draw a card.\n7. Gate to the Afterlife | Artifact | Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card. / {2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.\n8. Night's Whisper | Sorcery | You draw two cards and lose 2 life.\n9. Commander's Sphere | Artifact | {T}: Add one mana of any color in your commander's color identity. / Sacrifice this artifact: Draw a card.\n10. Phyrexian Gargantua | Creature — Phyrexian Horror | When this creature enters, you draw two cards and you lose 2 life.\n11. Energybending | Instant — Lesson | Lands you control gain all basic land types until end of turn. / Draw a card.\n12. Vampiric Rites | Enchantment | {1}{B}, Sacrifice a creature: You gain 1 life and draw a card.\n13. Undead Augur | Creature — Zombie Wizard | Whenever this creature or another Zombie you control dies, you draw a card and lose 1 life.\n14. Phyrexian Rager | Creature — Phyrexian Horror | When this creature enters, you draw a card and you lose 1 life.\n15. Idol of Oblivion | Artifact | {T}: Draw a card. Activate only if you created a token this turn. / {8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.\n16. Skyscanner | Artifact Creature — Thopter | Flying / When this creature enters, draw a card.\n17. Decree of Pain | Sorcery | Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way. / Cycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.) / When you cycle this card, all creatures get -2/-2 until end of turn.\n18. Tsabo's Web | Artifact | When this artifact enters, draw a card. / Each land with an activated ability that isn't a mana ability doesn't untap during its controller's untap step.\n19. Spark Reaper | Creature — Zombie | {3}, Sacrifice a creature or planeswalker: You gain 1 life and draw a card.\n20. Well of Lost Dreams | Artifact | Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards.\n21. Mirror of Galadriel | Legendary Artifact | {5}, {T}: Scry 1, then draw a card. This ability costs {1} less to activate for each legendary creature you control.\n22. Liliana's Standard Bearer | Creature — Zombie Knight | Flash / When this creature enters, draw X cards, where X is the number of creatures that died under your control this turn.\n23. Praetor's Grasp | Sorcery | Search target opponent's library for a card and exile it face down. Then that player shuffles. You may play that card for as long as it remains exiled.\n24. Unseal the Necropolis | Instant | Each player mills three cards. Then you return up to two creature cards from your graveyard to your hand. (To mill three cards, a player puts the top three cards of their library into their graveyard.)\n25. Trading Post | Artifact | {1}, {T}, Discard a card: You gain 4 life. / {1}, {T}, Pay 1 life: Create a 0/1 white Goat creature token. / {1}, {T}, Sacrifice a creature: Return target artifact card from your graveyard to your hand. / {1}, {T}, Sacrifice an artifact: Draw a card.\n26. Gibbering Barricade | Creature — Nightmare Wall | Defender / {2}{B}, Sacrifice a creature: You gain 1 life and draw a card.\n27. Wizard's Rockets | Artifact | This artifact enters tapped. / {X}, {T}, Sacrifice this artifact: Add X mana in any combination of colors. / When this artifact is put into a graveyard from the battlefield, draw a card.\n28. Victimize | Sorcery | Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.\n29. Beetle-Headed Merchants | Creature — Human Citizen | Whenever this creature attacks, you may sacrifice another creature or artifact. If you do, draw a card and put a +1/+1 counter on this creature.\n30. Horn of the Mark | Legendary Artifact | Whenever two or more creatures you control attack a player, look at the top five cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n31. Slate of Ancestry | Artifact | {4}, {T}, Discard your hand: Draw a card for each creature you control.\n32. Ruthless Negotiation | Sorcery | Target opponent exiles a card from their hand. If this spell was cast from a graveyard, draw a card. / Flashback {4}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)\n33. Raven Eagle | Creature — Bird Assassin | Flying / Whenever this creature enters or attacks, exile up to one target card from a graveyard. If a creature card is exiled this way, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\") / Whenever you draw your second card each turn, each opponent loses 1 life and you gain 1 life.\n34. Vexing Arcanix | Artifact | {3}, {T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. Otherwise, they put it into their graveyard and this artifact deals 2 damage to them.\n35. Midnight Reaper | Creature — Zombie Knight | Whenever a nontoken creature you control dies, this creature deals 1 damage to you and you draw a card.\n36. Aang's Journey | Sorcery — Lesson | Kicker {2} (You may pay an additional {2} as you cast this spell.) / Search your library for a basic land card. If this spell was kicked, instead search your library for a basic land card and a Shrine card. Reveal those cards, put them into your hand, then shuffle. / You gain 2 life.\n37. Shelob, Dread Weaver | Legendary Creature — Spider Demon | Whenever a nontoken creature an opponent controls dies, exile it. / {2}{B}, Put a creature card exiled with Shelob into its owner's graveyard: Put two +1/+1 counters on Shelob. Draw a card. / {X}{1}{B}: Put target creature card with mana value X exiled with Shelob onto the battlefield tapped under your control.\n38. Golden Egg | Artifact — Food | When this artifact enters, draw a card. / {1}, {T}, Sacrifice this artifact: Add one mana of any color. / {2}, {T}, Sacrifice this artifact: You gain 3 life.\n39. Lembas | Artifact — Food | When this artifact enters, scry 1, then draw a card. / {2}, {T}, Sacrifice this artifact: You gain 3 life. / When this artifact is put into a graveyard from the battlefield, its owner shuffles it into their library.\n40. Sold Out | Instant | Exile target creature. If it was dealt damage this turn, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\":[1,2,3,4,5,6,7,8,9,10]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 2005,
+      "output_tokens": 26,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

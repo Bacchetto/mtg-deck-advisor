@@ -1,0 +1,50 @@
+{
+  "request_hash": "98e106970cfa507e88177ff596f2bfa04c1530509aaa8958a26bc034f1ded2b4",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:50+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: mana rock or treasure ramp, Sol Ring, signet\n\nCandidates:\n1. Sol Ring | Artifact | {T}: Add {C}{C}.\n2. Deadly Derision | Instant | Destroy target creature or planeswalker. Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\n3. Archaeological Dig | Land | {T}: Add {C}. / {T}, Sacrifice this land: Add one mana of any color.\n4. Path of Ancestry | Land | This land enters tapped. / {T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n5. Arcane Signet | Artifact | {T}: Add one mana of any color in your commander's color identity.\n6. Eldrazi Temple | Land | {T}: Add {C}. / {T}: Add {C}{C}. Spend this mana only to cast colorless Eldrazi spells or activate abilities of colorless Eldrazi.\n7. Holdout Settlement | Land | {T}: Add {C}. ({C} represents colorless mana.) / {T}, Tap an untapped creature you control: Add one mana of any color.\n8. Chromatic Lantern | Artifact | Lands you control have \"{T}: Add one mana of any color.\" / {T}: Add one mana of any color.\n9. Storm Cauldron | Artifact | Each player may play an additional land during each of their turns. / Whenever a land is tapped for mana, return it to its owner's hand.\n10. Commander's Sphere | Artifact | {T}: Add one mana of any color in your commander's color identity. / Sacrifice this artifact: Draw a card.\n11. Darksteel Ingot | Artifact | Indestructible (Effects that say \"destroy\" don't destroy this artifact.) / {T}: Add one mana of any color.\n12. Shrine of the Forsaken Gods | Land | {T}: Add {C}. / {T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you control seven or more lands.\n13. Cactus Preserve | Land — Desert | This land enters tapped. / {T}: Add one mana of any type that a land you control could produce. / {3}: Until end of turn, this land becomes an X/X green Plant creature with reach, where X is the greatest mana value among your commanders. It's still a land.\n14. Wizard's Rockets | Artifact | This artifact enters tapped. / {X}, {T}, Sacrifice this artifact: Add X mana in any combination of colors. / When this artifact is put into a graveyard from the battlefield, draw a card.\n15. White Lotus Hideout | Land | {T}: Add {C}. / {T}: Add one mana of any color. Spend this mana only to cast a Lesson or Shrine spell. / {1}, {T}: Add one mana of any color.\n16. Uncharted Haven | Land | This land enters tapped. As it enters, choose a color. / {T}: Add one mana of the chosen color.\n17. Pristine Talisman | Artifact | {T}: Add {C}. You gain 1 life.\n18. Shire Terrace | Land | {T}: Add {C}. / {1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n19. Hedron Archive | Artifact | {T}: Add {C}{C}. / {2}, {T}, Sacrifice this artifact: Draw two cards.\n20. Mind Stone | Artifact | {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\":[1,5,10,11,16,17,18,20,3,6,7]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 914,
+      "output_tokens": 33,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

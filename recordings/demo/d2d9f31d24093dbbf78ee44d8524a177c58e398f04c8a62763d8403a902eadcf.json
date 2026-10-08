@@ -1,0 +1,50 @@
+{
+  "request_hash": "d2d9f31d24093dbbf78ee44d8524a177c58e398f04c8a62763d8403a902eadcf",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:41+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: ramp mana rock or land search\n\nCandidates:\n1. Shire Terrace | Land | {T}: Add {C}. / {1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n2. Terramorphic Expanse | Land | {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n3. Evolving Wilds | Land | {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n4. Archaeological Dig | Land | {T}: Add {C}. / {T}, Sacrifice this land: Add one mana of any color.\n5. Path of Ancestry | Land | This land enters tapped. / {T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n6. Aang's Journey | Sorcery — Lesson | Kicker {2} (You may pay an additional {2} as you cast this spell.) / Search your library for a basic land card. If this spell was kicked, instead search your library for a basic land card and a Shrine card. Reveal those cards, put them into your hand, then shuffle. / You gain 2 life.\n7. Cactus Preserve | Land — Desert | This land enters tapped. / {T}: Add one mana of any type that a land you control could produce. / {3}: Until end of turn, this land becomes an X/X green Plant creature with reach, where X is the greatest mana value among your commanders. It's still a land.\n8. Eldrazi Temple | Land | {T}: Add {C}. / {T}: Add {C}{C}. Spend this mana only to cast colorless Eldrazi spells or activate abilities of colorless Eldrazi.\n9. Wayfarer's Bauble | Artifact | {2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\n10. Storm Cauldron | Artifact | Each player may play an additional land during each of their turns. / Whenever a land is tapped for mana, return it to its owner's hand.\n11. Pilgrim's Eye | Artifact Creature — Thopter | Flying / When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n12. Ash Barrens | Land | {T}: Add {C}. / Basic landcycling {1} ({1}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)\n13. Skittering Surveyor | Artifact Creature — Construct | When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.\n14. Rumble Arena | Land | Vigilance / When this land enters, scry 1. (Look at the top card of your library. You may put it on the bottom.) / {T}: Add {C}. / {1}, {T}: Add one mana of any color.\n15. Shrine of the Forsaken Gods | Land | {T}: Add {C}. / {T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you control seven or more lands.\n16. White Lotus Hideout | Land | {T}: Add {C}. / {T}: Add one mana of any color. Spend this mana only to cast a Lesson or Shrine spell. / {1}, {T}: Add one mana of any color.\n17. Energybending | Instant — Lesson | Lands you control gain all basic land types until end of turn. / Draw a card.\n18. Uncharted Haven | Land | This land enters tapped. As it enters, choose a color. / {T}: Add one mana of the chosen color.\n19. Rogue's Passage | Land | {T}: Add {C}. / {4}, {T}: Target creature can't be blocked this turn.\n20. Chromatic Lantern | Artifact | Lands you control have \"{T}: Add one mana of any color.\" / {T}: Add one mana of any color.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\": [1, 2, 3, 4, 5, 7, 8, 9, 11, 12]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 1035,
+      "output_tokens": 38,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

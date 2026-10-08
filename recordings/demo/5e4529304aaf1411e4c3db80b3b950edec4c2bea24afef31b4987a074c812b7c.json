@@ -1,0 +1,50 @@
+{
+  "request_hash": "5e4529304aaf1411e4c3db80b3b950edec4c2bea24afef31b4987a074c812b7c",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:49+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: black creature with strong enter or death effect\n\nCandidates:\n1. Gray Merchant of Asphodel | Creature — Zombie | When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way. (Each {B} in the mana costs of permanents you control counts toward your devotion to black.)\n2. Flesh Carver | Creature — Human Wizard | Intimidate (This creature can't be blocked except by artifact creatures and/or creatures that share a color with it.) / {1}{B}, Sacrifice another creature: Put two +1/+1 counters on this creature. / When this creature dies, create an X/X black Horror creature token, where X is this creature's power.\n3. Rictus Robber | Creature — Zombie Rogue | When this creature enters, if a creature died this turn, create a 2/2 blue and black Zombie Rogue creature token. / Plot {2}{B} (You may pay {2}{B} and exile this card from your hand. Cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)\n4. Cult Conscript | Creature — Skeleton Warrior | This creature enters tapped. / {1}{B}: Return this card from your graveyard to the battlefield. Activate only if a non-Skeleton creature died under your control this turn.\n5. Overseer of the Damned | Creature — Demon | Flying / When this creature enters, you may destroy target creature. / Whenever a nontoken creature an opponent controls dies, create a tapped 2/2 black Zombie creature token.\n6. Midnight Reaper | Creature — Zombie Knight | Whenever a nontoken creature you control dies, this creature deals 1 damage to you and you draw a card.\n7. Spark Reaper | Creature — Zombie | {3}, Sacrifice a creature or planeswalker: You gain 1 life and draw a card.\n8. Grave Peril | Enchantment | When a nonblack creature enters, sacrifice this enchantment. If you do, destroy that creature.\n9. Syphon Flesh | Sorcery | Each other player sacrifices a creature of their choice. You create a 2/2 black Zombie creature token for each creature sacrificed this way.\n10. Liliana's Devotee | Creature — Human Warlock | Zombies you control get +1/+0. / At the beginning of your end step, if a creature died this turn, you may pay {1}{B}. If you do, create a 2/2 black Zombie creature token.\n11. Living Death | Sorcery | Each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield.\n12. Abattoir Ghoul | Creature — Zombie | First strike / Whenever a creature dealt damage by this creature this turn dies, you gain life equal to that creature's toughness.\n13. Open the Graves | Enchantment | Whenever a nontoken creature you control dies, create a 2/2 black Zombie creature token.\n14. Necromantic Selection | Sorcery | Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.\n15. Splatter Goblin | Creature — Phyrexian Goblin | When this creature dies, target creature an opponent controls gets -1/-1 until end of turn.\n16. Murder | Instant | Destroy target creature.\n17. Necrotic Hex | Sorcery | Each player sacrifices six creatures of their choice. You create six tapped 2/2 black Zombie creature tokens.\n18. Fleshbag Marauder | Creature — Zombie Warrior | When this creature enters, each player sacrifices a creature of their choice.\n19. Gate to the Afterlife | Artifact | Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card. / {2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.\n20. Cemetery Reaper | Creature — Zombie | Other Zombie creatures you control get +1/+1. / {2}{B}, {T}: Exile target creature card from a graveyard. Create a 2/2 black Zombie creature token.\n21. Decree of Pain | Sorcery | Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way. / Cycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.) / When you cycle this card, all creatures get -2/-2 until end of turn.\n22. Victimize | Sorcery | Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.\n23. Buzzard-Wasp Colony | Creature — Bird Insect | Flying / When this creature enters, you may sacrifice an artifact or creature. If you do, draw a card. / Whenever another creature you control dies, if it had counters on it, put its counters on this creature.\n24. Cruel Revival | Instant | Destroy target non-Zombie creature. It can't be regenerated. Return up to one target Zombie card from your graveyard to your hand.\n25. Vengeful Dead | Creature — Zombie | Whenever this creature or another Zombie dies, each opponent loses 1 life.\n26. Lotleth Giant | Creature — Zombie Giant | Undergrowth — When this creature enters, it deals 1 damage to target opponent for each creature card in your graveyard.\n27. Haunt of the Dead Marshes | Creature — Nightmare Elf | When this creature enters, scry 1. / {2}{B}: Return this card from your graveyard to the battlefield tapped. Activate only if you control a legendary creature.\n28. Merciless Executioner | Creature — Orc Warrior | When this creature enters, each player sacrifices a creature of their choice.\n29. Tyrannical Pitlord | Creature — Demon | Flying, trample / As this creature enters, choose another creature you control. / The chosen creature gets +3/+3 and has flying. / When this creature leaves the battlefield, sacrifice the chosen creature.\n30. Archdemon of Unx | Creature — Demon | Flying, trample / At the beginning of your upkeep, sacrifice a non-Zombie creature, then create a 2/2 black Zombie creature token.\n31. The Black Breath | Sorcery | Creatures your opponents control get -1/-1 until end of turn. The Ring tempts you.\n32. Scorn-Blade Berserker | Creature — Human Berserker | Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following ability until end of turn.) / {1}, Sacrifice this creature: Draw a card.\n33. Liliana's Standard Bearer | Creature — Zombie Knight | Flash / When this creature enters, draw X cards, where X is the number of creatures that died under your control this turn.\n34. Ringwraiths | Creature — Wraith Knight | When this creature enters, target creature an opponent controls gets -3/-3 until end of turn. If that creature is legendary, its controller loses 3 life. / When the Ring tempts you, return this card from your graveyard to your hand.\n35. Mai, Scornful Striker | Legendary Creature — Human Noble Ally | First strike / Whenever a player casts a noncreature spell, they lose 2 life.\n36. Despoiler of Souls | Creature — Horror | This creature can't block. / {B}{B}, Exile two other creature cards from your graveyard: Return this card from your graveyard to the battlefield.\n37. Loyal Subordinate | Creature — Zombie | Menace (This creature can't be blocked except by two or more creatures.) / Lieutenant — At the beginning of combat on your turn, if you control your commander, each opponent loses 3 life.\n38. Phyrexian Rager | Creature — Phyrexian Horror | When this creature enters, you draw a card and you lose 1 life.\n39. Liliana, Untouched by Death | Legendary Planeswalker — Liliana | +1: Mill three cards. If at least one Zombie card is milled this way, each opponent loses 2 life and you gain 2 life. / −2: Target creature gets -X/-X until end of turn, where X is the number of Zombies you control. / −3: You may cast Zombie spells from your graveyard this turn.\n40. Etched Familiar | Artifact Creature — Phyrexian Fox | When this creature dies, each opponent loses 2 life and you gain 2 life.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\":[2,5,10,18,20,25,22,1,12,30]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 1984,
+      "output_tokens": 32,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}
