@@ -38,7 +38,7 @@ from mtg_deck_advisor.agent.runs import Task as Task
 from mtg_deck_advisor.agent.runs import ToolOutcome, record_tool_call
 from mtg_deck_advisor.deck.facts import FREE_BASICS, load_card_facts
 from mtg_deck_advisor.deck.state import DeckState
-from mtg_deck_advisor.deck.store import Pool, load_deck
+from mtg_deck_advisor.deck.store import Pool, card_names, load_deck
 from mtg_deck_advisor.guardrails.commander import validate
 from mtg_deck_advisor.guardrails.proposals import save_proposal
 from mtg_deck_advisor.guardrails.untrusted import untrusted
@@ -269,60 +269,125 @@ def _search_rules(ctx: ToolContext, args: SearchRulesArgs) -> Output:
     )
 
 
-def _analyze_deck(ctx: ToolContext, args: AnalyzeDeckArgs) -> Output:
-    pool = _require_pool(ctx)
-    deck = ctx.draft
-    if deck is None and ctx.deck_id is not None:
-        saved = load_deck(ctx.conn, ctx.deck_id)
-        deck = saved.state if saved else None
-    if deck is None:
-        raise ToolError("There's no deck to analyze yet: propose one with propose_deck first.")
+@dataclass(frozen=True)
+class _Profile:
+    """A deck's numbers, as analyze_deck reports them."""
 
-    ids = [deck.commander, *deck.cards]
+    lands: int
+    # Nonland cards besides the commander, by mana value ("0"-"6", "7+").
+    curve: Counter[str]
+    roles: Counter[str]
+    untagged: int
+    average_mana_value: float
+
+
+CURVE_BUCKETS = [str(n) for n in range(7)] + ["7+"]
+
+
+def _profile(ctx: ToolContext, deck: DeckState) -> _Profile:
     rows = ctx.conn.execute(
-        "SELECT oracle_id, name, cmc, type_line, color_identity FROM cards "
-        "WHERE oracle_id = ANY(%s)",
-        (ids,),
+        "SELECT oracle_id, cmc, type_line FROM cards WHERE oracle_id = ANY(%s)",
+        (list(deck.cards),),
     ).fetchall()
     info = {row[0]: row[1:] for row in rows}
     roles = load_roles(ctx.conn, deck.cards)
-
-    lands = 0
+    lands = untagged = 0
     curve: Counter[str] = Counter()
     role_counts: Counter[str] = Counter()
-    untagged = 0
+    mana_values: list[float] = []
     for card, copies in deck.cards.items():
-        _, mana_value, type_line, _ = info.get(card, ("?", 0.0, "", []))
+        mana_value, type_line = info.get(card, (0.0, ""))
         if "Land" in type_line.split("—")[0]:
             lands += copies
             continue
         curve["7+" if mana_value >= 7 else str(int(mana_value))] += copies
+        mana_values += [float(mana_value)] * copies
         tags = roles[card].roles if card in roles else []
         for role in tags:
             role_counts[role] += copies
         if not tags:
             untagged += copies
+    average = sum(mana_values) / len(mana_values) if mana_values else 0.0
+    return _Profile(lands, curve, role_counts, untagged, average)
 
-    commander = info.get(deck.commander)
-    identity = "".join(c for c in "WUBRG" if commander and c in commander[3]) or "colorless"
-    order = [str(n) for n in range(7)] + ["7+"]
+
+def _comparison(ctx: ToolContext, saved: DeckState, version: int, deck: DeckState) -> list[str]:
+    """How a proposed deck differs from the saved version, so a refine can check its request."""
+    before, after = _profile(ctx, saved), _profile(ctx, deck)
+
+    def change(a: object, b: object) -> str:
+        return f"{a} → {b}" if a != b else f"{a} (unchanged)"
+
+    roles = sorted(set(before.roles) | set(after.roles), key=lambda r: -after.roles[r])
+    changed_roles = [r for r in roles if before.roles[r] != after.roles[r]]
+    buckets = [b for b in CURVE_BUCKETS if before.curve[b] != after.curve[b]]
+    cut = [card for card in saved.cards if deck.count(card) < saved.count(card)]
+    added = [card for card in deck.cards if deck.count(card) > saved.count(card)]
+    names = card_names(ctx.conn, [*cut, *added])
+
+    def listed(cards: list[UUID], deck_a: DeckState, deck_b: DeckState) -> str:
+        parts = []
+        for card in cards:
+            n = abs(deck_a.count(card) - deck_b.count(card))
+            parts.append(f"{names.get(card, card)}" + (f" x{n}" if n > 1 else ""))
+        return ", ".join(parts) or "nothing"
+
+    return [
+        f"Compared with the saved version {version} (check the request is met):",
+        f"Lands: {change(before.lands, after.lands)}",
+        "Average mana value: "
+        + change(f"{before.average_mana_value:.2f}", f"{after.average_mana_value:.2f}")
+        + " (nonland cards besides the commander)",
+        "Mana curve changes: "
+        + (", ".join(f"{b}: {before.curve[b]} → {after.curve[b]}" for b in buckets) or "none"),
+        "Role changes: "
+        + (", ".join(f"{r} {before.roles[r]} → {after.roles[r]}" for r in changed_roles) or "none")
+        + f". Untagged: {change(before.untagged, after.untagged)}",
+        f"Cut: {listed(cut, saved, deck)}",
+        f"Added: {listed(added, deck, saved)}",
+    ]
+
+
+def _analyze_deck(ctx: ToolContext, args: AnalyzeDeckArgs) -> Output:
+    pool = _require_pool(ctx)
+    deck = ctx.draft
+    saved = load_deck(ctx.conn, ctx.deck_id) if ctx.deck_id is not None else None
+    if deck is None and saved is not None:
+        deck = saved.state
+    if deck is None:
+        raise ToolError("There's no deck to analyze yet: propose one with propose_deck first.")
+
+    ids = [deck.commander, *deck.cards]
+    commander = ctx.conn.execute(
+        "SELECT name, color_identity FROM cards WHERE oracle_id = %s", (deck.commander,)
+    ).fetchone()
+    profile = _profile(ctx, deck)
+    identity = "".join(c for c in "WUBRG" if commander and c in commander[1]) or "colorless"
     violations = validate(deck, load_card_facts(ctx.conn, ids), pool.cards).violations
     lines = [
         f"{deck.total} cards (a Commander deck has exactly 100, the commander included).",
         f"Commander: {commander[0] if commander else deck.commander}",
         f"Color identity: {identity}",
-        f"Lands: {lands}",
+        f"Lands: {profile.lands}",
         "Mana curve (nonland cards besides the commander): "
-        + ", ".join(f"{bucket}: {curve[bucket]}" for bucket in order if curve[bucket]),
+        + ", ".join(f"{b}: {profile.curve[b]}" for b in CURVE_BUCKETS if profile.curve[b]),
         "Roles (nonland cards besides the commander): "
-        + (", ".join(f"{role} {n}" for role, n in role_counts.most_common()) or "none")
-        + f". Untagged: {untagged}",
+        + (", ".join(f"{role} {n}" for role, n in profile.roles.most_common()) or "none")
+        + f". Untagged: {profile.untagged}",
     ]
     if violations:
         lines.append(f"Not legal yet, {len(violations)} problems:")
         lines += [_problem_line(v.model_dump(mode="json")) for v in violations]
     else:
         lines.append("Legal: no problems found.")
+    # In a refine: the proposal against the saved version it changes (#136).
+    if (
+        saved is not None
+        and saved.state is not None
+        and saved.version is not None
+        and deck is not saved.state
+    ):
+        lines += _comparison(ctx, saved.state, saved.version, deck)
     return Output(untrusted("\n".join(lines)))
 
 
