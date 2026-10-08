@@ -16,7 +16,8 @@ from psycopg.types.json import Jsonb
 from mtg_deck_advisor.observability.tracing import current_trace_id
 
 Task = Literal["draft", "refine", "rules"]
-RunStatus = Literal["running", "completed", "turn_limit", "budget", "error"]
+# "refused": the model declined to go on, which text in the pool or a card can cause (#137).
+RunStatus = Literal["running", "completed", "turn_limit", "budget", "refused", "error"]
 ToolOutcome = Literal["ok", "error", "rejected"]
 
 

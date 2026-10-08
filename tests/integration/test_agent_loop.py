@@ -303,3 +303,24 @@ def test_a_runs_progress_is_saved_turn_by_turn(
     run(conn, provider)
 
     assert provider.seen == [(0, False), (1, True), (2, True)]
+
+
+def test_a_refusal_ends_the_run_as_refused_with_a_plain_message(
+    conn: psycopg.Connection,
+) -> None:
+    # Live, injection case I04 made the API refuse after the agent read a
+    # poisoned card. The user should learn their own data may be why (#137).
+    provider = FakeProvider(
+        tool_call_reply(call("get_card", name="Sol Ring"), model=SONNET),
+        text_reply("", stop_reason="refusal"),
+    )
+
+    result = run(conn, provider)
+
+    assert (result.status, result.turns) == ("refused", 1)
+    message = result.error or ""
+    assert "declined" in message and "turn 2" in message
+    assert "text in your pool" in message
+    assert "draft again" in message.lower()
+    status, _, _, _, _, error, finished = run_row(conn, result.run_id)
+    assert (status, error, finished) == ("refused", message, True)

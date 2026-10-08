@@ -491,7 +491,7 @@ def _wait(api: Api, started: Any, p: Printer, sleep: Sleep) -> None:
     run = _poll(api, started["run_id"], p, sleep)
     p.line(f"done after {run['turns']} turns, ${run['cost_usd']:.4f}")
     if run["error"]:
-        p.line(f"error: {run['error']}")
+        p.line(f"{_problem(run)}: {run['error']}")
     if run["final_text"]:
         p.line()
         p.line(run["final_text"])
@@ -539,6 +539,11 @@ def _poll(api: Api, run_id: str, p: Printer, sleep: Sleep) -> Any:
             return run
 
 
+def _problem(run: Any) -> str:
+    """How a run's error is labelled: a refusal isn't a failure of the app."""
+    return "refused" if run["status"] == "refused" else "error"
+
+
 def _show_run(run: Any, p: Printer) -> None:
     p.line(
         f"run {run['id']}: {run['status'].replace('_', ' ')} after {run['turns']} turns, "
@@ -547,7 +552,7 @@ def _show_run(run: Any, p: Printer) -> None:
     if run["deck_id"]:
         p.line(f"deck {run['deck_id']}")
     if run["error"]:
-        p.line(f"error: {run['error']}")
+        p.line(f"{_problem(run)}: {run['error']}")
     if run["final_text"]:
         p.line()
         p.line(run["final_text"])

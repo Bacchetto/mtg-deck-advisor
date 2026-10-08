@@ -185,8 +185,6 @@ on a deliberately degraded setting.
   ([#136](https://github.com/Bacchetto/mtg-deck-advisor/issues/136)).
 - **Rules answers cite other variants' rules,** such as Brawl or Commander Draft rules alongside the
   Commander ones ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)).
-- **A model refusal shows as a generic run error.** Text in a card can stop a draft that way
-  ([#137](https://github.com/Bacchetto/mtg-deck-advisor/issues/137)).
 - **The injection cases are few and domain-bound** ([#133](https://github.com/Bacchetto/mtg-deck-advisor/issues/133)).
 - **A prompt change isn't caught before merge.** The live eval runs on `main`, not on pull
   requests: a deliberate trade against paying for every push.

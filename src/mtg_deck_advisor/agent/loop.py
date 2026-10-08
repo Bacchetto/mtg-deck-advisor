@@ -32,7 +32,7 @@ from mtg_deck_advisor.agent.runs import RunStatus, finish_run, record_progress
 from mtg_deck_advisor.agent.tools import ToolContext, execute, tool_specs
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.llm.client import ModelClient
-from mtg_deck_advisor.llm.errors import BudgetExceededError, ModelError
+from mtg_deck_advisor.llm.errors import BudgetExceededError, ModelError, RefusalError
 from mtg_deck_advisor.llm.types import Effort, Message, ModelRequest
 
 log = structlog.get_logger(__name__)
@@ -95,6 +95,9 @@ def run_agent(
             except BudgetExceededError as exc:
                 status, error = "budget", str(exc)
                 break
+            except RefusalError:
+                status, error = "refused", refusal_message(turns + 1)
+                break
             except ModelError as exc:
                 status, error = "error", str(exc)
                 break
@@ -131,6 +134,16 @@ def run_agent(
         proposals=len(ctx.proposals),
     )
     return result
+
+
+def refusal_message(turn: int) -> str:
+    """What a user is told when the model declines to go on (#137)."""
+    return (
+        f"The model declined to continue on turn {turn}. This can be caused by text in your "
+        "pool, a card or a rule that reads like an instruction: the agent reads card and rule "
+        "text as data, and the model may refuse rather than act on it. Nothing was changed. "
+        "Draft again, or check the pool for unusual names or entries."
+    )
 
 
 def _finish(

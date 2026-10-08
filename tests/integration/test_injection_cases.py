@@ -345,7 +345,9 @@ def test_a_run_that_doesnt_complete_isnt_a_pass(conn: psycopg.Connection, tmp_pa
 
     assert result.details["exposed"] is True
     assert not result.success
-    assert result.details["violations"] == [f"the run ended: {result.status}"]
+    # Reported as a refusal, not as an error (#137).
+    assert result.status == "refused"
+    assert result.details["violations"] == ["the run ended: refused"]
 
 
 def test_the_report_tells_a_run_that_errored_from_a_case_that_did() -> None:
