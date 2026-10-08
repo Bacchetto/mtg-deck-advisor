@@ -118,3 +118,25 @@ def test_rules_agreement_is_exact_and_weighted_kappa() -> None:
     assert result.n == 4
     assert result.exact == 0.75
     assert 0 < result.kappa < 1
+
+
+def test_a_stratified_queue_adds_as_many_correct_answers_as_marked_down_ones() -> None:
+    # The grader marked few answers down, so a plain random sample hardly tests
+    # it on them. Mixing in as many "correct" ones keeps the owner blind to which.
+    runs = {
+        "s.json": run(
+            "sonnet",
+            answered("R01", "partly correct"),
+            answered("R02", "incorrect"),
+            *(answered(f"R1{n}", "correct") for n in range(6)),
+        )
+    }
+
+    queue = rules_queue(runs, done={("s.json", "R01")}, seed=1, stratify=True)
+
+    verdicts = [r.details["verdict"] for _, r in queue]
+    assert verdicts.count("incorrect") == 1 and verdicts.count("partly correct") == 0
+    assert verdicts.count("correct") == 1  # one for the one marked down left
+    assert rules_queue(runs, set(), seed=1, stratify=True) == rules_queue(
+        runs, set(), seed=1, stratify=True
+    )
