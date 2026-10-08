@@ -1,0 +1,51 @@
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R43","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:27:23.944586Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R22","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:28:33.566058Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R30","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:29:06.243115Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R26","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:29:12.138978Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R04","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:29:25.655196Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R17","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:29:48.201352Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R31","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:30:32.609990Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R15","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:31:31.978545Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R45","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:32:34.805390Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R33","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:32:38.619397Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R22","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:32:42.505815Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R30","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:32:48.222764Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R24","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:33:20.116979Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R39","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:33:26.001283Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R12","verdict":"partly correct","grader":"owner","graded_at":"2026-10-07T22:35:50.331852Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R11","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:36:02.435703Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R33","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:36:07.344905Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R24","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:36:27.188108Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R32","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:36:39.363891Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R29","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:02.047299Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R10","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:08.262194Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R05","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:13.443812Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R40","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:19.233582Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R26","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:32.443292Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R23","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:44.145754Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R06","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:47.312889Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R37","verdict":"correct","grader":"owner","graded_at":"2026-10-07T22:37:52.231915Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R02","verdict":"partly correct","grader":"owner","graded_at":"2026-10-07T22:38:18.189764Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R21","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:05:21.197211Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R44","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:05:33.860377Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R05","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:05:58.115449Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R15","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:06:29.990870Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R05","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:07:01.023588Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R26","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:07:19.474695Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R17","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:07:41.498350Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R03","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:07:51.371033Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R45","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:08:24.424601Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R07","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:08:33.776664Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R41","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:08:51.739354Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R04","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:09:25.486065Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R16","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:09:32.369986Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R32","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:09:42.691836Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R21","verdict":"correct","grader":"owner","graded_at":"2026-10-08T00:09:49.006221Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R08","verdict":"correct","grader":"owner","graded_at":"2026-10-08T16:38:41.614760Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R11","verdict":"partly correct","grader":"owner","graded_at":"2026-10-08T16:39:48.860853Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R38","verdict":"correct","grader":"owner","graded_at":"2026-10-08T16:40:33.807537Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212922-sonnet-hybrid-rules.json","case_id":"R01","verdict":"partly correct","grader":"owner","graded_at":"2026-10-08T16:40:56.923350Z"}
+{"run":"evals/runs/rules_qa/2026-10-06T203731-sonnet.json","case_id":"R09","verdict":"correct","grader":"owner","graded_at":"2026-10-08T16:41:52.696043Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R12","verdict":"partly correct","grader":"owner","graded_at":"2026-10-08T16:42:44.503379Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R16","verdict":"correct","grader":"owner","graded_at":"2026-10-08T16:42:59.163196Z"}
+{"run":"evals/runs/rules_qa/2026-10-07T212220-haiku.json","case_id":"R09","verdict":"correct","grader":"owner","graded_at":"2026-10-08T16:43:22.598817Z"}
