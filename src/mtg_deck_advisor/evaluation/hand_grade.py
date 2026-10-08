@@ -230,16 +230,30 @@ def parse_verdict(text: str) -> str:
 
 
 def rules_queue(
-    runs: Mapping[str, EvalRun], done: set[tuple[str, str]], seed: int = 0
+    runs: Mapping[str, EvalRun],
+    done: set[tuple[str, str]],
+    seed: int = 0,
+    *,
+    stratify: bool = False,
 ) -> list[tuple[str, CaseResult]]:
-    """Every answer the model grader graded, from all the runs, in one shuffled order."""
+    """Every answer the model grader graded, from all the runs, in one shuffled order.
+
+    With `stratify`: only the answers the grader didn't call correct, plus as
+    many it did (chosen at random), so the owner can't tell which is which.
+    The grader marks few answers down, and a plain sample hardly tests it there.
+    """
+    rng = random.Random(seed)  # noqa: S311 (an order to grade in, not a secret)
     queue = [
         (path, result)
         for path, run in sorted(runs.items())
         for result in run.results
         if "verdict" in result.details and (path, result.case_id) not in done
     ]
-    random.Random(seed).shuffle(queue)  # noqa: S311 (an order to grade in, not a secret)
+    if stratify:
+        down = [item for item in queue if item[1].details["verdict"] != "correct"]
+        correct = [item for item in queue if item[1].details["verdict"] == "correct"]
+        queue = down + rng.sample(correct, min(len(down), len(correct)))
+    rng.shuffle(queue)
     return queue
 
 
@@ -325,6 +339,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--grader", default="owner")
     parser.add_argument("--agreement", action="store_true", help="report agreement instead")
     parser.add_argument("--rules", action="store_true", help="grade rules answers, not decks")
+    parser.add_argument(
+        "--stratify",
+        action="store_true",
+        help="with --rules: the answers the grader marked down, mixed with as many it didn't",
+    )
     args = parser.parse_args(argv)
 
     runs = {path.as_posix(): EvalRun.load(path) for path in args.runs}
@@ -338,7 +357,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
         done = {(g.run, g.case_id) for g in rules_grades}
-        rules_session(rules_queue(runs, done), grader=args.grader)
+        rules_session(rules_queue(runs, done, stratify=args.stratify), grader=args.grader)
         return 0
     grades = load_hand_grades()
     if args.agreement:
