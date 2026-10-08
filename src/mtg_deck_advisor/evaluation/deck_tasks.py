@@ -19,9 +19,11 @@ archived afterwards, so they stay out of the user's deck lists.
 """
 
 import argparse
+import re
 import statistics
 import sys
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID
@@ -142,9 +144,16 @@ class DeckGrade(BaseModel):
 # --- what the grader sees --------------------------------------------------------------------
 
 
-def deck_text(conn: psycopg.Connection, state: DeckState, request: str) -> str:
-    """The deck as the grader reads it: the request, every card's text, and the counts."""
-    ids = [state.commander, *state.cards]
+def deck_text(
+    conn: psycopg.Connection, state: DeckState, request: str, start: DeckState | None = None
+) -> str:
+    """The deck as the grader reads it: the request, every card's text, and the counts.
+
+    For a refine, `start` is the deck it began from. The text then ends with the
+    change, so the grader can judge whether the change does what was asked
+    (#136), not only how the final deck reads.
+    """
+    ids = [state.commander, *state.cards, *(start.cards if start else [])]
     rows = conn.execute(
         "SELECT oracle_id, name, mana_cost, cmc, type_line, oracle_text FROM cards "
         "WHERE oracle_id = ANY(%s)",
@@ -157,28 +166,46 @@ def deck_text(conn: psycopg.Connection, state: DeckState, request: str) -> str:
         oracle = " ".join((text or "").split())
         return f"{count} {name} | {cost or '-'} | {type_line} | {oracle}"
 
-    lands = sum(n for card, n in state.cards.items() if "Land" in cards[card][3])
-    curve: dict[int, int] = {}
-    for card, n in state.cards.items():
-        if "Land" not in cards[card][3]:
-            value = int(cards[card][2] or 0)
-            curve[min(value, 7)] = curve.get(min(value, 7), 0) + n
-    curve_text = ", ".join(
-        f"{value if value < 7 else '7+'}: {curve[value]}" for value in sorted(curve)
-    )
+    def counts(deck: DeckState) -> tuple[int, str]:
+        lands = sum(n for card, n in deck.cards.items() if "Land" in cards[card][3])
+        curve: dict[int, int] = {}
+        for card, n in deck.cards.items():
+            if "Land" not in cards[card][3]:
+                value = min(int(cards[card][2] or 0), 7)
+                curve[value] = curve.get(value, 0) + n
+        text = ", ".join(f"{v if v < 7 else '7+'}: {curve[v]}" for v in sorted(curve))
+        return lands, text
+
+    lands, curve_text = counts(state)
     others = sorted(state.cards.items(), key=lambda item: cards[item[0]][0])
-    return "\n".join(
-        [
-            f"Request: {request or 'none'}",
+    lines = [
+        f"Request: {request or 'none'}",
+        "",
+        f"Commander: {line(state.commander, 1)[2:]}",
+        "",
+        f"The other {state.total - 1} cards (count | name | mana cost | type | text):",
+        *(line(card, n) for card, n in others),
+        "",
+        f"Lands: {lands}. Nonland cards by mana value: {curve_text}.",
+    ]
+    if start is not None:
+        start_lands, start_curve = counts(start)
+
+        def listed(changes: dict[UUID, int]) -> str:
+            named = sorted((cards[card][0], n) for card, n in changes.items() if n > 0)
+            return ", ".join(f"{n} {name}" for name, n in named) or "nothing"
+
+        cut = {card: start.count(card) - state.count(card) for card in start.cards}
+        added = {card: state.count(card) - start.count(card) for card in state.cards}
+        lines += [
             "",
-            f"Commander: {line(state.commander, 1)[2:]}",
-            "",
-            f"The other {state.total - 1} cards (count | name | mana cost | type | text):",
-            *(line(card, n) for card, n in others),
-            "",
-            f"Lands: {lands}. Nonland cards by mana value: {curve_text}.",
+            "The change from the starting deck (this is a refine of a saved deck):",
+            f"Lands: {start_lands} → {lands}.",
+            f"Nonland cards by mana value, before: {start_curve}.",
+            f"Cut: {listed(cut)}",
+            f"Added: {listed(added)}",
         ]
-    )
+    return "\n".join(lines)
 
 
 def grade_deck(grader: ModelClient, text: str) -> DeckGrade:
@@ -228,6 +255,7 @@ def run_task(
     conn = services.conn
     pool_id = _pool(conn, datasets, task.pool, pools)
     details: dict[str, Any] = {"request": task.request, "kind": task.kind}
+    start: DeckState | None = None
     if task.kind == "draft":
         drafted = draft_deck(services, pool_id, request=task.request, name=f"eval {task.id}")
         deck_id, run = drafted.deck_id, drafted.run
@@ -258,7 +286,7 @@ def run_task(
         details["commander_match"] = (
             details["commander"] == task.commander if task.commander else None
         )
-        details["deck_text"] = deck_text(conn, state, task.request)
+        details["deck_text"] = deck_text(conn, state, task.request, start)
         try:
             grade = grade_deck(grader, details["deck_text"])
         except InvalidOutputError as exc:
@@ -275,6 +303,64 @@ def run_task(
     result.scores = scores
     result.grading_cost_usd = grader.spent_usd - graded_before
     return result
+
+
+def _final_deck(conn: psycopg.Connection, text: str) -> DeckState:
+    """The deck a saved grader text shows, read back from its card lines."""
+    commander = re.search(r"^Commander: (.+?) \| ", text, re.MULTILINE)
+    if commander is None:
+        raise ValueError("the saved deck text names no commander")
+    cards = {
+        m.group(2): int(m.group(1))
+        for m in re.finditer(r"^(\d+) (.+?) \| ", text.split("\n\nLands: ")[0], re.MULTILINE)
+    }
+    ids = _ids(conn, [commander.group(1), *cards])
+    return DeckState.new(ids[commander.group(1)], {ids[n]: c for n, c in cards.items()})
+
+
+def regrade(
+    conn: psycopg.Connection, grader: ModelClient, run: EvalRun, tasks: Sequence[DeckTask]
+) -> EvalRun:
+    """A saved run with its refines graded again on their change; nothing else is rerun.
+
+    The agent isn't called: each refine's final deck is read back from its
+    saved text, and graded with the starting deck and the change shown.
+    """
+    by_id = {t.id: t for t in tasks}
+    results: list[CaseResult] = []
+    for result in run.results:
+        task = by_id.get(result.case_id)
+        text = result.details.get("deck_text")
+        if task is None or task.kind != "refine" or task.start is None or not text:
+            results.append(result)
+            continue
+        ids = _ids(conn, [task.start.commander, *task.start.cards])
+        start = DeckState.new(
+            ids[task.start.commander], {ids[n]: c for n, c in task.start.cards.items()}
+        )
+        new_text = deck_text(conn, _final_deck(conn, text), task.request, start)
+        before = grader.spent_usd
+        grade = grade_deck(grader, new_text)
+        scores = {name: float(score) for name, score in grade.scores.model_dump().items() if score}
+        scores["quality"] = grade.quality
+        details = result.details | {
+            "deck_text": new_text,
+            "reasons": grade.reasons.model_dump(),
+            "summary": grade.summary,
+        }
+        results.append(
+            result.model_copy(
+                update={
+                    "scores": scores,
+                    "details": details,
+                    "grading_cost_usd": result.grading_cost_usd + grader.spent_usd - before,
+                }
+            )
+        )
+    variant = run.variant.model_copy(update={"name": f"{run.variant.name}-regraded"})
+    return run.model_copy(
+        update={"variant": variant, "results": results, "started_at": datetime.now(UTC)}
+    )
 
 
 # --- metrics and reports -------------------------------------------------------------------
@@ -346,7 +432,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--rerun", type=Path, help="run --ids again for a saved run, and merge them into it"
     )
+    parser.add_argument(
+        "--regrade",
+        type=Path,
+        help="grade a saved run's refines again on their change, without the agent (paid)",
+    )
     args = parser.parse_args(argv)
+    if args.regrade:
+        return _regrade_main(args.regrade, budget=args.budget, yes=args.yes)
     if bool(args.variant) == bool(args.rerun):
         parser.error("give --variant to run, or --rerun RUN.json with --ids")
     if args.rerun and not args.ids:
@@ -408,6 +501,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     path = save_report(report, "deck-tasks")
     print(report)
     print(f"saved {path}")
+    return 0
+
+
+def _regrade_main(path: Path, *, budget: float, yes: bool) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+    from mtg_deck_advisor.llm.factory import build_provider
+    from mtg_deck_advisor.llm.recording import DatabaseRecorder
+    from mtg_deck_advisor.observability.logging import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings)
+    saved = EvalRun.load(path)
+    tasks = load_tasks()
+    refines = {t.id for t in tasks if t.kind == "refine"}
+    count = sum(1 for r in saved.results if r.case_id in refines and r.details.get("deck_text"))
+    print(f"{count} refines in {path} to grade again, by {GRADER_MODEL}.")
+    if not confirm_spend(count * GRADING_COST, budget_usd=budget, yes=yes):
+        return 1
+    with connect(settings) as conn:
+        grader = ModelClient(
+            build_provider(settings),
+            GRADER_MODEL,
+            recorder=DatabaseRecorder(settings),
+            cost_cap_usd=budget,
+        )
+        run = regrade(conn, grader, saved, tasks)
+    print(f"saved {run.save()}, grading cost ${grader.spent_usd:.4f}")
+    notes = (
+        f"Refines from `{path.as_posix()}` graded again by {GRADER_MODEL}, with the starting deck "
+        f"and the change shown ([the rubric](../rubrics/{RUBRIC.name})); the agent wasn't rerun."
+    )
+    report = comparison_report("Deck tasks", [run], notes=notes) + "\n" + deck_section([run])
+    print(f"saved {save_report(report, 'deck-tasks')}")
     return 0
 
 

@@ -29,6 +29,8 @@ Does the deck do what was asked? This is skipped when there was no request.
 - **3:** clearly follows the request, but it's only part of the deck: the named commander leads a plan of its own, or the theme is about a third of the cards.
 - **5:** built around the request. For a change to a saved deck, it makes the change asked for, and only that.
 
+**For a change to a saved deck,** the deck text ends with the change: the starting deck's lands and curve, and the cards cut and added. Score fit on the change: do the cuts and additions do what was asked, as fully as the pool allows? Don't mark fit down for flaws the starting deck already had that the request didn't ask to fix. The other criteria still judge the deck as it now is.
+
 ### 3. Mana base
 Can the deck cast its spells?
 - **1:** clearly too few or too many lands for its curve (fewer than 30 or more than 45 in a normal deck), or colours it can't produce reliably.
