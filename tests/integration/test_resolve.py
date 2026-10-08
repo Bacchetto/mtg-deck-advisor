@@ -251,3 +251,27 @@ def test_a_tagged_name_that_still_matches_nothing_is_unknown_as_given(loaded: Se
 
     [unknown] = pool.unknown
     assert unknown.entry.name == "Not A Real Card (Showcase)"
+
+
+# --- crossover names (#139) ------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "typed",
+    [
+        "Lorien Brooch - Sol Ring",  # TCGplayer: the in-universe name, then the real one
+        "Volcano of Roku's Island - Sol Ring (Borderless)",
+    ],
+)
+def test_a_crossover_name_finds_the_real_card_after_the_dash(loaded: Settings, typed: str) -> None:
+    [match] = resolve_names(loaded, typed).matched
+
+    assert match.card.name == "Sol Ring"
+    assert match.entry.name == typed
+
+
+def test_a_dash_is_only_tried_when_the_whole_name_matches_nothing(loaded: Settings) -> None:
+    pool = resolve_names(loaded, "Not A Card - Also Not A Card")
+
+    [unknown] = pool.unknown
+    assert unknown.entry.name == "Not A Card - Also Not A Card"
