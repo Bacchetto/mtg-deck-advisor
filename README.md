@@ -183,8 +183,10 @@ on a deliberately degraded setting.
   (quality 2.2-3.4). On real collections, its decks scored 4.2-4.5.
 - **Refines change too little.** "Add removal and cut the weakest cards" left weak cards in
   ([#136](https://github.com/Bacchetto/mtg-deck-advisor/issues/136)).
-- **Rules answers cite other variants' rules,** such as Brawl or Commander Draft rules alongside the
-  Commander ones ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)).
+- **Rules answers cite more than they need.** Rules search no longer returns other variants'
+  rules ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)), but answers still cite
+  supporting general rules, such as the casting steps for a question about flash. Citation
+  precision is 92-94%.
 - **The injection cases are few and domain-bound** ([#133](https://github.com/Bacchetto/mtg-deck-advisor/issues/133)).
 - **A prompt change isn't caught before merge.** The live eval runs on `main`, not on pull
   requests: a deliberate trade against paying for every push.
