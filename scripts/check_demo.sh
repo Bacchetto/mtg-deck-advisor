@@ -6,12 +6,12 @@
 #
 #   scripts/check_demo.sh
 #
-# It brings up its own Compose project (mtg-demo-check) from .env.demo, with
-# its own volume, and removes it afterwards. Your .env and your development
-# database aren't touched, but ports 5432 and 8000 must be free.
+# It brings up the demo's own Compose project, named in .env.demo, with its own
+# volume, and removes it afterwards. Your .env and your development database
+# aren't touched, but ports 5432 and 8000 must be free.
 set -eu
 
-project="docker compose --project-name mtg-demo-check --env-file .env.demo"
+project="docker compose --env-file .env.demo"
 cleanup() { $project down --volumes --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
@@ -23,6 +23,11 @@ $project up -d --build --wait
 # default file, quit.
 printf '1\n\na\nc\nAdd more card draw and cut the weakest creatures.\na\ne\n\nq\n' |
   $project exec -T app mtg-advisor build | tee /tmp/demo-build.txt
+
+# A freshly seeded demo database has exactly one pool, so `1` is the Demo
+# collection, as the README says.
+head -n 1 /tmp/demo-build.txt | grep -q "^1) Demo collection: 2057 cards$"
+! grep -q "^2) " /tmp/demo-build.txt
 
 # The exported decklist: "N Name" lines, which must add up to 100 cards.
 deck=$($project exec -T app sh -c 'cat /app/*.txt')
