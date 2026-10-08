@@ -2,7 +2,7 @@
   "request_hash": "f0021d55476a131996c13c3ad60852df1580ef248516d3aaf5ef49232be51908",
   "model": "qwen3:8b",
   "recorded_from": "ollama",
-  "recorded_at": "2026-10-08T18:16:59+00:00",
+  "recorded_at": "2026-10-08T22:25:54+00:00",
   "request": {
     "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
     "messages": [
