@@ -21,6 +21,9 @@ The demo needs only **Docker**: no API key, GPU or local models, and nothing is 
 replays a recorded session, so every model call and search returns exactly what it did live. It
 takes a few minutes, most of them building the image.
 
+It runs as its own Compose project with its own database, but it uses ports 5432 and 8000. If
+you already run this project, stop that first with `docker compose down`, which keeps its data.
+
 ```bash
 git clone https://github.com/Bacchetto/mtg-deck-advisor.git
 cd mtg-deck-advisor
@@ -54,7 +57,7 @@ Then ask a rules question:
 ```bash
 docker compose exec app mtg-advisor ask "How much extra does it cost to cast my commander for the third time?"
 docker compose exec app cat sheoldred-whispering-one.txt     # the exported decklist
-docker compose down -v                                        # stop, and delete the demo data
+docker compose down -v                                        # stop, and delete the demo's data
 ```
 
 Two more questions are recorded:
