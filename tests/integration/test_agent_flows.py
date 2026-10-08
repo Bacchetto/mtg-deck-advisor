@@ -323,3 +323,16 @@ def test_injected_card_text_stays_data_and_cannot_cause_a_side_effect(
 def test_no_tool_can_approve_apply_or_export() -> None:
     for name in TOOLS:
         assert not any(word in name for word in ("approve", "apply", "export", "reject")), name
+
+
+def test_a_refused_rules_run_says_why_it_found_nothing(conn: psycopg.Connection) -> None:
+    refusal = ProviderResponse(
+        text="", stop_reason="refusal", usage=Usage(input_tokens=10, output_tokens=5), model=SONNET
+    )
+    provider = FakeProvider(calls(call("search_rules", question="banding")), refusal)
+
+    result = answer_rules_question(services(conn, provider), "How does banding work?")
+
+    assert not result.found
+    assert result.run.status == "refused"
+    assert result.reason == result.run.error and "declined" in result.reason

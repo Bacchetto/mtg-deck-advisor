@@ -109,3 +109,19 @@ def test_usage_errors_exit_with_code_2() -> None:
     code, _, _, _ = cli(Api(), "approve")  # no proposal ID
 
     assert code == 2
+
+
+def test_a_refused_run_is_shown_as_refused_not_as_an_error() -> None:
+    refused = run_view("refused", 2, 0.03) | {
+        "final_text": None,
+        "error": "The model declined to continue on turn 3.",
+    }
+    api = Api()
+    api.polls = [refused]
+
+    code, out, _, _ = cli(api, "draft", "pool-1")
+
+    assert code == 0
+    assert "refused after 2 turns" in out
+    assert "refused: The model declined to continue on turn 3." in out
+    assert "error:" not in out
