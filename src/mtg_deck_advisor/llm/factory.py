@@ -9,7 +9,12 @@ from mtg_deck_advisor.llm.anthropic import AnthropicProvider
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.ollama import Embedder, OllamaEmbedder, OllamaProvider
 from mtg_deck_advisor.llm.recording import DatabaseRecorder
-from mtg_deck_advisor.llm.replay import RecordingProvider, ReplayProvider
+from mtg_deck_advisor.llm.replay import (
+    RecordingEmbedder,
+    RecordingProvider,
+    ReplayEmbedder,
+    ReplayProvider,
+)
 from mtg_deck_advisor.llm.types import Provider
 
 
@@ -39,13 +44,23 @@ def build_provider(settings: Settings) -> Provider:
 
 
 def build_embedder(settings: Settings) -> Embedder:
-    """The embedding model used for retrieval: local, through Ollama."""
-    return OllamaEmbedder(
+    """The embedding model used for retrieval: local, through Ollama.
+
+    It follows the model provider's replay settings, so a replayed run needs no
+    Ollama: MODEL_PROVIDER=replay serves recorded query vectors, and
+    RECORD_RESPONSES saves them.
+    """
+    if settings.model_provider == "replay":
+        return ReplayEmbedder(settings.replay_dir, settings.embedding_model)
+    embedder = OllamaEmbedder(
         base_url=settings.ollama_base_url,
         model=settings.embedding_model,
         timeout_seconds=settings.ollama_timeout_seconds,
         dimensions=settings.embedding_dimensions,
     )
+    if settings.record_responses:
+        return RecordingEmbedder(embedder, settings.replay_dir)
+    return embedder
 
 
 def build_model_client(settings: Settings) -> ModelClient:

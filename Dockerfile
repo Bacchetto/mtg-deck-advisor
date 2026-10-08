@@ -66,9 +66,13 @@ RUN mkdir -p /var/cache/mtg-deck-advisor && chown app:app /var/cache/mtg-deck-ad
 COPY --from=build /opt/venv /opt/venv
 
 # The demo dataset and collection, read by `python -m mtg_deck_advisor.demo.seed`
-# from the working directory.
+# from the working directory, and the recordings the demo replays (REPLAY_DIR).
+# The app user owns the directory itself, so `mtg-advisor build` can export a
+# decklist into it.
 WORKDIR /app
 COPY demo demo
+COPY recordings recordings
+RUN chown app:app /app
 
 ENV PATH="/opt/venv/bin:$PATH" \
     # Logs reach `docker logs` immediately rather than sitting in a buffer.

@@ -1,0 +1,50 @@
+{
+  "request_hash": "32f11bd8d08166ad730ff605a8d3c7078208d611ff3981e487e392c2a3fa7cad",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:42+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: removal destroy target creature\n\nCandidates:\n1. Murder | Instant | Destroy target creature.\n2. Heartless Act | Instant | Choose one — / • Destroy target creature with no counters on it. / • Remove up to three counters from target creature.\n3. Fell | Sorcery | Destroy target creature.\n4. Deadly Precision | Sorcery | As an additional cost to cast this spell, pay {4} or sacrifice an artifact or creature. / Destroy target creature.\n5. Go for the Throat | Instant | Destroy target nonartifact creature.\n6. Cut Down | Instant | Destroy target creature with total power and toughness 5 or less.\n7. Decree of Pain | Sorcery | Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way. / Cycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.) / When you cycle this card, all creatures get -2/-2 until end of turn.\n8. Bitter Downfall | Instant | This spell costs {3} less to cast if it targets a creature that was dealt damage this turn. / Destroy target creature. Its controller loses 2 life.\n9. Do or Die | Sorcery | Separate all creatures target player controls into two piles. Destroy all creatures in the pile of that player's choice. They can't be regenerated.\n10. Terror of Towashi | Creature — Phyrexian Ogre | Deathtouch / Whenever this creature attacks, you may pay {3}{B}. When you do, return target creature card from your graveyard to the battlefield. It's a Phyrexian in addition to its other types.\n11. Battle-Rage Blessing | Instant | Target creature gains deathtouch and indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)\n12. Sheoldred, Whispering One | Legendary Creature — Phyrexian Praetor | Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.) / At the beginning of your upkeep, return target creature card from your graveyard to the battlefield. / At the beginning of each opponent's upkeep, that player sacrifices a creature of their choice.\n13. Befoul | Sorcery | Destroy target land or nonblack creature. It can't be regenerated.\n14. Claim the Precious | Sorcery | Destroy target creature. The Ring tempts you.\n15. Extinction | Sorcery | Destroy all creatures of the creature type of your choice.\n16. Feed the Swarm | Sorcery | Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.\n17. Epic Downfall | Sorcery | Exile target creature with mana value 3 or greater.\n18. Phyrexian Scriptures | Enchantment — Saga | (As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.) / I — Put a +1/+1 counter on up to one target creature. That creature becomes an artifact in addition to its other types. / II — Destroy all nonartifact creatures. / III — Exile all opponents' graveyards.\n19. Cruel Revival | Instant | Destroy target non-Zombie creature. It can't be regenerated. Return up to one target Zombie card from your graveyard to your hand.\n20. Crippling Fear | Sorcery | Choose a creature type. Creatures that aren't of the chosen type get -3/-3 until end of turn.\n21. Deadly Derision | Instant | Destroy target creature or planeswalker. Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\n22. Sold Out | Instant | Exile target creature. If it was dealt damage this turn, create a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\n23. Necromantic Selection | Sorcery | Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.\n24. Render Inert | Sorcery | Remove up to five counters from target permanent. / Draw a card.\n25. Apocalypse Chime | Artifact | {2}, {T}, Sacrifice this artifact: Destroy all nontoken permanents with a name originally printed in the Homelands expansion. They can't be regenerated.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\":[1,3,5,6,14,7,8,9,11,19]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 1025,
+      "output_tokens": 28,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

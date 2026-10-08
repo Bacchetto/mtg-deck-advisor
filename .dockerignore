@@ -7,6 +7,8 @@
 !src/
 # The demo's dataset and collection, which the seed step loads.
 !demo/
+# Recorded model responses and query embeddings, which the demo replays.
+!recordings/
 
 # Local artefacts that can appear inside src/.
 **/__pycache__

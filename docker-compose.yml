@@ -75,6 +75,9 @@ services:
       MODEL_PROVIDER: ${MODEL_PROVIDER:-anthropic}
       MODEL_NAME: ${MODEL_NAME:-claude-opus-5-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Recordings, built into the image under /app. The demo replays
+      # recordings/demo (.env.demo).
+      REPLAY_DIR: ${REPLAY_DIR:-recordings}
     depends_on:
       db:
         # Wait for Postgres to accept connections, not merely to start.

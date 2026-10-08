@@ -26,7 +26,8 @@ from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.errors import ModelError
 from mtg_deck_advisor.llm.ollama import OllamaProvider
 from mtg_deck_advisor.llm.recording import DatabaseRecorder
-from mtg_deck_advisor.llm.types import Message, ModelRequest
+from mtg_deck_advisor.llm.replay import RecordingProvider, ReplayMissError, ReplayProvider
+from mtg_deck_advisor.llm.types import Message, ModelRequest, Provider
 
 log = structlog.get_logger(__name__)
 
@@ -77,6 +78,9 @@ class LlmReranker:
         )
         try:
             ranking = self._client.generate_structured(request, Ranking).value.ranking
+        except ReplayMissError:
+            # Not a model failure: a replay without this recording can't go on.
+            raise
         except ModelError as exc:
             log.warning("rerank_failed", error=str(exc), candidates=len(keys))
             return keys
@@ -87,11 +91,21 @@ class LlmReranker:
 
 
 def build_reranker(settings: Settings) -> LlmReranker | None:
-    """The configured reranker (RERANK_MODEL through Ollama), or None when it's turned off."""
+    """The configured reranker (RERANK_MODEL through Ollama), or None when it's turned off.
+
+    Like the embedder, it follows the replay settings: MODEL_PROVIDER=replay
+    serves recorded rankings, and RECORD_RESPONSES saves them.
+    """
     if not settings.rerank_model:
         return None
-    provider = OllamaProvider(
-        base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
-    )
+    provider: Provider
+    if settings.model_provider == "replay":
+        provider = ReplayProvider(settings.replay_dir)
+    else:
+        provider = OllamaProvider(
+            base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
+        )
+        if settings.record_responses:
+            provider = RecordingProvider(provider, settings.replay_dir)
     client = ModelClient(provider, settings.rerank_model, recorder=DatabaseRecorder(settings))
     return LlmReranker(client)

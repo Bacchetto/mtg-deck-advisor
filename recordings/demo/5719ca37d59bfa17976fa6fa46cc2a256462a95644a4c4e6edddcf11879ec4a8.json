@@ -1,0 +1,50 @@
+{
+  "request_hash": "5719ca37d59bfa17976fa6fa46cc2a256462a95644a4c4e6edddcf11879ec4a8",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:51+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: discard or mill yourself, tutor\n\nCandidates:\n1. Unseal the Necropolis | Instant | Each player mills three cards. Then you return up to two creature cards from your graveyard to your hand. (To mill three cards, a player puts the top three cards of their library into their graveyard.)\n2. Lo and Li, Twin Tutors | Legendary Creature — Human Advisor | When Lo and Li enter, search your library for a Lesson or Noble card, reveal it, put it into your hand, then shuffle. / Noble creatures you control and Lesson spells you control have lifelink.\n3. Tenured Oilcaster | Creature — Phyrexian Wizard | Menace (This creature can't be blocked except by two or more creatures.) / This creature gets +3/+0 as long as an opponent has eight or more cards in their graveyard. / Whenever this creature attacks or blocks, each player mills a card.\n4. Liliana, Untouched by Death | Legendary Planeswalker — Liliana | +1: Mill three cards. If at least one Zombie card is milled this way, each opponent loses 2 life and you gain 2 life. / −2: Target creature gets -X/-X until end of turn, where X is the number of Zombies you control. / −3: You may cast Zombie spells from your graveyard this turn.\n5. Decree of Pain | Sorcery | Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way. / Cycling {3}{B}{B} ({3}{B}{B}, Discard this card: Draw a card.) / When you cycle this card, all creatures get -2/-2 until end of turn.\n6. Victimize | Sorcery | Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.\n7. Praetor's Grasp | Sorcery | Search target opponent's library for a card and exile it face down. Then that player shuffles. You may play that card for as long as it remains exiled.\n8. Render Inert | Sorcery | Remove up to five counters from target permanent. / Draw a card.\n9. Vexing Arcanix | Artifact | {3}, {T}: Target player chooses a card name, then reveals the top card of their library. If that card has the chosen name, that player puts it into their hand. Otherwise, they put it into their graveyard and this artifact deals 2 damage to them.\n10. Ruthless Negotiation | Sorcery | Target opponent exiles a card from their hand. If this spell was cast from a graveyard, draw a card. / Flashback {4}{B} (You may cast this card from your graveyard for its flashback cost. Then exile it.)\n11. Idol of Oblivion | Artifact | {T}: Draw a card. Activate only if you created a token this turn. / {8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.\n12. Thrilling Encore | Instant | Put onto the battlefield under your control all creature cards in all graveyards that were put there from the battlefield this turn.\n13. Nasty End | Instant | As an additional cost to cast this spell, sacrifice a creature. / Draw two cards. If the sacrificed creature was legendary, draw three cards instead.\n14. Sheoldred, Whispering One | Legendary Creature — Phyrexian Praetor | Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.) / At the beginning of your upkeep, return target creature card from your graveyard to the battlefield. / At the beginning of each opponent's upkeep, that player sacrifices a creature of their choice.\n15. Dai Li Indoctrination | Sorcery — Lesson | Choose one — / • Target opponent reveals their hand. You choose a nonland permanent card from it. That player discards that card. / • Earthbend 2. (Target land you control becomes a 0/0 creature with haste that's still a land. Put two +1/+1 counters on it. When it dies or is exiled, return it to the battlefield tapped.)\n16. Zuko's Exile | Instant — Lesson | Exile target artifact, creature, or enchantment. Its controller creates a Clue token. (It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")\n17. Gate to the Afterlife | Artifact | Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card. / {2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.\n18. Mire Triton | Creature — Zombie Merfolk | Deathtouch / When this creature enters, mill two cards and you gain 2 life. (To mill two cards, put the top two cards of your library into your graveyard.)\n19. Trading Post | Artifact | {1}, {T}, Discard a card: You gain 4 life. / {1}, {T}, Pay 1 life: Create a 0/1 white Goat creature token. / {1}, {T}, Sacrifice a creature: Return target artifact card from your graveyard to your hand. / {1}, {T}, Sacrifice an artifact: Draw a card.\n20. Slate of Ancestry | Artifact | {4}, {T}, Discard your hand: Draw a card for each creature you control.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\": [1, 4, 3, 18, 15, 19, 17, 16, 11, 20]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 1288,
+      "output_tokens": 43,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}

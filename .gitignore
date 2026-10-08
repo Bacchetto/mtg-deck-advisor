@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# The demo's settings: replay only, no secrets.
+!.env.demo
 *.pem
 *.key
 secrets/

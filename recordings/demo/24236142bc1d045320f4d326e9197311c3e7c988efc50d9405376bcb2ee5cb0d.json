@@ -1,0 +1,50 @@
+{
+  "request_hash": "24236142bc1d045320f4d326e9197311c3e7c988efc50d9405376bcb2ee5cb0d",
+  "model": "qwen3:8b",
+  "recorded_from": "ollama",
+  "recorded_at": "2026-10-08T18:15:40+00:00",
+  "request": {
+    "system": "You rank search results for a Magic: The Gathering deck-building assistant. Given a search and numbered candidates (cards or Comprehensive Rules), return the numbers of the 10 candidates that best answer the search, best first. Judge by what each candidate actually does or says, not by shared words.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search: reanimate creature from graveyard\n\nCandidates:\n1. Reanimate | Sorcery | Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value.\n2. Sheoldred, Whispering One | Legendary Creature — Phyrexian Praetor | Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.) / At the beginning of your upkeep, return target creature card from your graveyard to the battlefield. / At the beginning of each opponent's upkeep, that player sacrifices a creature of their choice.\n3. Gravespawn Sovereign | Creature — Zombie | Tap five untapped Zombies you control: Put target creature card from a graveyard onto the battlefield under your control.\n4. Cult Conscript | Creature — Skeleton Warrior | This creature enters tapped. / {1}{B}: Return this card from your graveyard to the battlefield. Activate only if a non-Skeleton creature died under your control this turn.\n5. Terror of Towashi | Creature — Phyrexian Ogre | Deathtouch / Whenever this creature attacks, you may pay {3}{B}. When you do, return target creature card from your graveyard to the battlefield. It's a Phyrexian in addition to its other types.\n6. Thrilling Encore | Instant | Put onto the battlefield under your control all creature cards in all graveyards that were put there from the battlefield this turn.\n7. Midnight Reaper | Creature — Zombie Knight | Whenever a nontoken creature you control dies, this creature deals 1 damage to you and you draw a card.\n8. Victimize | Sorcery | Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.\n9. Haunt of the Dead Marshes | Creature — Nightmare Elf | When this creature enters, scry 1. / {2}{B}: Return this card from your graveyard to the battlefield tapped. Activate only if you control a legendary creature.\n10. Cruel Revival | Instant | Destroy target non-Zombie creature. It can't be regenerated. Return up to one target Zombie card from your graveyard to your hand.\n11. Despoiler of Souls | Creature — Horror | This creature can't block. / {B}{B}, Exile two other creature cards from your graveyard: Return this card from your graveyard to the battlefield.\n12. Scourge of Nel Toth | Creature — Zombie Dragon | Flying / You may cast this creature from your graveyard by paying {B}{B} and sacrificing two creatures rather than paying its mana cost.\n13. Living Death | Sorcery | Each player exiles all creature cards from their graveyard, then sacrifices all creatures they control, then puts all cards they exiled this way onto the battlefield.\n14. Sam's Desperate Rescue | Sorcery | Return target creature card from your graveyard to your hand. The Ring tempts you.\n15. Necromantic Selection | Sorcery | Destroy all creatures, then return a creature card put into a graveyard this way to the battlefield under your control. It's a black Zombie in addition to its other colors and types. Exile Necromantic Selection.\n16. Withered Wretch | Creature — Zombie Cleric | {1}: Exile target card from a graveyard.\n17. Zombie Apocalypse | Sorcery | Return all Zombie creature cards from your graveyard to the battlefield tapped, then destroy all Humans.\n18. Grimoire of the Dead | Legendary Artifact — Book | {1}, {T}, Discard a card: Put a study counter on Grimoire of the Dead. / {T}, Remove three study counters from Grimoire of the Dead and sacrifice it: Put all creature cards from all graveyards onto the battlefield under your control. They're black Zombies in addition to their other colors and types.\n19. Merchant of Many Hats | Creature — Human Peasant Ally | {2}{B}: Return this card from your graveyard to your hand.\n20. Gate to the Afterlife | Artifact | Whenever a nontoken creature you control dies, you gain 1 life. Then you may draw a card. If you do, discard a card. / {2}, {T}, Sacrifice this artifact: Search your graveyard, hand, and/or library for a card named God-Pharaoh's Gift and put it onto the battlefield. If you search your library this way, shuffle. Activate only if there are six or more creature cards in your graveyard.\n21. Unseal the Necropolis | Instant | Each player mills three cards. Then you return up to two creature cards from your graveyard to your hand. (To mill three cards, a player puts the top three cards of their library into their graveyard.)\n22. Phyrexian Archivist | Artifact Creature — Phyrexian Construct | Reach / {2}, {T}: Put target card from a graveyard on the bottom of its owner's library.\n23. Cemetery Reaper | Creature — Zombie | Other Zombie creatures you control get +1/+1. / {2}{B}, {T}: Exile target creature card from a graveyard. Create a 2/2 black Zombie creature token.\n24. Liliana, Untouched by Death | Legendary Planeswalker — Liliana | +1: Mill three cards. If at least one Zombie card is milled this way, each opponent loses 2 life and you gain 2 life. / −2: Target creature gets -X/-X until end of turn, where X is the number of Zombies you control. / −3: You may cast Zombie spells from your graveyard this turn.\n25. Buzzard-Wasp Colony | Creature — Bird Insect | Flying / When this creature enters, you may sacrifice an artifact or creature. If you do, draw a card. / Whenever another creature you control dies, if it had counters on it, put its counters on this creature.",
+        "tool_calls": [],
+        "tool_results": [],
+        "provider_content": null
+      }
+    ],
+    "max_tokens": 200,
+    "effort": "low",
+    "tools": [],
+    "output_schema": {
+      "properties": {
+        "ranking": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ranking",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ranking"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    }
+  },
+  "response": {
+    "text": "{\"ranking\": [1, 3, 5, 6, 8, 11, 15, 17, 18, 24]}",
+    "stop_reason": "end_turn",
+    "usage": {
+      "input_tokens": 1307,
+      "output_tokens": 41,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "model": "qwen3:8b",
+    "tool_calls": [],
+    "provider_content": null
+  }
+}
