@@ -11,6 +11,7 @@ every rule. These tests use fixture cards and the hashing FakeEmbedder.
 # ruff: noqa: F811
 
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -101,11 +102,16 @@ def test_a_seeded_database_searches_like_its_source(
 
     with connect(copy) as conn:
         seed(conn, tmp_path / "data", collection(tmp_path / "collection"))
-        seeded = [h.name for h in search_cards(conn, FakeEmbedder(), "colorless mana rock")]
+        seeded = search_cards(conn, FakeEmbedder(), "colorless mana rock", mode="vector")
     with connect(loaded) as conn:
-        source = [h.name for h in search_cards(conn, FakeEmbedder(), "colorless mana rock")]
+        source = search_cards(conn, FakeEmbedder(), "colorless mana rock", mode="vector")
 
-    assert seeded == source
+    # To half precision, as the eval snapshot: only near-ties can swap places.
+    # The demo is recorded against a seeded database, so replay matches exactly.
+    assert seeded[0].name == source[0].name == "Sol Ring"
+    assert len(seeded) == len(source)
+    for a, b in zip(seeded, source, strict=True):
+        assert abs(a.score - b.score) < 0.002
 
 
 def test_the_seed_creates_the_demo_collection_from_every_file(
@@ -118,7 +124,7 @@ def test_the_seed_creates_the_demo_collection_from_every_file(
     with connect(copy) as conn:
         result = seed(conn, tmp_path / "data", collection(tmp_path / "collection"))
         [pool] = list_pools(conn)
-        counts = dict(
+        counts: dict[UUID, int] = dict(
             conn.execute(
                 "SELECT oracle_id, count FROM pool_cards WHERE pool_id = %s", (pool.id,)
             ).fetchall()

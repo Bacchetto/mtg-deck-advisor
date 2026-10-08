@@ -154,13 +154,16 @@ def export_snapshot(
     queries: Iterable[tuple[QueryKind, str]],
     summary_ids: Iterable[UUID] | None = None,
     selection: Mapping[str, Any] | None = None,
+    with_roles_and_summaries: bool = False,
 ) -> dict[str, Any]:
     """Write the snapshot: the cards, every current rule, their embeddings, and the queries'.
 
     Card and rule embeddings are read from the database (the embedder's own
     model); the queries are embedded now with `embedder`. Summary embeddings,
     which only pool searches use, are kept for `summary_ids` (default: every
-    card). Returns the manifest.
+    card). `with_roles_and_summaries` adds each card's role tags and summary
+    text, which the demo dataset needs and the eval snapshot doesn't. Returns
+    the manifest.
     """
     model = embedder.model
     directory.mkdir(parents=True, exist_ok=True)
@@ -175,6 +178,13 @@ def export_snapshot(
     for card in cards:
         card["_embedding"] = card_vectors.get(card["oracle_id"])
         card["_summary_embedding"] = summary_vectors.get(card["oracle_id"])
+    if with_roles_and_summaries:
+        where = sql.SQL("oracle_id = ANY(%s::uuid[])")
+        roles = {row["oracle_id"]: row for row in _rows(conn, "card_roles", where, [ids])}
+        summaries = {row["oracle_id"]: row for row in _rows(conn, "card_summaries", where, [ids])}
+        for card in cards:
+            card["_roles"] = roles.get(card["oracle_id"])
+            card["_summary"] = summaries.get(card["oracle_id"])
     cards.sort(key=lambda card: card["oracle_id"])
 
     rules = _rows(conn, "rules", sql.SQL("removed_at IS NULL"), [])
@@ -198,6 +208,14 @@ def export_snapshot(
         for (kind, query), text in zip(wanted, texts, strict=True)
     ]
 
+    extras = (
+        {
+            "card_roles": sum(1 for card in cards if card["_roles"]),
+            "card_summaries": sum(1 for card in cards if card["_summary"]),
+        }
+        if with_roles_and_summaries
+        else {}
+    )
     manifest = {
         "model": model,
         "dimensions": len(decode_vector(query_records[0]["embedding"])) if query_records else None,
@@ -209,7 +227,8 @@ def export_snapshot(
             "rules": _write_jsonl(directory / "rules.jsonl.gz", rules),
             "rule_embeddings": sum(1 for rule in rules if rule["_embedding"]),
             "queries": _write_jsonl(directory / "queries.jsonl.gz", query_records),
-        },
+        }
+        | extras,
         "selection": dict(selection or {}),
     }
     (directory / "manifest.json").write_text(
@@ -288,6 +307,8 @@ def load_snapshot(conn: psycopg.Connection, directory: Path = SNAPSHOT_DIR) -> S
             [(r["number"], r["_embedding"]) for r in rules if r["_embedding"]],
             model,
         )
+        _insert_rows(conn, "card_roles", [c["_roles"] for c in cards if c.get("_roles")])
+        _insert_rows(conn, "card_summaries", [c["_summary"] for c in cards if c.get("_summary")])
     queries = {
         record["text"]: decode_vector(record["embedding"])
         for record in _read_jsonl(directory / "queries.jsonl.gz")
