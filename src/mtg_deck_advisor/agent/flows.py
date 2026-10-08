@@ -284,6 +284,8 @@ def answer_rules_question(services: AgentServices, question: str) -> RulesAnswer
     def not_found(reason: str) -> RulesAnswer:
         return RulesAnswer(question, False, None, [], reason, run)
 
+    if run.status == "refused" and run.error:
+        return not_found(run.error)
     if run.status != "completed" or run.final_text is None:
         return not_found(f"The run ended with status {run.status} before answering.")
     text = run.final_text.strip()
