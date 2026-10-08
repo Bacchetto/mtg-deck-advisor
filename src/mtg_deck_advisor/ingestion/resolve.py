@@ -165,6 +165,16 @@ def resolve(conn: psycopg.Connection, entries: Sequence[PoolEntry]) -> ResolvedP
     }
     if untagged:
         found |= _find(conn, untagged)
+    # TCGplayer lists crossover printings as "<in-universe name> - <real name>".
+    crossovers = {
+        name: real
+        for name in keys
+        if name not in found
+        and " - " in name
+        and (real := TRAILING_TAGS.sub("", name).rsplit(" - ", 1)[1].strip())
+    }
+    if crossovers:
+        found |= _find(conn, crossovers)
 
     pool = ResolvedPool(matched=[], ambiguous=[], unknown=[])
     suggestions: dict[str, list[str]] = {}
