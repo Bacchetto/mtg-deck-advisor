@@ -486,6 +486,42 @@ def test_analyze_deck_reports_roles_curve_colors_and_validity(conn: psycopg.Conn
     assert "Legal" in analysis
 
 
+def test_in_a_refine_analyze_deck_compares_the_proposal_with_the_saved_version(
+    conn: psycopg.Connection,
+) -> None:
+    # Refines changed too little to meet the request (#136): the agent couldn't
+    # see whether its change set did what was asked.
+    rats, sol_ring, cohort = card_id(RATS), card_id("Sol Ring"), card_id(COHORT)
+    basics = {card_id(name): count for name, count in BASICS.items()}
+    base = DeckState.new(card_id(ATRAXA), {rats: 60, sol_ring: 1, cohort: 1, **basics})
+    session = session_for(conn, "refine", base=base)
+    session.call(
+        "propose_changes",
+        add=[{"name": "Delver of Secrets"}],
+        remove=[{"name": "Island"}],
+        rationale="A cheap flier.",
+    )
+
+    analysis = body(session.call("analyze_deck"))
+
+    assert "Compared with the saved version 1" in analysis
+    assert "Lands: 37 → 36" in analysis
+    assert "Average mana value: 2.97 → 2.94" in analysis  # nonland cards, commander aside
+    assert "1: 1 → 2" in analysis  # Sol Ring, then Delver too
+    assert "Untagged: 1 → 2" in analysis
+    assert "Cut: Island" in analysis and "Added: Delver of Secrets" in analysis
+
+
+def test_a_draft_analysis_has_nothing_to_compare_with(conn: psycopg.Connection) -> None:
+    # Drafts keep exactly the output they had, so their recordings still replay.
+    session = session_for(conn, "draft")
+    session.call("propose_deck", commander=ATRAXA, cards=LEGAL_CARDS, rationale="r")
+
+    analysis = body(session.call("analyze_deck"))
+
+    assert "Compared with" not in analysis and "Average mana value" not in analysis
+
+
 # --- recording (OBS-1) --------------------------------------------------------------
 
 
