@@ -57,7 +57,11 @@ ALL_FOUR = dict.fromkeys(CRITERIA, 4)
 def test_the_task_set_covers_each_pool_and_kind_of_request() -> None:
     tasks = load_tasks()
 
-    assert [t.id for t in tasks] == [f"T{n:02}" for n in range(1, 11)]
+    assert [t.id for t in tasks] == [f"T{n:02}" for n in range(1, 15)]
+    # Six refines (#136), each from a full deck: a commander and 99 cards.
+    refines = [t for t in tasks if t.kind == "refine"]
+    assert [t.id for t in refines] == ["T09", "T10", "T11", "T12", "T13", "T14"]
+    assert all(t.start and sum(t.start.cards.values()) == 99 for t in refines)
     assert {t.pool for t in tasks} == {
         "pool_300.txt",
         "pool_300_test.txt",
