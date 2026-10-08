@@ -214,6 +214,22 @@ jobs:
           docker run --rm mtg-deck-advisor:ci python -c "import mtg_deck_advisor.api.app, mtg_deck_advisor.db.migrate"
           test "$(docker run --rm mtg-deck-advisor:ci id -un)" = app
 
+  demo:
+    name: Demo (Docker, replay)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # The README's demo, exactly as a newcomer runs it: Compose builds the
+      # image, migrates, seeds the demo dataset and starts the API, then
+      # mtg-advisor build drafts, changes and exports a deck, and a rules
+      # question is answered. Everything replays from recordings/demo, so it's
+      # free and needs no secrets. A change that stops the recordings
+      # replaying, such as a new prompt or tool schema, fails here.
+      - name: Run the demo and check its decklist
+        run: sh scripts/check_demo.sh
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
