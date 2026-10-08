@@ -65,6 +65,11 @@ RUN mkdir -p /var/cache/mtg-deck-advisor && chown app:app /var/cache/mtg-deck-ad
 
 COPY --from=build /opt/venv /opt/venv
 
+# The demo dataset and collection, read by `python -m mtg_deck_advisor.demo.seed`
+# from the working directory.
+WORKDIR /app
+COPY demo demo
+
 ENV PATH="/opt/venv/bin:$PATH" \
     # Logs reach `docker logs` immediately rather than sitting in a buffer.
     PYTHONUNBUFFERED=1 \

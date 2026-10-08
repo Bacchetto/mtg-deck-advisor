@@ -1,8 +1,9 @@
-# Local stack: the database, a one-shot migration step, and the API.
+# Local stack: the database, one-shot migration and seed steps, and the API.
 #
 #   docker compose up -d --build   build the image, then start everything:
-#                                  db, then migrate (runs and exits), then app
-#   docker compose ps -a           db and app "healthy"; migrate "Exited (0)"
+#                                  db, then migrate and seed (each runs and
+#                                  exits), then app
+#   docker compose ps -a           db and app "healthy"; migrate and seed "Exited (0)"
 #   docker compose up -d db        just the database, for running the API on
 #                                  the host instead (python -m mtg_deck_advisor.api)
 #   docker compose run --rm ingest cards
@@ -82,6 +83,21 @@ services:
     healthcheck:
       disable: true
 
+  seed:
+    # Loads the demo dataset and creates the Demo collection, so the demo runs
+    # without ingestion, Ollama or an API key. Only an empty database is
+    # seeded: one with cards (a full ingest) is left alone, and a seeded one
+    # isn't seeded twice. Both exit cleanly.
+    build: .
+    image: mtg-deck-advisor:local
+    command: ["python", "-m", "mtg_deck_advisor.demo.seed"]
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
   app:
     build: .
     image: mtg-deck-advisor:local
@@ -95,6 +111,8 @@ services:
       migrate:
         # Start only once migrations have run and exited cleanly. A failed
         # migration keeps the app down rather than serving an old schema.
+        condition: service_completed_successfully
+      seed:
         condition: service_completed_successfully
 
   ingest:

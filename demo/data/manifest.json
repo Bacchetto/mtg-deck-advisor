@@ -1,0 +1,24 @@
+{
+  "counts": {
+    "card_embeddings": 1396,
+    "card_roles": 1396,
+    "card_summaries": 1396,
+    "cards": 1396,
+    "queries": 0,
+    "rule_embeddings": 3166,
+    "rules": 3166,
+    "summary_embeddings": 1396
+  },
+  "dimensions": null,
+  "exported": "2026-10-08",
+  "model": "qwen3-embedding:8b",
+  "selection": {
+    "collection": [
+      "demo/collection/pool_300.txt",
+      "demo/collection/pool_tcgplayer_collection.csv",
+      "demo/collection/pool_tcgplayer_collection_2.csv",
+      "demo/collection/pool_tcgplayer_collection_3.csv"
+    ],
+    "copies": 2057
+  }
+}

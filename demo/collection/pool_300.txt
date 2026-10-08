@@ -1,0 +1,300 @@
+1 Bob, Reluctant HYDRA Agent
+1 Evolution Charm
+1 Rumbling Ruin
+1 Frogify
+1 Loran of the Third Path
+1 Eddymurk Crab
+1 Fear of Burning Alive
+1 Birthing Ritual
+1 Vexing Arcanix
+1 Unearthly Blizzard
+1 Bog Tatters
+1 Praetor's Grasp
+1 Reunion of the House
+1 Debilitating Injury
+1 Soothing of Sméagol
+1 Vitu-Ghazi Guildmage
+1 Zaxara, the Exemplary
+1 Divergent Equation
+1 Pia and Kiran Nalaar
+1 Wrench
+1 Elder Arthur Maxson
+1 Oran-Rief Survivalist
+1 Kimahri, Valiant Guardian
+1 Haystack
+1 Vex
+1 Verrak, Warped Sengir
+1 Earthbending Student
+1 Kinjalli's Dawnrunner
+1 Treasure Hunt
+1 Forgehammer Centurion
+1 Befoul
+1 Phyrexian Scriptures
+1 Voldaren Epicure
+1 Matsu-Tribe Decoy
+1 Dreamtail Heron
+1 Grixis Grimblade
+1 Merrow Witsniper
+1 Nashi, Moon Sage's Scion
+1 Witch-Maw Nephilim
+1 Scorch Spitter
+1 Savvy Trader
+1 Strider Harness
+1 Fervent Strike
+1 Boros Cluestone
+1 Johtull Wurm
+1 Havoc
+1 Golden Egg
+1 Hand to Hand
+1 Kree Commandos
+1 Kiss of the Amesha
+1 Brimstone Trebuchet
+1 Mirage Mockery
+1 Nacatl Hunt-Pride
+1 Liliana's Elite
+1 Molten-Tail Masticore
+1 Steampath Charger
+1 Floodfarm Verge
+1 Magic Pot
+1 Storm Cauldron
+1 Zektar Shrine Expedition
+1 Magic Damper
+1 Fiend Binder
+1 Thickest in the Thicket
+1 Permafrost Trap
+1 Waylay
+1 Demonic Hordes
+1 Terrasymbiosis
+1 Apocalypse Chime
+1 Swarm Surge
+1 Novablast Wurm
+1 Siren's Ruse
+1 Abattoir Ghoul
+1 Tezzeret's Gatebreaker
+1 Mindreaver
+1 Lukka, Bound to Ruin
+1 Simic Signet
+1 Tine Shrike
+1 Unique Charmed Pants
+1 Tawnos's Weaponry
+1 Survival of the Fittest
+1 Mutated Cultist
+1 Inundate
+1 Talisman of Progress
+1 Hexdrinker
+1 Ravenhill Flock
+1 Helbrute
+1 Cliffside Rescuer
+1 Invasion of Shandalar // Leyline Surge
+1 Kavu Runner
+1 Abandon the Post
+1 Arbor Armament
+1 Prismari, the Inspiration
+1 Angelic Benediction
+1 Gollum, Riddle Master
+1 Nadaar, Selfless Paladin
+1 Vine Gecko
+1 Righteous Avengers
+1 Hinata, Dawn-Crowned
+1 Adeline, Resplendent Cathar
+1 Falkenrath Aristocrat
+1 Mistform Mutant
+1 Bellowing Bruiser // Beat a Path
+1 Locust Miser
+1 Hold at Bay
+1 Squirrel Mob
+1 Aggressive Mammoth
+1 Crystal Carapace
+1 Spitfire Lagac
+1 Do or Die
+1 Scroll of Avacyn
+1 Rocket-Powered Goblin Glider
+1 Fortune Thief
+1 Gaea's Embrace
+1 Triumph of Ferocity
+1 Harper Recruiter
+1 Vivien's Invocation
+1 Resonance Technician
+1 Game Over
+1 Arbalest Elite
+1 Hazel of the Rootbloom
+1 Bard, King of Dale
+1 Jaya's Greeting
+1 Destructive Force
+1 Hero of Bretagard
+1 Silkenfist Order
+1 Rictus Robber
+1 Darksteel Brute
+1 Fleeting Flight
+1 Coral Barrier
+1 Dawn-Blessed Pennant
+1 Saruman the White
+1 Hall of Gemstone
+1 Nim Shambler
+1 Commander's Sphere
+1 Alpha Myr
+1 Spreading Rot
+1 Luck Bobblehead
+1 Frantic Confrontation
+1 Biomass Mutation
+1 Master Warcraft
+1 Kami of the Palace Fields
+1 Bonebreaker Giant
+1 Rift Elemental
+1 Vicious Conquistador
+1 Cowabunga!
+1 Ajani, Nacatl Pariah // Ajani, Nacatl Avenger
+1 Crosstown Courier
+1 Invade the City
+1 Ninja of the Deep Hours
+1 Chainflinger
+1 Dream Coat
+1 Defenestrated Phantom
+1 Prophetic Bolt
+1 Case of the Locked Hothouse
+1 Neutralize
+1 Gorm the Great
+1 Flesh Carver
+1 Hard-Won Jitte
+1 Bucknard's Everfull Purse
+1 Fountain of Renewal
+1 Clandestine Meddler
+1 Bloodfire Mentor
+1 Woodfall Primus
+1 Illicit Auction
+1 Wei Assassins
+1 Goblin Kaboomist
+1 Darksteel Ingot
+1 Worthy Knight
+1 Ravenous Robots
+1 Sand Silos
+1 Exalted Angel
+1 Ginger, Queen of Sweets
+1 Ghosthelm Courier
+1 Deem Inferior
+1 Palace Siege
+1 Sanctum Weaver
+1 Consume Strength
+1 Inquisitorial Rosette
+1 Cobblebrute
+1 Cactus Preserve
+1 Faerie Artisans
+1 Cytoplast Root-Kin
+1 Yeva, Nature's Herald
+1 Gleaming Bastion
+1 Fracture
+1 Fire Nation Turret
+1 Xander's Pact
+1 Nahiri, the Lithomancer
+1 Knight of Dusk's Shadow
+1 Verdant Eidolon
+1 Loot, the Key to Everything
+1 Zameck Guildmage
+1 Twice Upon a Time // Unlikely Meeting
+1 Giant Tortoise
+1 Psychic Theft
+1 Celestial Mantle
+1 Nightguard Patrol
+1 Dragonscale Boon
+1 Noxious Field
+1 Decree of Annihilation
+1 Eldrazi Temple
+1 Thornhide Wolves
+1 Konda, Lord of Eiganjo
+1 Blood Feud
+1 Soaring Seacliff
+1 Wildwood Scourge
+1 Wandering Champion
+1 Implement of Improvement
+1 Keep Safe
+1 Dark Intimations
+1 Punishing Punch
+1 Tower of Calamities
+1 Viridescent Bog
+1 Novice Inspector
+1 Revenant Patriarch
+1 Pinnacle Emissary
+1 Market Festival
+1 Archaeological Dig
+1 Tenured Oilcaster
+1 Boggart Brute
+1 Glimpse the Cosmos
+1 Thrilling Encore
+1 Thundering Rebuke
+1 Sunlit Hoplite
+1 Goblin Wardriver
+1 Voidslime
+1 Umara Entangler
+1 Evolution Witness
+1 Eidolon of Countless Battles
+1 Extinction
+1 Elder Druid
+1 Verdant Rebirth
+1 Etherium-Horn Sorcerer
+1 Outlaws' Fury
+1 Sarkhan, Soul Aflame
+1 Engulfing Flames
+1 Fall of Cair Andros
+1 Anti-Venom, Horrifying Healer
+1 Springjack Shepherd
+1 Vault Skirge
+1 Accursed Duneyard
+1 Return from the Wilds
+1 Yawgmoth's Edict
+1 Prime Speaker Zegana
+1 Level Up
+1 The Dawning Archaic
+1 Bargain
+1 Confirm Suspicions
+1 Teferi, Master of Time
+1 Makindi Stampede // Makindi Mesas
+1 Brilliant Spectrum
+1 Pillar Tombs of Aku
+1 Whipflare
+1 Krang, Master Mind
+1 Divine Visitation
+1 Might Makes Right
+1 Wild Slash
+1 Grave Peril
+1 Worldslayer
+1 Gate to the Afterlife
+1 Call to Heel
+1 Fire Nation Archers
+1 Harmonize
+1 Cloudspire Skycycle
+1 Diminish
+1 Llanowar Cavalry
+1 Secret Arcade // Dusty Parlor
+1 Tsabo's Web
+1 Lucius the Eternal
+1 Wojek Embermage
+1 Shanid, Sleepers' Scourge
+1 Spaceshift
+1 Shrine of the Forsaken Gods
+1 Hua Tuo, Honored Physician
+1 Council of the Absolute
+1 Hurloon Battle Hymn
+1 Despoiler of Souls
+1 Pemmin's Aura
+1 Spindrift Drake
+1 Foundry Inspector
+1 Maestros Confluence
+1 Forecasting Fortune Teller
+1 Pyric Salamander
+1 Mirrorwing Dragon
+1 Goblin Boarders
+1 Curse of Conformity
+1 The Wondrous Wasp
+1 Dead Man's Chest
+1 Swooping Pteranodon
+1 Araumi of the Dead Tide
+1 Contractual Safeguard
+1 Shivan Oasis
+1 Combat Thresher
+1 Archdemon of Unx
+1 Stensia Innkeeper
+1 Cold Snap
+1 Cathar's Shield
+1 Blinkmoth Infusion
+1 Obsessive Stitcher
+1 Krang & Shredder

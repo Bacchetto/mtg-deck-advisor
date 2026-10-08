@@ -17,9 +17,10 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-        # The eval gate's embedding snapshot (~19 MB, ADR 0016) is large by
-        # design; every other file still has the 500 KB limit.
-        exclude: ^evals/snapshot/
+        # The eval gate's embedding snapshot (~19 MB, ADR 0016) and the demo
+        # dataset (~13 MB, #139) are large by design; every other file still
+        # has the 500 KB limit.
+        exclude: ^(evals/snapshot|demo/data)/
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
