@@ -18,8 +18,8 @@ It's a portfolio project, built to show production AI engineering end to end:
 ## Try the demo
 
 The demo needs only **Docker**: no API key, GPU or local models, and nothing is paid for. It
-replays a recorded session, so every model call and search returns exactly what it did live. It
-takes a few minutes, most of them building the image.
+replays a recorded session, so every model call and search returns exactly what it did live.
+From a clean clone it takes about 5 minutes, most of it Docker building the image.
 
 It runs as its own Compose project with its own database, but it uses ports 5432 and 8000. If
 you already run this project, stop that first with `docker compose down`, which keeps its data.
