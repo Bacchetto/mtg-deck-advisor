@@ -1,6 +1,7 @@
 """Reranking search candidates with a local model, falling back to the original order."""
 
 import json
+from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -9,6 +10,7 @@ from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.llm.client import ModelClient
 from mtg_deck_advisor.llm.fake import FakeProvider
 from mtg_deck_advisor.llm.recording import MemoryRecorder
+from mtg_deck_advisor.llm.replay import ReplayMissError, ReplayProvider
 from mtg_deck_advisor.llm.types import ProviderResponse, Usage
 from mtg_deck_advisor.retrieval.rerank import LlmReranker, build_reranker
 
@@ -101,3 +103,12 @@ def test_an_empty_rerank_model_turns_reranking_off() -> None:
     )
 
     assert build_reranker(settings) is None
+
+
+def test_a_missing_recording_isnt_hidden_by_the_fallback(tmp_path: Path) -> None:
+    # Keeping the original order would let a demo replay on to a confusing
+    # miss later, on the agent's next request, which carries the search result.
+    client = ModelClient(ReplayProvider(tmp_path), "qwen3:8b", recorder=MemoryRecorder())
+
+    with pytest.raises(ReplayMissError):
+        LlmReranker(client).rerank("cheap ramp", CANDIDATES)
