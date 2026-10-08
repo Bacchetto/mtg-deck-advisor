@@ -155,7 +155,7 @@ Everything below was measured, and the run files behind each number are committe
 | Deck quality (1-5), by an Opus grader against a rubric | **3.30** | 2.87 |
 
 **The cheaper model cost more per deck.** Haiku proposed illegal decks about five times per draft,
-and each rejection cost another turn ([report](evals/reports/2026-10-08-milestone-7.md#deck-tasks-models)).
+and each rejection cost another turn. See [the write-up](docs/findings/haiku-costs-more.md).
 
 **How far the graders can be trusted.** The owner graded samples blind:
 - **Deck grades:** they agreed with the Opus grader at a weighted kappa of **0.90** over 102 scores, and 99% of scores were within one point.
