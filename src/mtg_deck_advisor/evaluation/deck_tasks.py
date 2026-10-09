@@ -58,6 +58,10 @@ from mtg_deck_advisor.llm.types import Message, ModelRequest
 DECK_TASKS = Path("evals/datasets/deck_tasks.jsonl")
 DATASETS = Path("evals/datasets")
 RUBRIC = Path("evals/rubrics/deck_quality.md")
+COMPARISON_RUBRIC = Path("evals/rubrics/refine_comparison.md")
+COMPARISONS = Path("evals/runs/refine_comparisons")
+# An estimate for one comparison by the grader: two changes and a whole deck.
+COMPARISON_COST = 0.06
 GRADER_MODEL = "claude-opus-5-5"
 
 VARIANTS = {
@@ -541,6 +545,197 @@ def regrade(
     )
 
 
+# --- two refines of a task, compared side by side (#136) ------------------------------------
+
+
+class Preference(BaseModel):
+    better: Literal["A", "B", "same"]
+    reason: str
+
+
+class PairResult(BaseModel):
+    case_id: str
+    request: str
+    # What the grader said with "before" as A, then with "after" as A.
+    first: Literal["A", "B", "same"]
+    second: Literal["A", "B", "same"]
+    # A preference counts only if it holds in both orders.
+    winner: Literal["before", "after", "same"]
+    reasons: list[str]
+
+
+class Comparison(BaseModel):
+    before: str
+    after: str
+    grader: str
+    compared_at: datetime
+    pairs: list[PairResult]
+    cost_usd: float = 0.0
+
+    @property
+    def after_win_rate(self) -> float:
+        """The share of pairs "after" won, a tie counting half."""
+        score = {"after": 1.0, "same": 0.5, "before": 0.0}
+        return _mean([score[p.winner] for p in self.pairs])
+
+
+def change_text(conn: psycopg.Connection, start: DeckState, final: DeckState) -> str:
+    """One refine's change: the counts, and the cards cut and added with their text."""
+    ids = list({*start.cards, *final.cards})
+    rows = conn.execute(
+        "SELECT oracle_id, name, mana_cost, cmc, type_line, oracle_text FROM cards "
+        "WHERE oracle_id = ANY(%s)",
+        (ids,),
+    ).fetchall()
+    cards = {row[0]: row[1:] for row in rows}
+
+    def is_land(card: UUID) -> bool:
+        return "Land" in cards[card][3].split("—")[0]
+
+    def lands(deck: DeckState) -> int:
+        return sum(n for card, n in deck.cards.items() if is_land(card))
+
+    def average(deck: DeckState) -> float:
+        values = [
+            float(cards[c][2] or 0)
+            for c, n in deck.cards.items()
+            if not is_land(c)
+            for _ in range(n)
+        ]
+        return sum(values) / len(values) if values else 0.0
+
+    cut = {
+        c: start.count(c) - final.count(c) for c in start.cards if start.count(c) > final.count(c)
+    }
+    added = {
+        c: final.count(c) - start.count(c) for c in final.cards if final.count(c) > start.count(c)
+    }
+
+    def names(changes: dict[UUID, int]) -> str:
+        return ", ".join(
+            f"{n} {cards[c][0]}" for c, n in sorted(changes.items(), key=lambda i: cards[i[0]][0])
+        )
+
+    def lines(changes: dict[UUID, int]) -> list[str]:
+        out = []
+        for card, n in sorted(changes.items(), key=lambda item: cards[item[0]][0]):
+            name, cost, _, type_line, text = cards[card]
+            out.append(
+                f"{n} {name} | {cost or '-'} | {type_line} | {' '.join((text or '').split())}"
+            )
+        return out or ["none"]
+
+    return "\n".join(
+        [
+            f"Lands: {lands(start)} → {lands(final)}. Average mana value of nonland cards: "
+            f"{average(start):.2f} → {average(final):.2f}.",
+            f"Cut: {names(cut) or 'nothing'}",
+            f"Added: {names(added) or 'nothing'}",
+            "",
+            "The cards cut:",
+            *lines(cut),
+            "",
+            "The cards added:",
+            *lines(added),
+        ]
+    )
+
+
+def compare_changes(
+    grader: ModelClient, request: str, start: str, change_a: str, change_b: str
+) -> Preference:
+    message = (
+        f"The request: {request}\n\n<starting_deck>\n{start}\n</starting_deck>\n\n"
+        f"<change_a>\n{change_a}\n</change_a>\n\n<change_b>\n{change_b}\n</change_b>"
+    )
+    model_request = ModelRequest(
+        purpose="refine_comparison",
+        system=COMPARISON_RUBRIC.read_text(encoding="utf-8"),
+        messages=(Message(role="user", content=message),),
+        max_tokens=1000,
+    )
+    return grader.generate_structured(model_request, Preference).value
+
+
+def compare_runs(
+    conn: psycopg.Connection,
+    grader: ModelClient,
+    before: EvalRun,
+    after: EvalRun,
+    tasks: Sequence[DeckTask],
+) -> Comparison:
+    """Each refine both runs made, compared twice with the order swapped.
+
+    Asking twice is the guard against position bias: a grader that prefers
+    whichever change comes first flips its answer, and that counts as a tie.
+    """
+    spent = grader.spent_usd
+    after_results = {r.case_id: r for r in after.results}
+    pairs: list[PairResult] = []
+    for task in tasks:
+        if task.kind != "refine" or task.start is None:
+            continue
+        old = next((r for r in before.results if r.case_id == task.id), None)
+        new = after_results.get(task.id)
+        if old is None or new is None:
+            continue
+        old_text, new_text = old.details.get("deck_text"), new.details.get("deck_text")
+        if not old_text or not new_text:
+            continue
+        start = _start_state(conn, task.start)
+        start_text = deck_text(conn, start, task.request)
+        old_change = change_text(conn, start, _final_deck(conn, old_text))
+        new_change = change_text(conn, start, _final_deck(conn, new_text))
+        first = compare_changes(grader, task.request, start_text, old_change, new_change)
+        second = compare_changes(grader, task.request, start_text, new_change, old_change)
+        said_first = {"A": "before", "B": "after", "same": "same"}[first.better]
+        said_second = {"A": "after", "B": "before", "same": "same"}[second.better]
+        winner: Literal["before", "after", "same"] = (
+            said_first if said_first == said_second else "same"  # type: ignore[assignment]
+        )
+        pairs.append(
+            PairResult(
+                case_id=task.id,
+                request=task.request,
+                first=first.better,
+                second=second.better,
+                winner=winner,
+                reasons=[first.reason, second.reason],
+            )
+        )
+    return Comparison(
+        before=before.variant.name,
+        after=after.variant.name,
+        grader=grader.model,
+        compared_at=datetime.now(UTC),
+        pairs=pairs,
+        cost_usd=grader.spent_usd - spent,
+    )
+
+
+def refine_comparison_report(comparison: Comparison, before: Path, after: Path) -> str:
+    lines = [
+        f"# Refines compared side by side, {comparison.compared_at:%Y-%m-%d %H:%M} UTC",
+        "",
+        f"Each refine in [`{before.as_posix()}`](../../{before.as_posix()}) (before) and "
+        f"[`{after.as_posix()}`](../../{after.as_posix()}) (after), compared by "
+        f"{comparison.grader} with [the rubric](../rubrics/{COMPARISON_RUBRIC.name}), twice "
+        "with the order swapped. A preference counts only if it holds both times. "
+        f"Cost ${comparison.cost_usd:.4f}.",
+        "",
+        f"**After wins {comparison.after_win_rate:.0%}** of the comparisons, a tie counting half.",
+        "",
+        "| Task | Request | Before as A | After as A | Better |",
+        "|---|---|---|---|---|",
+    ]
+    for p in comparison.pairs:
+        lines.append(f"| {p.case_id} | {p.request} | {p.first} | {p.second} | **{p.winner}** |")
+    lines += ["", "## Reasons", ""]
+    for p in comparison.pairs:
+        lines.append(f"- **{p.case_id}:** {p.reasons[0]} / {p.reasons[1]}")
+    return "\n".join(lines) + "\n"
+
+
 # --- metrics and reports -------------------------------------------------------------------
 
 
@@ -638,6 +833,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--rerun", type=Path, help="run --ids again for a saved run, and merge them into it"
     )
     parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="compare two saved runs' refines side by side (paid)",
+    )
+    parser.add_argument(
         "--check", type=Path, help="check a saved run's refine goals by code, in place (free)"
     )
     parser.add_argument(
@@ -650,6 +852,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _regrade_main(args.regrade, budget=args.budget, yes=args.yes)
     if args.check:
         return _check_main(args.check)
+    if args.compare:
+        return _compare_main(*args.compare, budget=args.budget, yes=args.yes)
     if bool(args.variant) == bool(args.rerun):
         parser.error("give --variant to run, or --rerun RUN.json with --ids")
     if args.rerun and not args.ids:
@@ -711,6 +915,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     path = save_report(report, "deck-tasks")
     print(report)
     print(f"saved {path}")
+    return 0
+
+
+def _compare_main(before: Path, after: Path, *, budget: float, yes: bool) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+    from mtg_deck_advisor.llm.factory import build_provider
+    from mtg_deck_advisor.llm.recording import DatabaseRecorder
+    from mtg_deck_advisor.observability.logging import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings)
+    old, new = EvalRun.load(before), EvalRun.load(after)
+    refines = {t.id for t in load_tasks() if t.kind == "refine"}
+    count = len(refines & {r.case_id for r in old.results} & {r.case_id for r in new.results})
+    print(f"{count} refines to compare twice each, by {GRADER_MODEL}.")
+    if not confirm_spend(count * 2 * COMPARISON_COST, budget_usd=budget, yes=yes):
+        return 1
+    with connect(settings) as conn:
+        grader = ModelClient(
+            build_provider(settings),
+            GRADER_MODEL,
+            recorder=DatabaseRecorder(settings),
+            cost_cap_usd=budget,
+        )
+        comparison = compare_runs(conn, grader, old, new, load_tasks())
+    COMPARISONS.mkdir(parents=True, exist_ok=True)
+    path = COMPARISONS / f"{comparison.compared_at:%Y-%m-%dT%H%M%S}.json"
+    path.write_text(comparison.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    report = save_report(refine_comparison_report(comparison, before, after), "refine-comparison")
+    print(
+        f"saved {path} and {report}; after wins {comparison.after_win_rate:.0%}, "
+        f"cost ${comparison.cost_usd:.4f}"
+    )
     return 0
 
 
