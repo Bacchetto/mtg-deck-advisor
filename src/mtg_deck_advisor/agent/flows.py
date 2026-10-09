@@ -198,10 +198,13 @@ def prepare_refine(
     prompt = (
         f"Refine my saved deck (version {deck.version}): {request}\n\n"
         "First turn my request into checkable goals, such as how many cards to cut or add, "
-        "a land count, or a lower average mana value. Propose changes that meet them all, "
-        "then check the proposal with analyze_deck, which compares it with the saved "
-        "version, and propose again if a goal isn't met. If my pool can't meet a goal, "
-        "say so plainly rather than make a token change.\n\n"
+        "a land count, or a lower average mana value. analyze_deck lists each card with "
+        "its mana value and roles, and what my pool has left by role, and find_by_role "
+        "lists my pool's cards with a role. Propose changes that meet every goal, and pass "
+        "the goals code can check to propose_changes as goals: it sends back a change that "
+        "misses one. Then check the proposal with analyze_deck, which compares it with the "
+        "saved version. If my pool can't meet a goal, leave it out of the goals and say so "
+        "plainly rather than make a token change.\n\n"
         f"The deck, commander first:\n{untrusted(decklist(conn, deck.state))}"
     )
     return PreparedRun(run_id, "refine", deck.pool_id, deck_id, prompt)

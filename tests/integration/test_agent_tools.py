@@ -188,6 +188,7 @@ def test_each_task_offers_only_its_own_tools() -> None:
         "get_card",
         "search_rules",
         "analyze_deck",
+        "find_by_role",  # refine-only (#136); #159 tracks offering it in drafts
         "propose_changes",
     ]
     assert names("rules") == ["search_rules"]

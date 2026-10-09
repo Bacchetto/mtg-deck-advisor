@@ -32,6 +32,8 @@ import psycopg
 from pydantic import BaseModel, Field, model_validator
 
 from mtg_deck_advisor.agent.flows import AgentServices, draft_deck, import_pool, refine_deck
+from mtg_deck_advisor.deck.goals import Goal
+from mtg_deck_advisor.deck.goals import check_goals as goal_results
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.deck.store import create_deck, save_version, set_archived
 from mtg_deck_advisor.evaluation.criteria import CRITERIA as CRITERIA
@@ -82,84 +84,6 @@ GRADING_COST = 0.07
 class StartDeck(BaseModel):
     commander: str
     cards: dict[str, int]
-
-
-# --- goals a refine's request sets, checked by code (#136) ---------------------------------
-# Each compares the refined deck with the deck it started from. Mana values and
-# roles are over nonland cards besides the commander, as analyze_deck counts them.
-
-
-class LandsGoal(BaseModel):
-    kind: Literal["lands"]
-    equals: int
-
-    def describe(self) -> str:
-        return f"exactly {self.equals} lands"
-
-
-class LandsChangeGoal(BaseModel):
-    kind: Literal["lands_change"]
-    equals: int
-
-    def describe(self) -> str:
-        return f"lands change by {self.equals:+d}"
-
-
-class RoleChangeGoal(BaseModel):
-    kind: Literal["role_change"]
-    role: str
-    at_least: int
-    # Count only cards at or below this mana value ("cheap removal").
-    max_mana_value: float | None = None
-
-    def describe(self) -> str:
-        cheap = f" at mana value {self.max_mana_value:g} or less" if self.max_mana_value else ""
-        return f"{self.role}{cheap} up by {self.at_least} or more"
-
-
-class TypeChangeGoal(BaseModel):
-    kind: Literal["type_change"]
-    type: str
-    at_least: int
-
-    def describe(self) -> str:
-        return f"{self.type} cards up by {self.at_least} or more"
-
-
-class TypeCutGoal(BaseModel):
-    kind: Literal["type_cut"]
-    type: str
-    at_least: int
-
-    def describe(self) -> str:
-        return f"{self.at_least} or more {self.type} cards cut"
-
-
-class NoneAtOrAboveGoal(BaseModel):
-    kind: Literal["none_at_or_above"]
-    mana_value: float
-
-    def describe(self) -> str:
-        return f"no nonland card at mana value {self.mana_value:g} or more"
-
-
-class AverageManaValueLowerGoal(BaseModel):
-    kind: Literal["average_mana_value_lower"]
-
-    def describe(self) -> str:
-        return "a lower average mana value"
-
-
-Goal = Annotated[
-    LandsGoal
-    | LandsChangeGoal
-    | RoleChangeGoal
-    | TypeChangeGoal
-    | TypeCutGoal
-    | NoneAtOrAboveGoal
-    | AverageManaValueLowerGoal,
-    Field(discriminator="kind"),
-]
 
 
 class DeckTask(BaseModel):
@@ -226,77 +150,6 @@ class DeckGrade(BaseModel):
 
 
 # --- checking a refine's goals ---------------------------------------------------------------
-
-
-def _facts(
-    conn: psycopg.Connection, ids: Sequence[UUID]
-) -> dict[UUID, tuple[float, str, list[str]]]:
-    """Each card's mana value, type line and roles."""
-    rows = conn.execute(
-        "SELECT c.oracle_id, c.cmc, c.type_line, coalesce(r.roles, '{}') FROM cards c "
-        "LEFT JOIN card_roles r USING (oracle_id) WHERE c.oracle_id = ANY(%s)",
-        (list(ids),),
-    ).fetchall()
-    return {row[0]: (float(row[1] or 0), row[2], list(row[3])) for row in rows}
-
-
-def goal_results(
-    conn: psycopg.Connection, goals: Sequence[Goal], start: DeckState, final: DeckState
-) -> list[dict[str, Any]]:
-    """Each goal, whether the refined deck meets it, and the value that decided it."""
-    facts = _facts(conn, list({*start.cards, *final.cards}))
-
-    def is_land(card: UUID) -> bool:
-        return "Land" in facts[card][1].split("—")[0]
-
-    def count(deck: DeckState, keep: Callable[[UUID], bool]) -> int:
-        return sum(n for card, n in deck.cards.items() if keep(card))
-
-    def average(deck: DeckState) -> float:
-        values = [facts[c][0] for c, n in deck.cards.items() if not is_land(c) for _ in range(n)]
-        return sum(values) / len(values) if values else 0.0
-
-    results = []
-    for goal in goals:
-        if isinstance(goal, LandsGoal):
-            actual = count(final, is_land)
-            met, shown = actual == goal.equals, str(actual)
-        elif isinstance(goal, LandsChangeGoal):
-            actual = count(final, is_land) - count(start, is_land)
-            met, shown = actual == goal.equals, f"{actual:+d}"
-        elif isinstance(goal, RoleChangeGoal):
-
-            def has_role(card: UUID, goal: RoleChangeGoal = goal) -> bool:
-                cheap = goal.max_mana_value is None or facts[card][0] <= goal.max_mana_value
-                return not is_land(card) and goal.role in facts[card][2] and cheap
-
-            actual = count(final, has_role) - count(start, has_role)
-            met, shown = actual >= goal.at_least, f"{actual:+d}"
-        elif isinstance(goal, TypeChangeGoal):
-
-            def typed(card: UUID, goal: TypeChangeGoal | TypeCutGoal = goal) -> bool:
-                return goal.type in facts[card][1].split("—")[0]
-
-            actual = count(final, typed) - count(start, typed)
-            met, shown = actual >= goal.at_least, f"{actual:+d}"
-        elif isinstance(goal, TypeCutGoal):
-            cut = sum(
-                max(start.count(card) - final.count(card), 0)
-                for card in start.cards
-                if goal.type in facts[card][1].split("—")[0]
-            )
-            met, shown = cut >= goal.at_least, str(cut)
-        elif isinstance(goal, NoneAtOrAboveGoal):
-            ceiling = goal.mana_value
-            above = sum(
-                n for c, n in final.cards.items() if not is_land(c) and facts[c][0] >= ceiling
-            )
-            met, shown = above == 0, f"{above} at or above"
-        else:
-            before, after = average(start), average(final)
-            met, shown = after < before, f"{before:.2f} → {after:.2f}"
-        results.append({"goal": goal.describe(), "met": met, "actual": shown})
-    return results
 
 
 def _start_state(conn: psycopg.Connection, start: StartDeck) -> DeckState:

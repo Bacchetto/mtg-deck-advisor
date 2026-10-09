@@ -36,6 +36,7 @@ AGENT_TOOLS = [
     "get_card",
     "search_rules",
     "analyze_deck",
+    "find_by_role",  # the agent's refine-only tool, offered for any deck here (#136)
     "propose_deck",
     "propose_changes",
 ]

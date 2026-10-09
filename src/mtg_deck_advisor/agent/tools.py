@@ -37,6 +37,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from mtg_deck_advisor.agent.runs import Task as Task
 from mtg_deck_advisor.agent.runs import ToolOutcome, record_tool_call
 from mtg_deck_advisor.deck.facts import FREE_BASICS, load_card_facts
+from mtg_deck_advisor.deck.goals import Goal, check_goals
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.deck.store import Pool, card_names, load_deck
 from mtg_deck_advisor.guardrails.commander import validate
@@ -44,7 +45,7 @@ from mtg_deck_advisor.guardrails.proposals import save_proposal
 from mtg_deck_advisor.guardrails.untrusted import untrusted
 from mtg_deck_advisor.ingestion.cards import fold_name, loose_name
 from mtg_deck_advisor.llm.ollama import Embedder
-from mtg_deck_advisor.llm.roles import load_roles
+from mtg_deck_advisor.llm.roles import Role, load_roles
 from mtg_deck_advisor.llm.types import ToolCall, ToolResult, ToolSpec
 from mtg_deck_advisor.retrieval.rerank import Reranker
 from mtg_deck_advisor.retrieval.search import CardFilters, SearchMode, search_cards, search_rules
@@ -177,6 +178,12 @@ class ProposeDeckArgs(Arguments):
     )
 
 
+class FindByRoleArgs(Arguments):
+    role: Role = Field(description="The role tag to look for.")
+    mana_value_max: float | None = Field(default=None, ge=0, description="Highest mana value.")
+    k: int = Field(default=20, ge=1, le=40, description="How many cards to return.")
+
+
 class ProposeChangesArgs(Arguments):
     add: list[CardCount] = Field(default=[], max_length=50, description="Cards to add.")
     remove: list[CardCount] = Field(default=[], max_length=50, description="Cards to remove.")
@@ -188,6 +195,13 @@ class ProposeChangesArgs(Arguments):
         max_length=50,
         description="Rule numbers and card names, from this run's tool results, that the "
         "rationale relies on.",
+    )
+    goals: list[Goal] = Field(
+        default=[],
+        max_length=10,
+        description="The request's goals that code can check against the saved deck, such as "
+        "a land count or a role's count. A change that misses one comes back with it listed. "
+        "Leave out a goal the pool can't meet, and tell the user why.",
     )
 
     @model_validator(mode="after")
@@ -381,14 +395,96 @@ def _analyze_deck(ctx: ToolContext, args: AnalyzeDeckArgs) -> Output:
     else:
         lines.append("Legal: no problems found.")
     # In a refine: the proposal against the saved version it changes (#136).
-    if (
-        saved is not None
-        and saved.state is not None
-        and saved.version is not None
-        and deck is not saved.state
-    ):
-        lines += _comparison(ctx, saved.state, saved.version, deck)
+    if saved is not None and saved.state is not None and saved.version is not None:
+        # A refine (#136): the proposal against the saved version, each card, and the pool.
+        if deck is not saved.state:
+            lines += _comparison(ctx, saved.state, saved.version, deck)
+        lines += _refine_detail(ctx, deck)
     return Output(untrusted("\n".join(lines)))
+
+
+def _within(identity: str, commander_identity: str) -> bool:
+    return all(color in commander_identity for color in identity)
+
+
+def _find_by_role(ctx: ToolContext, args: FindByRoleArgs) -> Output:
+    pool = _require_pool(ctx)
+    deck_id = _require_deck_id(ctx)
+    saved = load_deck(ctx.conn, deck_id)
+    deck = ctx.draft or (saved.state if saved else None)
+    if deck is None:
+        raise ToolError("There's no saved deck to search for.")
+    cards = _pool_cards(ctx)
+    identity = cards[deck.commander].color_identity if deck.commander in cards else "WUBRG"
+    roles = load_roles(ctx.conn, pool.cards)
+    found = sorted(
+        (
+            card
+            for oracle_id, tagged in roles.items()
+            if args.role in tagged.roles
+            and (card := cards.get(oracle_id)) is not None
+            and _within(card.color_identity, identity)
+            and (args.mana_value_max is None or card.mana_value <= args.mana_value_max)
+        ),
+        key=lambda card: (card.mana_value, card.name),
+    )[: args.k]
+    if not found:
+        return Output(f"No pool cards within the commander's colors are tagged {args.role}.")
+    lines = []
+    for number, card in enumerate(found, 1):
+        ctx.seen_cards.add(card.oracle_id)
+        where = "in the deck" if deck.count(card.oracle_id) else "not in the deck"
+        lines.append(
+            f"{number}. {card.name} | {card.mana_cost or 'no cost'} | {card.type_line} | "
+            f"{_one_line(card.oracle_text)} | {where}"
+        )
+    return Output(
+        f"{len(found)} pool cards tagged {args.role}, within the commander's colors, cheapest "
+        f"first:\n{untrusted(chr(10).join(lines))}"
+    )
+
+
+def _refine_detail(ctx: ToolContext, deck: DeckState) -> list[str]:
+    """For a refine: each nonland card with its mana value and roles, and what the pool has
+    left by role, so "the weakest cards" and "add more X" have something to go on."""
+    pool = _require_pool(ctx)
+    cards = _pool_cards(ctx)
+    names = card_names(ctx.conn, [deck.commander, *deck.cards])
+    facts = {
+        row[0]: (float(row[1] or 0), row[2], row[3])
+        for row in ctx.conn.execute(
+            "SELECT oracle_id, cmc, type_line, color_identity FROM cards WHERE oracle_id = ANY(%s)",
+            (list({deck.commander, *deck.cards, *pool.cards}),),
+        ).fetchall()
+    }
+
+    def is_land(card: UUID) -> bool:
+        return "Land" in facts[card][1].split("—")[0] if card in facts else False
+
+    roles = load_roles(ctx.conn, list({*deck.cards, *pool.cards}))
+    nonland = sorted(
+        (card for card in deck.cards if not is_land(card)),
+        key=lambda card: (-facts[card][0], names.get(card, "")),
+    )
+    lines = ["Nonland cards, most expensive first (mana value): roles"]
+    for card in nonland:
+        tags = ", ".join(roles[card].roles) if card in roles and roles[card].roles else "no role"
+        copies = deck.count(card)
+        lines.append(f"{copies} {names.get(card, card)} ({facts[card][0]:g}): {tags}")
+    identity = "".join(facts[deck.commander][2]) if deck.commander in facts else "WUBRG"
+    left: Counter[str] = Counter()
+    for card in pool.cards:
+        if deck.count(card) or is_land(card) or card not in cards:
+            continue
+        if not _within(cards[card].color_identity, identity):
+            continue
+        for role in roles[card].roles if card in roles else []:
+            left[role] += 1
+    lines.append(
+        "In the pool but not the deck, within the commander's colors, by role: "
+        + (", ".join(f"{role} {n}" for role, n in left.most_common()) or "none")
+    )
+    return lines
 
 
 def _propose_deck(ctx: ToolContext, args: ProposeDeckArgs) -> Output:
@@ -461,6 +557,14 @@ def _propose_changes(ctx: ToolContext, args: ProposeChangesArgs) -> Output:
     ctx.draft = deck
     facts = load_card_facts(ctx.conn, [deck.commander, *deck.cards])
     problems += [v.model_dump(mode="json") for v in validate(deck, facts, pool.cards).violations]
+    for goal in check_goals(ctx.conn, args.goals, saved.state, deck):
+        if not goal["met"]:
+            problems.append(
+                {
+                    "code": "goal_not_met",
+                    "message": f"Goal not met: {goal['goal']} ({goal['actual']}).",
+                }
+            )
     proposal = save_proposal(
         ctx.conn,
         run_id=ctx.run_id,
@@ -536,6 +640,14 @@ TOOLS: dict[str, Tool] = {
             AnalyzeDeckArgs,
             _analyze_deck,
             DECK_TASKS,
+        ),
+        Tool(
+            "find_by_role",
+            "List the user's pool cards that have a role tag (removal, ramp, card draw...), "
+            "within the commander's colors, cheapest first, each marked as in the deck or not.",
+            FindByRoleArgs,
+            _find_by_role,
+            frozenset({"refine"}),
         ),
         Tool(
             "propose_deck",

@@ -177,7 +177,7 @@ The agent's tools are also available to an MCP client, whose own model then does
 building, under the same checks
 ([ADR 0014](decisions/0014-interfaces-background-runs-a-thin-cli-and-mcp.md)). The client gets:
 - **Pools and decks:** `list_pools`, `list_decks`, `new_deck`, `rename_deck`, `archive_deck`, `unarchive_deck`.
-- **The agent's six tools,** scoped by deck.
+- **The agent's seven tools,** scoped by deck, `find_by_role` among them.
 - **Your own steps:** `list_proposals`, `show_proposal`, `apply_proposal` and `export_deck`.
 - **The decisions:** `approve_proposal`, `reject_proposal` and `approve_export`.
 

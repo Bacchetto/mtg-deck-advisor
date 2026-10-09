@@ -80,7 +80,7 @@ flowchart LR
     loop["Agent loop<br/>turn and cost caps"]
     models["Model interface<br/>Claude · Ollama · replay"]
     subgraph tools ["Agent tools"]
-        read["Read-only<br/>search_pool · get_card<br/>search_rules · analyze_deck"]
+        read["Read-only<br/>search_pool · get_card · search_rules<br/>analyze_deck · find_by_role"]
         propose["Propose<br/>propose_deck · propose_changes"]
     end
     guard["Guardrails<br/>Commander validator<br/>pool and citation checks"]
@@ -101,7 +101,7 @@ flowchart LR
     decide -- "apply, export" --> deck
 ```
 
-**The agent's six tools.** The agent (Claude Sonnet 5.5) has four read-only tools and two that propose.
+**The agent's tools.** The agent (Claude Sonnet 5.5) has five read-only tools and two that propose. One read-only tool, `find_by_role`, is offered in refines only.
 - **It holds no deck state, and no tool changes anything.** Deck state belongs to code.
 - **Approving, applying and exporting aren't tools.** Only you can do them, and apply and export refuse to act without your approval record ([ADR 0013](docs/decisions/0013-an-agent-that-proposes-and-code-that-decides.md)).
 
