@@ -57,10 +57,10 @@ ALL_FOUR = dict.fromkeys(CRITERIA, 4)
 def test_the_task_set_covers_each_pool_and_kind_of_request() -> None:
     tasks = load_tasks()
 
-    assert [t.id for t in tasks] == [f"T{n:02}" for n in range(1, 15)]
-    # Six refines (#136), each from a full deck: a commander and 99 cards.
+    assert [t.id for t in tasks] == [f"T{n:02}" for n in range(1, 27)]
+    # 18 refines (#136), each from a full deck: a commander and 99 cards.
     refines = [t for t in tasks if t.kind == "refine"]
-    assert [t.id for t in refines] == ["T09", "T10", "T11", "T12", "T13", "T14"]
+    assert [t.id for t in refines] == [f"T{n:02}" for n in range(9, 27)]
     assert all(t.start and sum(t.start.cards.values()) == 99 for t in refines)
     assert {t.pool for t in tasks} == {
         "pool_300.txt",
@@ -198,6 +198,6 @@ def test_every_new_refine_has_goals_that_code_can_check() -> None:
     # T09-T14's requests translated into goals (#136); a draft has none.
     tasks = {t.id: t for t in load_tasks()}
 
-    assert all(tasks[f"T{n:02}"].goals for n in range(9, 15))
+    assert all(tasks[f"T{n:02}"].goals for n in range(9, 27))
     assert not any(t.goals for t in tasks.values() if t.kind == "draft")
     assert [g.kind for g in tasks["T14"].goals] == ["lands", "type_change"]

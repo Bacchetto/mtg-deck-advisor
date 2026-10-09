@@ -203,12 +203,12 @@
         "summary": "A well-built Dimir Zombie recursion deck with strong draw and interaction, held back slightly by tapped duals, modest ramp and a few off-tribe inclusions. The requested refine was carried out cleanly and on theme.",
         "goals": [
           {
-            "goal": "card_draw up by 3 or more",
+            "goal": "exactly 3 card_draw cards added",
             "met": true,
-            "actual": "+3"
+            "actual": "3"
           },
           {
-            "goal": "3 or more Creature cards cut",
+            "goal": "exactly 3 Creature cards cut",
             "met": true,
             "actual": "3"
           }
@@ -265,9 +265,9 @@
             "actual": "-2"
           },
           {
-            "goal": "removal at mana value 2 or less up by 2 or more",
+            "goal": "exactly 2 removal cards at mana value 2 or less added",
             "met": true,
-            "actual": "+2"
+            "actual": "2"
           }
         ]
       },

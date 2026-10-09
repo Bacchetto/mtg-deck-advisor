@@ -203,12 +203,12 @@
         "summary": "This is a strong, focused Dimir Zombie recursion deck with excellent draw and interaction, held back slightly by a handful of off-theme creatures and some tapped lands, and it appears to make the requested draw-for-creature swap.",
         "goals": [
           {
-            "goal": "card_draw up by 3 or more",
+            "goal": "exactly 3 card_draw cards added",
             "met": true,
-            "actual": "+3"
+            "actual": "3"
           },
           {
-            "goal": "3 or more Creature cards cut",
+            "goal": "exactly 3 Creature cards cut",
             "met": true,
             "actual": "3"
           }
@@ -265,9 +265,9 @@
             "actual": "-2"
           },
           {
-            "goal": "removal at mana value 2 or less up by 2 or more",
+            "goal": "exactly 2 removal cards at mana value 2 or less added",
             "met": true,
-            "actual": "+2"
+            "actual": "2"
           }
         ]
       },

@@ -203,12 +203,12 @@
         "summary": "This is a solid, well-supported Dimir Zombie reanimation deck with deep draw and interaction and a sound mana base; its weaknesses are a handful of off-theme cards and only modest ramp. The requested draw spells appear to be present, but the cuts can't be verified without the original list.",
         "goals": [
           {
-            "goal": "card_draw up by 3 or more",
+            "goal": "exactly 3 card_draw cards added",
             "met": true,
-            "actual": "+3"
+            "actual": "3"
           },
           {
-            "goal": "3 or more Creature cards cut",
+            "goal": "exactly 3 Creature cards cut",
             "met": true,
             "actual": "3"
           }
@@ -265,9 +265,9 @@
             "actual": "-2"
           },
           {
-            "goal": "removal at mana value 2 or less up by 2 or more",
+            "goal": "exactly 2 removal cards at mana value 2 or less added",
             "met": true,
-            "actual": "+2"
+            "actual": "2"
           }
         ]
       },
