@@ -165,8 +165,11 @@ and each rejection cost another turn. See [the write-up](docs/findings/haiku-cos
 - **Rules answers:** they agreed with the Sonnet grader on 88% exactly.
 - **Where the rules grader is conservative:** answers that add correct detail beyond the key facts.
 
-**Prompt injection.** Sonnet never obeyed injected card or rule text in 5 cases, and the guardrails
-held in every case.
+**Prompt injection.** In 25 cases, injected card or rule text never got its way, and the guardrails
+held every time. The cases span 12 attack families, from exfiltration and phishing to obfuscated,
+second-order and fake-authority instructions. Sonnet and Haiku both resisted all 20 of the wider
+cases, but only Sonnet warned the user about them, in 18 of 20
+([report](evals/reports/2026-10-09-injection-wider.md)).
 
 **CI runs** on every pull request: lint, strict mypy, unit and integration tests, a secret scan, a
 dependency audit and an image build. It also runs:
@@ -189,7 +192,9 @@ on a deliberately degraded setting.
   rules ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)), but answers still cite
   supporting general rules, such as the casting steps for a question about flash. Citation
   precision is 92-94%.
-- **The injection cases are few and domain-bound** ([#133](https://github.com/Bacchetto/mtg-deck-advisor/issues/133)).
+- **The injection cases no longer tell the models apart.** Both resist all of them, so harder
+  attacks are needed: longer multi-turn plants, attacks split across cards, and text posing as the
+  user's own request ([report](evals/reports/2026-10-09-injection-wider.md)).
 - **A prompt change isn't caught before merge.** The live eval runs on `main`, not on pull
   requests: a deliberate trade against paying for every push.
 - **There's no authentication.** The API listens only on `127.0.0.1`, and users, keys, rate limits
