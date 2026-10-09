@@ -188,6 +188,7 @@ def test_each_task_offers_only_its_own_tools() -> None:
         "get_card",
         "search_rules",
         "analyze_deck",
+        "find_by_role",  # refine-only (#136); #159 tracks offering it in drafts
         "propose_changes",
     ]
     assert names("rules") == ["search_rules"]
@@ -484,6 +485,137 @@ def test_analyze_deck_reports_roles_curve_colors_and_validity(conn: psycopg.Conn
     assert "Untagged: 1" in analysis  # the Cohort
     assert "3: 61" in analysis  # mana value 3: the rats and the Cohort
     assert "Legal" in analysis
+
+
+def test_in_a_refine_analyze_deck_compares_the_proposal_with_the_saved_version(
+    conn: psycopg.Connection,
+) -> None:
+    # Refines changed too little to meet the request (#136): the agent couldn't
+    # see whether its change set did what was asked.
+    rats, sol_ring, cohort = card_id(RATS), card_id("Sol Ring"), card_id(COHORT)
+    basics = {card_id(name): count for name, count in BASICS.items()}
+    base = DeckState.new(card_id(ATRAXA), {rats: 60, sol_ring: 1, cohort: 1, **basics})
+    session = session_for(conn, "refine", base=base)
+    session.call(
+        "propose_changes",
+        add=[{"name": "Delver of Secrets"}],
+        remove=[{"name": "Island"}],
+        rationale="A cheap flier.",
+    )
+
+    analysis = body(session.call("analyze_deck"))
+
+    assert "Compared with the saved version 1" in analysis
+    assert "Lands: 37 → 36" in analysis
+    assert "Average mana value: 2.97 → 2.94" in analysis  # nonland cards, commander aside
+    assert "1: 1 → 2" in analysis  # Sol Ring, then Delver too
+    assert "Untagged: 1 → 2" in analysis
+    assert "Cut: Island" in analysis and "Added: Delver of Secrets" in analysis
+
+
+def test_a_draft_analysis_has_nothing_to_compare_with(conn: psycopg.Connection) -> None:
+    # Drafts keep exactly the output they had, so their recordings still replay.
+    session = session_for(conn, "draft")
+    session.call("propose_deck", commander=ATRAXA, cards=LEGAL_CARDS, rationale="r")
+
+    analysis = body(session.call("analyze_deck"))
+
+    assert "Compared with" not in analysis and "Average mana value" not in analysis
+
+
+# --- refines: finding cards by role, goals, and what's left in the pool (#136) ---------
+
+
+def tag(conn: psycopg.Connection, name: str, role: str) -> None:
+    content_hash = conn.execute(
+        "SELECT content_hash FROM cards WHERE oracle_id = %s", (card_id(name),)
+    ).fetchone()
+    save_roles(
+        conn,
+        [
+            CardRoles(
+                oracle_id=card_id(name),
+                roles=[role],
+                reason="Test.",
+                content_hash=content_hash[0] if content_hash else "",
+                prompt_version=PROMPT_VERSION,
+                model="fake",
+            )
+        ],
+    )
+
+
+def refine_session(conn: psycopg.Connection) -> Session:
+    basics = {card_id(name): count for name, count in BASICS.items()}
+    base = DeckState.new(
+        card_id(ATRAXA),
+        {card_id(RATS): 60, card_id("Sol Ring"): 1, card_id(COHORT): 1, **basics},
+    )
+    return session_for(conn, "refine", base=base)
+
+
+def test_only_a_refine_can_find_pool_cards_by_role(conn: psycopg.Connection) -> None:
+    # Drafts keep exactly their tools, so their recordings still replay (#159
+    # tracks offering it in drafts).
+    assert "find_by_role" in {spec.name for spec in tool_specs("refine")}
+    assert "find_by_role" not in {spec.name for spec in tool_specs("draft")}
+
+
+def test_finding_by_role_lists_the_pools_cards_the_commander_can_use(
+    conn: psycopg.Connection,
+) -> None:
+    tag(conn, DELVER, "card_draw")
+    tag(conn, BONECRUSHER, "card_draw")  # red: outside Atraxa's colors
+    session = refine_session(conn)
+
+    found = body(session.call("find_by_role", role="card_draw"))
+    ramp = body(session.call("find_by_role", role="ramp"))
+
+    assert "Delver of Secrets" in found and "not in the deck" in found
+    assert "Bonecrusher" not in found
+    assert "Sol Ring" in ramp and "in the deck" in ramp
+
+
+def test_a_change_that_misses_a_stated_goal_comes_back(conn: psycopg.Connection) -> None:
+    session = refine_session(conn)
+
+    missed = session.call(
+        "propose_changes",
+        add=[{"name": "Delver of Secrets"}],
+        remove=[{"name": "Island"}],
+        rationale="A cheap flier.",
+        goals=[{"kind": "lands", "equals": 34}],
+    )
+    met = session.call(
+        "propose_changes",
+        add=[{"name": "Delver of Secrets"}],
+        remove=[{"name": "Island"}],
+        rationale="A cheap flier.",
+        goals=[
+            {"kind": "lands", "equals": 36},
+            {"kind": "type_change", "type": "Creature", "at_least": 1},
+        ],
+    )
+
+    assert missed.is_error
+    assert "Goal not met: exactly 34 lands (36)" in body(missed)
+    assert not met.is_error, met.content
+
+
+def test_a_refines_analysis_lists_each_card_and_whats_left_in_the_pool(
+    conn: psycopg.Connection,
+) -> None:
+    tag(conn, DELVER, "card_draw")
+    tag(conn, BONECRUSHER, "removal")  # outside Atraxa's colors: not counted
+    session = refine_session(conn)
+
+    analysis = body(session.call("analyze_deck"))
+
+    assert "Nonland cards, most expensive first" in analysis
+    assert "Sol Ring (1): ramp" in analysis
+    assert "Lim-Dûl's Cohort (3): no role" in analysis
+    assert "In the pool but not the deck, within the commander's colors" in analysis
+    assert "card_draw 1" in analysis and "removal" not in analysis.split("pool but not")[1]
 
 
 # --- recording (OBS-1) --------------------------------------------------------------

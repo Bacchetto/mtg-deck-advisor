@@ -32,7 +32,9 @@ seeded database gives the same search results. It costs $0.16 to record again.
 
 1. `mtg-advisor build`, the Demo collection, Enter to let the agent choose: a Sheoldred,
    Whispering One draft, approved.
-2. Change: "Add more card draw and cut the weakest creatures.", approved, then exported.
+2. Change: "Add more card draw and cut the weakest creatures.", approved, then exported. Recorded
+   again for #136's refine prompt and tools, with the draft replayed so that only the refine was
+   paid (about $0.05 each time).
 3. `mtg-advisor ask` with three questions:
    - "My commander Sheoldred died and went to the graveyard. Can I move her to the command
      zone instead?"

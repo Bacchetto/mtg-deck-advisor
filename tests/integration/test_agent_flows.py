@@ -336,3 +336,33 @@ def test_a_refused_rules_run_says_why_it_found_nothing(conn: psycopg.Connection)
     assert not result.found
     assert result.run.status == "refused"
     assert result.reason == result.run.error and "declined" in result.reason
+
+
+def test_a_refine_asks_for_checkable_goals_checked_before_ending(conn: psycopg.Connection) -> None:
+    # In the baseline, both refines made a small legal change and stopped, with
+    # the weakest cards left in and the curve barely lower (#136).
+    from mtg_deck_advisor.agent.flows import prepare_refine
+
+    draft = draft_deck(
+        services(
+            conn,
+            FakeProvider(
+                calls(call("propose_deck", commander=ATRAXA, cards=LEGAL_CARDS, rationale="r")),
+                answer("Drafted."),
+            ),
+        ),
+        pool(conn),
+    )
+    (proposal,) = draft.run.proposals
+    approve_proposal(conn, proposal)
+    apply_proposal(conn, proposal)
+
+    prompt = prepare_refine(conn, SONNET, draft.deck_id, request="Lower the curve.").prompt
+
+    assert "Refine my saved deck (version 1): Lower the curve." in prompt
+    assert "checkable goals" in prompt
+    assert "analyze_deck" in prompt
+    assert "can't" in prompt  # say so when the pool can't meet the request
+    # The goals go to propose_changes, which checks them in code, and the
+    # pool can be searched by role.
+    assert "goals" in prompt and "propose_changes" in prompt and "find_by_role" in prompt

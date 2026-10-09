@@ -193,8 +193,18 @@ def prepare_refine(
     if deck.archived:
         raise NotReadyError(f"deck {deck_id} is archived; unarchive it to refine it")
     run_id = start_run(conn, "refine", model, pool_id=deck.pool_id, deck_id=deck_id)
+    # In the baseline, refines made a small legal change and stopped, short of
+    # the request (#136): so the request becomes goals the agent checks.
     prompt = (
         f"Refine my saved deck (version {deck.version}): {request}\n\n"
+        "First turn my request into checkable goals, such as how many cards to cut or add, "
+        "a land count, or a lower average mana value. analyze_deck lists each card with "
+        "its mana value and roles, and what my pool has left by role, and find_by_role "
+        "lists my pool's cards with a role. Propose changes that meet every goal, and pass "
+        "the goals code can check to propose_changes as goals: it sends back a change that "
+        "misses one. Then check the proposal with analyze_deck, which compares it with the "
+        "saved version. If my pool can't meet a goal, leave it out of the goals and say so "
+        "plainly rather than make a token change.\n\n"
         f"The deck, commander first:\n{untrusted(decklist(conn, deck.state))}"
     )
     return PreparedRun(run_id, "refine", deck.pool_id, deck_id, prompt)

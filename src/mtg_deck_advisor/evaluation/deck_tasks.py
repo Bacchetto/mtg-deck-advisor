@@ -19,9 +19,11 @@ archived afterwards, so they stay out of the user's deck lists.
 """
 
 import argparse
+import re
 import statistics
 import sys
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID
@@ -30,6 +32,8 @@ import psycopg
 from pydantic import BaseModel, Field, model_validator
 
 from mtg_deck_advisor.agent.flows import AgentServices, draft_deck, import_pool, refine_deck
+from mtg_deck_advisor.deck.goals import Goal
+from mtg_deck_advisor.deck.goals import check_goals as goal_results
 from mtg_deck_advisor.deck.state import DeckState
 from mtg_deck_advisor.deck.store import create_deck, save_version, set_archived
 from mtg_deck_advisor.evaluation.criteria import CRITERIA as CRITERIA
@@ -56,6 +60,10 @@ from mtg_deck_advisor.llm.types import Message, ModelRequest
 DECK_TASKS = Path("evals/datasets/deck_tasks.jsonl")
 DATASETS = Path("evals/datasets")
 RUBRIC = Path("evals/rubrics/deck_quality.md")
+COMPARISON_RUBRIC = Path("evals/rubrics/refine_comparison.md")
+COMPARISONS = Path("evals/runs/refine_comparisons")
+# An estimate for one comparison by the grader: two changes and a whole deck.
+COMPARISON_COST = 0.06
 GRADER_MODEL = "claude-opus-5-5"
 
 VARIANTS = {
@@ -90,6 +98,8 @@ class DeckTask(BaseModel):
     # For a refine: the deck it starts from.
     start: StartDeck | None
     notes: str
+    # For a refine: what its request asks for, as goals code can check.
+    goals: list[Goal] = []
 
     @model_validator(mode="after")
     def _starts(self) -> Self:
@@ -139,12 +149,27 @@ class DeckGrade(BaseModel):
         return statistics.mean(given)
 
 
+# --- checking a refine's goals ---------------------------------------------------------------
+
+
+def _start_state(conn: psycopg.Connection, start: StartDeck) -> DeckState:
+    ids = _ids(conn, [start.commander, *start.cards])
+    return DeckState.new(ids[start.commander], {ids[n]: c for n, c in start.cards.items()})
+
+
 # --- what the grader sees --------------------------------------------------------------------
 
 
-def deck_text(conn: psycopg.Connection, state: DeckState, request: str) -> str:
-    """The deck as the grader reads it: the request, every card's text, and the counts."""
-    ids = [state.commander, *state.cards]
+def deck_text(
+    conn: psycopg.Connection, state: DeckState, request: str, start: DeckState | None = None
+) -> str:
+    """The deck as the grader reads it: the request, every card's text, and the counts.
+
+    For a refine, `start` is the deck it began from. The text then ends with the
+    change, so the grader can judge whether the change does what was asked
+    (#136), not only how the final deck reads.
+    """
+    ids = [state.commander, *state.cards, *(start.cards if start else [])]
     rows = conn.execute(
         "SELECT oracle_id, name, mana_cost, cmc, type_line, oracle_text FROM cards "
         "WHERE oracle_id = ANY(%s)",
@@ -157,28 +182,46 @@ def deck_text(conn: psycopg.Connection, state: DeckState, request: str) -> str:
         oracle = " ".join((text or "").split())
         return f"{count} {name} | {cost or '-'} | {type_line} | {oracle}"
 
-    lands = sum(n for card, n in state.cards.items() if "Land" in cards[card][3])
-    curve: dict[int, int] = {}
-    for card, n in state.cards.items():
-        if "Land" not in cards[card][3]:
-            value = int(cards[card][2] or 0)
-            curve[min(value, 7)] = curve.get(min(value, 7), 0) + n
-    curve_text = ", ".join(
-        f"{value if value < 7 else '7+'}: {curve[value]}" for value in sorted(curve)
-    )
+    def counts(deck: DeckState) -> tuple[int, str]:
+        lands = sum(n for card, n in deck.cards.items() if "Land" in cards[card][3])
+        curve: dict[int, int] = {}
+        for card, n in deck.cards.items():
+            if "Land" not in cards[card][3]:
+                value = min(int(cards[card][2] or 0), 7)
+                curve[value] = curve.get(value, 0) + n
+        text = ", ".join(f"{v if v < 7 else '7+'}: {curve[v]}" for v in sorted(curve))
+        return lands, text
+
+    lands, curve_text = counts(state)
     others = sorted(state.cards.items(), key=lambda item: cards[item[0]][0])
-    return "\n".join(
-        [
-            f"Request: {request or 'none'}",
+    lines = [
+        f"Request: {request or 'none'}",
+        "",
+        f"Commander: {line(state.commander, 1)[2:]}",
+        "",
+        f"The other {state.total - 1} cards (count | name | mana cost | type | text):",
+        *(line(card, n) for card, n in others),
+        "",
+        f"Lands: {lands}. Nonland cards by mana value: {curve_text}.",
+    ]
+    if start is not None:
+        start_lands, start_curve = counts(start)
+
+        def listed(changes: dict[UUID, int]) -> str:
+            named = sorted((cards[card][0], n) for card, n in changes.items() if n > 0)
+            return ", ".join(f"{n} {name}" for name, n in named) or "nothing"
+
+        cut = {card: start.count(card) - state.count(card) for card in start.cards}
+        added = {card: state.count(card) - start.count(card) for card in state.cards}
+        lines += [
             "",
-            f"Commander: {line(state.commander, 1)[2:]}",
-            "",
-            f"The other {state.total - 1} cards (count | name | mana cost | type | text):",
-            *(line(card, n) for card, n in others),
-            "",
-            f"Lands: {lands}. Nonland cards by mana value: {curve_text}.",
+            "The change from the starting deck (this is a refine of a saved deck):",
+            f"Lands: {start_lands} → {lands}.",
+            f"Nonland cards by mana value, before: {start_curve}.",
+            f"Cut: {listed(cut)}",
+            f"Added: {listed(added)}",
         ]
-    )
+    return "\n".join(lines)
 
 
 def grade_deck(grader: ModelClient, text: str) -> DeckGrade:
@@ -228,6 +271,7 @@ def run_task(
     conn = services.conn
     pool_id = _pool(conn, datasets, task.pool, pools)
     details: dict[str, Any] = {"request": task.request, "kind": task.kind}
+    start: DeckState | None = None
     if task.kind == "draft":
         drafted = draft_deck(services, pool_id, request=task.request, name=f"eval {task.id}")
         deck_id, run = drafted.deck_id, drafted.run
@@ -258,7 +302,9 @@ def run_task(
         details["commander_match"] = (
             details["commander"] == task.commander if task.commander else None
         )
-        details["deck_text"] = deck_text(conn, state, task.request)
+        details["deck_text"] = deck_text(conn, state, task.request, start)
+        if start is not None and task.goals:
+            details["goals"] = goal_results(conn, task.goals, start, state)
         try:
             grade = grade_deck(grader, details["deck_text"])
         except InvalidOutputError as exc:
@@ -269,12 +315,278 @@ def run_task(
             scores["quality"] = grade.quality
             details["reasons"] = grade.reasons.model_dump()
             details["summary"] = grade.summary
+        if "goals" in details:
+            met = [goal["met"] for goal in details["goals"]]
+            scores["goals_met"] = sum(met) / len(met)
     set_archived(conn, deck_id, True)
     record_audit(conn, "system", "archive", f"deck:{deck_id}", {"reason": "eval deck"})
     result = result_from_run(conn, run.run_id, task.id, success=bool(legal), details=details)
     result.scores = scores
     result.grading_cost_usd = grader.spent_usd - graded_before
     return result
+
+
+def _final_deck(conn: psycopg.Connection, text: str) -> DeckState:
+    """The deck a saved grader text shows, read back from its card lines."""
+    commander = re.search(r"^Commander: (.+?) \| ", text, re.MULTILINE)
+    if commander is None:
+        raise ValueError("the saved deck text names no commander")
+    cards = {
+        m.group(2): int(m.group(1))
+        for m in re.finditer(r"^(\d+) (.+?) \| ", text.split("\n\nLands: ")[0], re.MULTILINE)
+    }
+    ids = _ids(conn, [commander.group(1), *cards])
+    return DeckState.new(ids[commander.group(1)], {ids[n]: c for n, c in cards.items()})
+
+
+def check_goals(conn: psycopg.Connection, run: EvalRun, tasks: Sequence[DeckTask]) -> EvalRun:
+    """A saved run with its refines' goals checked by code. Free: no model is called."""
+    by_id = {t.id: t for t in tasks}
+    checked = run.model_copy(deep=True)
+    for result in checked.results:
+        task = by_id.get(result.case_id)
+        text = result.details.get("deck_text")
+        if task is None or task.start is None or not task.goals or not text:
+            continue
+        goals = goal_results(
+            conn, task.goals, _start_state(conn, task.start), _final_deck(conn, text)
+        )
+        result.details["goals"] = goals
+        result.scores["goals_met"] = sum(g["met"] for g in goals) / len(goals)
+    return checked
+
+
+def regrade(
+    conn: psycopg.Connection, grader: ModelClient, run: EvalRun, tasks: Sequence[DeckTask]
+) -> EvalRun:
+    """A saved run with its refines graded again on their change; nothing else is rerun.
+
+    The agent isn't called: each refine's final deck is read back from its
+    saved text, and graded with the starting deck and the change shown.
+    """
+    by_id = {t.id: t for t in tasks}
+    results: list[CaseResult] = []
+    for result in run.results:
+        task = by_id.get(result.case_id)
+        text = result.details.get("deck_text")
+        if task is None or task.kind != "refine" or task.start is None or not text:
+            results.append(result)
+            continue
+        start = _start_state(conn, task.start)
+        new_text = deck_text(conn, _final_deck(conn, text), task.request, start)
+        before = grader.spent_usd
+        grade = grade_deck(grader, new_text)
+        scores = {name: float(score) for name, score in grade.scores.model_dump().items() if score}
+        scores["quality"] = grade.quality
+        details = result.details | {
+            "deck_text": new_text,
+            "reasons": grade.reasons.model_dump(),
+            "summary": grade.summary,
+        }
+        results.append(
+            result.model_copy(
+                update={
+                    "scores": scores,
+                    "details": details,
+                    "grading_cost_usd": result.grading_cost_usd + grader.spent_usd - before,
+                }
+            )
+        )
+    variant = run.variant.model_copy(update={"name": f"{run.variant.name}-regraded"})
+    return run.model_copy(
+        update={"variant": variant, "results": results, "started_at": datetime.now(UTC)}
+    )
+
+
+# --- two refines of a task, compared side by side (#136) ------------------------------------
+
+
+class Preference(BaseModel):
+    better: Literal["A", "B", "same"]
+    reason: str
+
+
+class PairResult(BaseModel):
+    case_id: str
+    request: str
+    # What the grader said with "before" as A, then with "after" as A.
+    first: Literal["A", "B", "same"]
+    second: Literal["A", "B", "same"]
+    # A preference counts only if it holds in both orders.
+    winner: Literal["before", "after", "same"]
+    reasons: list[str]
+
+
+class Comparison(BaseModel):
+    before: str
+    after: str
+    grader: str
+    compared_at: datetime
+    pairs: list[PairResult]
+    cost_usd: float = 0.0
+
+    @property
+    def after_win_rate(self) -> float:
+        """The share of pairs "after" won, a tie counting half."""
+        score = {"after": 1.0, "same": 0.5, "before": 0.0}
+        return _mean([score[p.winner] for p in self.pairs])
+
+
+def change_text(conn: psycopg.Connection, start: DeckState, final: DeckState) -> str:
+    """One refine's change: the counts, and the cards cut and added with their text."""
+    ids = list({*start.cards, *final.cards})
+    rows = conn.execute(
+        "SELECT oracle_id, name, mana_cost, cmc, type_line, oracle_text FROM cards "
+        "WHERE oracle_id = ANY(%s)",
+        (ids,),
+    ).fetchall()
+    cards = {row[0]: row[1:] for row in rows}
+
+    def is_land(card: UUID) -> bool:
+        return "Land" in cards[card][3].split("—")[0]
+
+    def lands(deck: DeckState) -> int:
+        return sum(n for card, n in deck.cards.items() if is_land(card))
+
+    def average(deck: DeckState) -> float:
+        values = [
+            float(cards[c][2] or 0)
+            for c, n in deck.cards.items()
+            if not is_land(c)
+            for _ in range(n)
+        ]
+        return sum(values) / len(values) if values else 0.0
+
+    cut = {
+        c: start.count(c) - final.count(c) for c in start.cards if start.count(c) > final.count(c)
+    }
+    added = {
+        c: final.count(c) - start.count(c) for c in final.cards if final.count(c) > start.count(c)
+    }
+
+    def names(changes: dict[UUID, int]) -> str:
+        return ", ".join(
+            f"{n} {cards[c][0]}" for c, n in sorted(changes.items(), key=lambda i: cards[i[0]][0])
+        )
+
+    def lines(changes: dict[UUID, int]) -> list[str]:
+        out = []
+        for card, n in sorted(changes.items(), key=lambda item: cards[item[0]][0]):
+            name, cost, _, type_line, text = cards[card]
+            out.append(
+                f"{n} {name} | {cost or '-'} | {type_line} | {' '.join((text or '').split())}"
+            )
+        return out or ["none"]
+
+    return "\n".join(
+        [
+            f"Lands: {lands(start)} → {lands(final)}. Average mana value of nonland cards: "
+            f"{average(start):.2f} → {average(final):.2f}.",
+            f"Cut: {names(cut) or 'nothing'}",
+            f"Added: {names(added) or 'nothing'}",
+            "",
+            "The cards cut:",
+            *lines(cut),
+            "",
+            "The cards added:",
+            *lines(added),
+        ]
+    )
+
+
+def compare_changes(
+    grader: ModelClient, request: str, start: str, change_a: str, change_b: str
+) -> Preference:
+    message = (
+        f"The request: {request}\n\n<starting_deck>\n{start}\n</starting_deck>\n\n"
+        f"<change_a>\n{change_a}\n</change_a>\n\n<change_b>\n{change_b}\n</change_b>"
+    )
+    model_request = ModelRequest(
+        purpose="refine_comparison",
+        system=COMPARISON_RUBRIC.read_text(encoding="utf-8"),
+        messages=(Message(role="user", content=message),),
+        max_tokens=1000,
+    )
+    return grader.generate_structured(model_request, Preference).value
+
+
+def compare_runs(
+    conn: psycopg.Connection,
+    grader: ModelClient,
+    before: EvalRun,
+    after: EvalRun,
+    tasks: Sequence[DeckTask],
+) -> Comparison:
+    """Each refine both runs made, compared twice with the order swapped.
+
+    Asking twice is the guard against position bias: a grader that prefers
+    whichever change comes first flips its answer, and that counts as a tie.
+    """
+    spent = grader.spent_usd
+    after_results = {r.case_id: r for r in after.results}
+    pairs: list[PairResult] = []
+    for task in tasks:
+        if task.kind != "refine" or task.start is None:
+            continue
+        old = next((r for r in before.results if r.case_id == task.id), None)
+        new = after_results.get(task.id)
+        if old is None or new is None:
+            continue
+        old_text, new_text = old.details.get("deck_text"), new.details.get("deck_text")
+        if not old_text or not new_text:
+            continue
+        start = _start_state(conn, task.start)
+        start_text = deck_text(conn, start, task.request)
+        old_change = change_text(conn, start, _final_deck(conn, old_text))
+        new_change = change_text(conn, start, _final_deck(conn, new_text))
+        first = compare_changes(grader, task.request, start_text, old_change, new_change)
+        second = compare_changes(grader, task.request, start_text, new_change, old_change)
+        said_first = {"A": "before", "B": "after", "same": "same"}[first.better]
+        said_second = {"A": "after", "B": "before", "same": "same"}[second.better]
+        winner: Literal["before", "after", "same"] = (
+            said_first if said_first == said_second else "same"  # type: ignore[assignment]
+        )
+        pairs.append(
+            PairResult(
+                case_id=task.id,
+                request=task.request,
+                first=first.better,
+                second=second.better,
+                winner=winner,
+                reasons=[first.reason, second.reason],
+            )
+        )
+    return Comparison(
+        before=before.variant.name,
+        after=after.variant.name,
+        grader=grader.model,
+        compared_at=datetime.now(UTC),
+        pairs=pairs,
+        cost_usd=grader.spent_usd - spent,
+    )
+
+
+def refine_comparison_report(comparison: Comparison, before: Path, after: Path) -> str:
+    lines = [
+        f"# Refines compared side by side, {comparison.compared_at:%Y-%m-%d %H:%M} UTC",
+        "",
+        f"Each refine in [`{before.as_posix()}`](../../{before.as_posix()}) (before) and "
+        f"[`{after.as_posix()}`](../../{after.as_posix()}) (after), compared by "
+        f"{comparison.grader} with [the rubric](../rubrics/{COMPARISON_RUBRIC.name}), twice "
+        "with the order swapped. A preference counts only if it holds both times. "
+        f"Cost ${comparison.cost_usd:.4f}.",
+        "",
+        f"**After wins {comparison.after_win_rate:.0%}** of the comparisons, a tie counting half.",
+        "",
+        "| Task | Request | Before as A | After as A | Better |",
+        "|---|---|---|---|---|",
+    ]
+    for p in comparison.pairs:
+        lines.append(f"| {p.case_id} | {p.request} | {p.first} | {p.second} | **{p.winner}** |")
+    lines += ["", "## Reasons", ""]
+    for p in comparison.pairs:
+        lines.append(f"- **{p.case_id}:** {p.reasons[0]} / {p.reasons[1]}")
+    return "\n".join(lines) + "\n"
 
 
 # --- metrics and reports -------------------------------------------------------------------
@@ -298,6 +610,9 @@ def deck_metrics(run: EvalRun) -> dict[str, float]:
     }
     for name in CRITERIA:
         metrics[name] = _mean([r.scores[name] for r in graded if name in r.scores])
+    checked = [r.scores["goals_met"] for r in ran if "goals_met" in r.scores]
+    metrics["goals_met"] = _mean(checked)
+    metrics["all_goals_met"] = _mean([float(share == 1.0) for share in checked])
     return metrics
 
 
@@ -321,7 +636,31 @@ def deck_section(runs: Sequence[EvalRun]) -> str:
         ]
         cells += [f"{m[name]:.2f}" for name in CRITERIA]
         lines.append("| " + " | ".join(cells) + " |")
-    return "\n".join(lines) + "\n"
+    goal_lines = _goal_lines(runs)
+    return "\n".join(lines + goal_lines) + "\n"
+
+
+def _goal_lines(runs: Sequence[EvalRun]) -> list[str]:
+    """Refines' goals, checked by code: the share met, and each task's goals."""
+    if not any("goals_met" in r.scores for run in runs for r in run.results):
+        return []
+    lines = [
+        "",
+        "## Refine goals, checked by code",
+        "",
+        "| Variant | Goals met | Refines meeting every goal |",
+        "|---|---|---|",
+    ]
+    for run in runs:
+        m = deck_metrics(run)
+        lines.append(f"| {run.variant.name} | {m['goals_met']:.0%} | {m['all_goals_met']:.0%} |")
+    for run in runs:
+        lines += ["", f"**{run.variant.name}:**", ""]
+        for r in run.results:
+            for goal in r.details.get("goals", []):
+                mark = "met" if goal["met"] else "**not met**"
+                lines.append(f"- {r.case_id}: {goal['goal']}: {mark} ({goal['actual']})")
+    return lines
 
 
 def estimate_usd(variants: Sequence[Variant], tasks: Sequence[DeckTask]) -> float:
@@ -346,7 +685,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--rerun", type=Path, help="run --ids again for a saved run, and merge them into it"
     )
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="compare two saved runs' refines side by side (paid)",
+    )
+    parser.add_argument(
+        "--check", type=Path, help="check a saved run's refine goals by code, in place (free)"
+    )
+    parser.add_argument(
+        "--regrade",
+        type=Path,
+        help="grade a saved run's refines again on their change, without the agent (paid)",
+    )
     args = parser.parse_args(argv)
+    if args.regrade:
+        return _regrade_main(args.regrade, budget=args.budget, yes=args.yes)
+    if args.check:
+        return _check_main(args.check)
+    if args.compare:
+        return _compare_main(*args.compare, budget=args.budget, yes=args.yes)
     if bool(args.variant) == bool(args.rerun):
         parser.error("give --variant to run, or --rerun RUN.json with --ids")
     if args.rerun and not args.ids:
@@ -406,8 +766,94 @@ def main(argv: Sequence[str] | None = None) -> int:
         notes += f" Run again and merged: {', '.join(sorted(t.id for t in tasks))}."
     report = comparison_report("Deck tasks", runs, notes=notes) + "\n" + deck_section(runs)
     path = save_report(report, "deck-tasks")
-    print(report)
+    _print(report)
     print(f"saved {path}")
+    return 0
+
+
+def _compare_main(before: Path, after: Path, *, budget: float, yes: bool) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+    from mtg_deck_advisor.llm.factory import build_provider
+    from mtg_deck_advisor.llm.recording import DatabaseRecorder
+    from mtg_deck_advisor.observability.logging import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings)
+    old, new = EvalRun.load(before), EvalRun.load(after)
+    refines = {t.id for t in load_tasks() if t.kind == "refine"}
+    count = len(refines & {r.case_id for r in old.results} & {r.case_id for r in new.results})
+    print(f"{count} refines to compare twice each, by {GRADER_MODEL}.")
+    if not confirm_spend(count * 2 * COMPARISON_COST, budget_usd=budget, yes=yes):
+        return 1
+    with connect(settings) as conn:
+        grader = ModelClient(
+            build_provider(settings),
+            GRADER_MODEL,
+            recorder=DatabaseRecorder(settings),
+            cost_cap_usd=budget,
+        )
+        comparison = compare_runs(conn, grader, old, new, load_tasks())
+    COMPARISONS.mkdir(parents=True, exist_ok=True)
+    path = COMPARISONS / f"{comparison.compared_at:%Y-%m-%dT%H%M%S}.json"
+    path.write_text(comparison.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    report = save_report(refine_comparison_report(comparison, before, after), "refine-comparison")
+    print(
+        f"saved {path} and {report}; after wins {comparison.after_win_rate:.0%}, "
+        f"cost ${comparison.cost_usd:.4f}"
+    )
+    return 0
+
+
+def _check_main(path: Path) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+
+    with connect(get_settings()) as conn:
+        run = check_goals(conn, EvalRun.load(path), load_tasks())
+    run.save(path.parent.parent)  # back to the same file
+    _print("\n".join(_goal_lines([run])))
+    return 0
+
+
+def _print(text: str) -> None:
+    """Print, with what the console can't show replaced: a Windows console may not print
+    "→". The saved files have the full text."""
+    encoding = sys.stdout.encoding or "utf-8"
+    print(text.encode(encoding, errors="replace").decode(encoding))
+
+
+def _regrade_main(path: Path, *, budget: float, yes: bool) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+    from mtg_deck_advisor.llm.factory import build_provider
+    from mtg_deck_advisor.llm.recording import DatabaseRecorder
+    from mtg_deck_advisor.observability.logging import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings)
+    saved = EvalRun.load(path)
+    tasks = load_tasks()
+    refines = {t.id for t in tasks if t.kind == "refine"}
+    count = sum(1 for r in saved.results if r.case_id in refines and r.details.get("deck_text"))
+    print(f"{count} refines in {path} to grade again, by {GRADER_MODEL}.")
+    if not confirm_spend(count * GRADING_COST, budget_usd=budget, yes=yes):
+        return 1
+    with connect(settings) as conn:
+        grader = ModelClient(
+            build_provider(settings),
+            GRADER_MODEL,
+            recorder=DatabaseRecorder(settings),
+            cost_cap_usd=budget,
+        )
+        run = regrade(conn, grader, saved, tasks)
+    print(f"saved {run.save()}, grading cost ${grader.spent_usd:.4f}")
+    notes = (
+        f"Refines from `{path.as_posix()}` graded again by {GRADER_MODEL}, with the starting deck "
+        f"and the change shown ([the rubric](../rubrics/{RUBRIC.name})); the agent wasn't rerun."
+    )
+    report = comparison_report("Deck tasks", [run], notes=notes) + "\n" + deck_section([run])
+    print(f"saved {save_report(report, 'deck-tasks')}")
     return 0
 
 
