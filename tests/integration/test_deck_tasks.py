@@ -6,6 +6,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import psycopg
 
@@ -377,3 +378,83 @@ def test_a_saved_runs_goals_are_checked_without_a_model(
     (result,) = checked.results
     assert result.details["goals"][0]["met"] is True
     assert result.scores["goals_met"] == 1.0
+
+
+# --- refines compared side by side (#136) -------------------------------------------------
+
+
+def preference(better: str) -> ProviderResponse:
+    return ProviderResponse(
+        text=json.dumps({"better": better, "reason": "Closer to the request."}),
+        stop_reason="end_turn",
+        usage=Usage(input_tokens=4000, output_tokens=100),
+        model="claude-opus-5-5",
+    )
+
+
+def saved_refine(conn: psycopg.Connection, tmp_path: Path, add: str, remove: str) -> CaseResult:
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    change = calls(
+        call("propose_changes", add=[{"name": add}], remove=[{"name": remove}], rationale="r")
+    )
+    return run(
+        conn,
+        tmp_path,
+        task(id="T09", kind="refine", request="Add a cheap flier.", start=start),
+        change,
+        answer("Swapped."),
+        grader=FakeProvider(grade()),
+    )
+
+
+def compared(
+    conn: psycopg.Connection, tmp_path: Path, *replies: ProviderResponse
+) -> tuple[Any, FakeProvider]:
+    from datetime import UTC, datetime
+
+    from mtg_deck_advisor.evaluation.deck_tasks import compare_runs
+    from mtg_deck_advisor.evaluation.runner import EvalRun
+
+    def saved(result: CaseResult, name: str) -> EvalRun:
+        return EvalRun(
+            suite="deck_tasks",
+            variant=Variant(name=name, model="claude-sonnet-5-5"),
+            started_at=datetime(2026, 10, 8, tzinfo=UTC),
+            budget_usd=1.0,
+            results=[result],
+        )
+
+    before = saved(saved_refine(conn, tmp_path, "Delver of Secrets", "Island"), "before")
+    after = saved(saved_refine(conn, tmp_path, "Delver of Secrets", "Forest"), "after")
+    grader = FakeProvider(*replies)
+    grading = ModelClient(grader, "claude-opus-5-5", recorder=MemoryRecorder(), cost_cap_usd=1.0)
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    tasks = [task(id="T09", kind="refine", request="Add a cheap flier.", start=start)]
+    return compare_runs(conn, grading, before, after, tasks), grader
+
+
+def test_two_refines_are_compared_in_both_orders(conn: psycopg.Connection, tmp_path: Path) -> None:
+    # The grader prefers "after" both times: it's B in the first order, A in the second.
+    comparison, grader = compared(conn, tmp_path, preference("B"), preference("A"))
+
+    (pair,) = comparison.pairs
+    assert pair.case_id == "T09" and pair.winner == "after"
+    assert comparison.after_win_rate == 1.0
+    first, second = (call.messages[0].content for call in grader.calls)
+    assert "Add a cheap flier." in first
+    assert "Cut: 1 Island" in first and "Cut: 1 Forest" in first
+    assert "Delver of Secrets" in first  # the added card, with its text
+    # The second asks again with the two changes the other way round.
+    assert first.index("Cut: 1 Island") < first.index("Cut: 1 Forest")
+    assert second.index("Cut: 1 Forest") < second.index("Cut: 1 Island")
+
+
+def test_a_preference_that_flips_with_the_order_is_a_tie(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    # Preferring whichever comes first is position bias, not a judgement.
+    comparison, _ = compared(conn, tmp_path, preference("A"), preference("A"))
+
+    (pair,) = comparison.pairs
+    assert pair.winner == "same"
+    assert comparison.after_win_rate == 0.5
