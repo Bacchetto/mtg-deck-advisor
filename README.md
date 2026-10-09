@@ -181,11 +181,10 @@ on a deliberately degraded setting.
 
 - **The pool sets the ceiling.** On thin 300-card pools, the agent pads decks with lands and filler
   (quality 2.2-3.4). On real collections, its decks scored 4.2-4.5.
-- **Refines are only somewhat better at doing what was asked.** A refine now turns the request
-  into goals and checks its change against the saved deck. On six refine tasks, the grader's fit
-  went from 3.50 to 3.67 out of 5
-  ([#136](https://github.com/Bacchetto/mtg-deck-advisor/issues/136)), and judging what's "weakest"
-  is still hard.
+- **Refines are only measurably a little better.** Refines now state checkable goals, which code
+  checks, and can search the pool by role. On 18 refine tasks, refines meeting every goal went from
+  94% to 100%, and the grader's fit from 4.06 to 4.22. Every measure points the same way, but none
+  is conclusive ([report](evals/reports/2026-10-09-refines.md), #136).
 - **Rules answers cite more than they need.** Rules search no longer returns other variants'
   rules ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)), but answers still cite
   supporting general rules, such as the casting steps for a question about flash. Citation
