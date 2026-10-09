@@ -44,7 +44,14 @@
           "draw": "There are many one-shot cantrips (Combat Thresher, Golden Egg, Novice Inspector, Scroll of Avacyn, Implement of Improvement, Fountain of Renewal, Wrench, Commander's Sphere, Tsabo's Web) but no real repeatable engine, since Harper Recruiter rarely hits.",
           "interaction": "Removal is limited to Arbalest Elite, the expensive Tower of Calamities, Molten-Tail Masticore and the clunky Worldslayer as a reset, with tappers and Cliffside Rescuer or Haystack as light protection."
         },
-        "summary": "This is an unfocused Adeline deck with too many lands and filler cards, and it adds little of the removal that was requested. It needs real removal, ramp and a tighter token plan."
+        "summary": "This is an unfocused Adeline deck with too many lands and filler cards, and it adds little of the removal that was requested. It needs real removal, ramp and a tighter token plan.",
+        "goals": [
+          {
+            "goal": "removal up by 1 or more",
+            "met": true,
+            "actual": "+1"
+          }
+        ]
       },
       "scores": {
         "plan": 2.0,
@@ -53,7 +60,8 @@
         "ramp": 2.0,
         "draw": 3.0,
         "interaction": 2.0,
-        "quality": 2.1666666666666665
+        "quality": 2.1666666666666665,
+        "goals_met": 1.0
       },
       "error": null
     },
@@ -88,7 +96,14 @@
           "draw": "There are many one-shot cantrips (Golden Egg, Scroll of Avacyn, Implement of Improvement, Fountain of Renewal, Wrench, Novice Inspector, Combat Thresher), plus Loran and Ginger's monarch as the only repeatable sources.",
           "interaction": "Real removal is limited to Loran of the Third Path and Arbalest Elite, backed by tappers like Fiend Binder, protection from Cliffside Rescuer and Haystack, and the unwieldy Worldslayer as the only reset."
         },
-        "summary": "An unfocused mono-white Adeline deck with a moderately low curve, smothered by 45 lands, many filler artifacts and little removal."
+        "summary": "An unfocused mono-white Adeline deck with a moderately low curve, smothered by 45 lands, many filler artifacts and little removal.",
+        "goals": [
+          {
+            "goal": "a lower average mana value",
+            "met": true,
+            "actual": "3.43 → 3.20"
+          }
+        ]
       },
       "scores": {
         "plan": 2.0,
@@ -97,7 +112,8 @@
         "ramp": 3.0,
         "draw": 3.0,
         "interaction": 2.0,
-        "quality": 2.5
+        "quality": 2.5,
+        "goals_met": 1.0
       },
       "error": null
     },
@@ -132,7 +148,14 @@
           "draw": "There are many repeatable engines that fit the sacrifice plan (Vampiric Rites, Midnight Reaper, Undead Augur, Spark Reaper, Gibbering Barricade, Braids, Idol of Oblivion) plus one-shots like Phyrexian Rager, Skyscanner and Liliana's Standard Bearer.",
           "interaction": "Plenty of creature removal (Murder, Fell, Cut Down, Deadly Derision, Feed the Swarm, Bone Splinters, Final Flourish, Fleshbag Marauder, Syphon Flesh) and a one-sided Crippling Fear sweep, but few answers to noncreature permanents beyond Invasion of Ravnica and Unstable Obelisk."
         },
-        "summary": "The deck makes the requested change cleanly, leaving a focused, well-resourced mono-black aristocrats and reanimation deck under Sheoldred with good ramp and draw. Its main weaknesses are a few off-plan cards and thin answers to artifacts and enchantments."
+        "summary": "The deck makes the requested change cleanly, leaving a focused, well-resourced mono-black aristocrats and reanimation deck under Sheoldred with good ramp and draw. Its main weaknesses are a few off-plan cards and thin answers to artifacts and enchantments.",
+        "goals": [
+          {
+            "goal": "no nonland card at mana value 6 or more",
+            "met": true,
+            "actual": "0 at or above"
+          }
+        ]
       },
       "scores": {
         "plan": 4.0,
@@ -141,7 +164,8 @@
         "ramp": 5.0,
         "draw": 5.0,
         "interaction": 4.0,
-        "quality": 4.5
+        "quality": 4.5,
+        "goals_met": 1.0
       },
       "error": null
     },
@@ -176,7 +200,19 @@
           "draw": "There are well over eight sources, including repeatable engines like Midnight Reaper, Undead Augur, Laboratory Drudge, Idol of Oblivion and Spark Reaper, plus one-shots like Distant Melody, Invasion of Vryn and Phyrexian Gargantua.",
           "interaction": "The deck has abundant flexible answers: Counterspell, Sinister Sabotage, Undermine, Murder, Fell, Cut Down, Deadly Derision, Feed the Swarm, and the edicts Fleshbag Marauder and Syphon Flesh, plus board resets in Crippling Fear, Necromantic Selection and Necrotic Hex."
         },
-        "summary": "This is a strong, focused Dimir Zombie recursion deck with excellent draw and interaction, held back slightly by a handful of off-theme creatures and some tapped lands, and it appears to make the requested draw-for-creature swap."
+        "summary": "This is a strong, focused Dimir Zombie recursion deck with excellent draw and interaction, held back slightly by a handful of off-theme creatures and some tapped lands, and it appears to make the requested draw-for-creature swap.",
+        "goals": [
+          {
+            "goal": "card_draw up by 3 or more",
+            "met": true,
+            "actual": "+3"
+          },
+          {
+            "goal": "3 or more Creature cards cut",
+            "met": true,
+            "actual": "3"
+          }
+        ]
       },
       "scores": {
         "plan": 4.0,
@@ -185,7 +221,8 @@
         "ramp": 4.0,
         "draw": 5.0,
         "interaction": 5.0,
-        "quality": 4.333333333333333
+        "quality": 4.333333333333333,
+        "goals_met": 1.0
       },
       "error": null
     },
@@ -220,7 +257,19 @@
           "draw": "Draw is abundant (Windreader Sphinx, Tide Skimmer, Welcoming Vampire, Faerie Formation and Isperia as repeatable engines, plus Inspiring Overseer, Skyscanner, Winged Words, Deep Analysis, Distant Melody, Mind Spiral and more).",
           "interaction": "Answers are flexible and numerous: Swords to Plowshares, Path to Exile, Banishing Light, Prayer of Binding, Conclave Tribunal, Alabaster Host Intercessor, Counterspell, Absorb and Negate, with Time Wipe and Aetherize to reset the board."
         },
-        "summary": "A focused, well-supported Azorius flyers deck around Kangee, with strong draw and interaction; its main weakness is a handful of tapped lands, and the requested land-for-removal swap appears to be reflected."
+        "summary": "A focused, well-supported Azorius flyers deck around Kangee, with strong draw and interaction; its main weakness is a handful of tapped lands, and the requested land-for-removal swap appears to be reflected.",
+        "goals": [
+          {
+            "goal": "lands change by -2",
+            "met": true,
+            "actual": "-2"
+          },
+          {
+            "goal": "removal at mana value 2 or less up by 2 or more",
+            "met": true,
+            "actual": "+2"
+          }
+        ]
       },
       "scores": {
         "plan": 5.0,
@@ -229,7 +278,8 @@
         "ramp": 4.0,
         "draw": 5.0,
         "interaction": 5.0,
-        "quality": 4.5
+        "quality": 4.5,
+        "goals_met": 1.0
       },
       "error": null
     },
@@ -264,7 +314,19 @@
           "draw": "There are many small cantrips (Golden Egg, Tsabo's Web, Combat Thresher, Implement of Improvement, Fountain of Renewal, Scroll of Avacyn, Wrench, Novice Inspector), but the only repeatable engine is Loran's symmetrical draw.",
           "interaction": "Removal is narrow or clunky (Loran, Arbalest Elite, Tower of Calamities, Molten-Tail Masticore, Curse of Conformity), with Worldslayer as an awkward reset and Haystack and Cliffside Rescuer as light protection."
         },
-        "summary": "A mono-white Adeline deck with a recognisable token core, but it is padded with filler artifacts and weak creatures and still runs 39 lands, so the requested trim to 37 was not carried out. Ramp and interaction are thin, which keeps it a loose casual pile."
+        "summary": "A mono-white Adeline deck with a recognisable token core, but it is padded with filler artifacts and weak creatures and still runs 39 lands, so the requested trim to 37 was not carried out. Ramp and interaction are thin, which keeps it a loose casual pile.",
+        "goals": [
+          {
+            "goal": "exactly 37 lands",
+            "met": false,
+            "actual": "39"
+          },
+          {
+            "goal": "Creature cards up by 4 or more",
+            "met": false,
+            "actual": "+2"
+          }
+        ]
       },
       "scores": {
         "plan": 2.0,
@@ -273,7 +335,8 @@
         "ramp": 2.0,
         "draw": 3.0,
         "interaction": 2.0,
-        "quality": 2.3333333333333335
+        "quality": 2.3333333333333335,
+        "goals_met": 0.0
       },
       "error": null
     }
