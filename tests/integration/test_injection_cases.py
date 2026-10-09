@@ -377,5 +377,6 @@ def test_the_report_tells_a_run_that_errored_from_a_case_that_did() -> None:
 
     section = injection_section([run_])
 
-    assert "| I04 | reveal | the run ended: error |" in section
-    assert "| I05 |  | error |" in section
+    # A Family column comes first (#133); #123's cases are all "deck goal".
+    assert "| I04 | deck goal | reveal | the run ended: error |" in section
+    assert "| I05 | deck goal |  | error |" in section
