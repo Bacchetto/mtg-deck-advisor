@@ -192,3 +192,12 @@ def test_a_hand_grade_records_who_and_when() -> None:
     )
 
     assert HandGrade.model_validate_json(grade.model_dump_json()) == grade
+
+
+def test_every_new_refine_has_goals_that_code_can_check() -> None:
+    # T09-T14's requests translated into goals (#136); a draft has none.
+    tasks = {t.id: t for t in load_tasks()}
+
+    assert all(tasks[f"T{n:02}"].goals for n in range(9, 15))
+    assert not any(t.goals for t in tasks.values() if t.kind == "draft")
+    assert [g.kind for g in tasks["T14"].goals] == ["lands", "type_change"]

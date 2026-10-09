@@ -304,3 +304,76 @@ def test_regrading_a_saved_run_grades_its_refines_on_their_change(
     assert next(r for r in regraded.results if r.case_id == "T01").scores == {"fit": 3.0}
     assert regraded.variant.name == "sonnet-regraded"
     assert len(grader.calls) == 1  # only the refine was graded again
+
+
+# --- goals checked by code (#136) --------------------------------------------------------
+
+
+def test_a_refines_goals_are_checked_by_code(conn: psycopg.Connection, tmp_path: Path) -> None:
+    # The grader's fit is noisy across agent runs. A request with numbers in it
+    # can be checked exactly: pass or fail, with no grader involved.
+    goals = [
+        {"kind": "lands_change", "equals": -1},
+        {"kind": "lands", "equals": 37},
+        {"kind": "type_change", "type": "Creature", "at_least": 1},
+        {"kind": "type_cut", "type": "Land", "at_least": 1},
+        {"kind": "role_change", "role": "ramp", "at_least": 1},
+        {"kind": "role_change", "role": "ramp", "at_least": 0, "max_mana_value": 1},
+        {"kind": "none_at_or_above", "mana_value": 3},
+        {"kind": "average_mana_value_lower"},
+    ]
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    change = calls(
+        call(
+            "propose_changes",
+            add=[{"name": "Delver of Secrets"}],
+            remove=[{"name": "Island"}],
+            rationale="A cheap flier.",
+        )
+    )
+
+    result = run(
+        conn,
+        tmp_path,
+        task(id="T09", kind="refine", request="Swap a land.", start=start, goals=goals),
+        change,
+        answer("Swapped."),
+        grader=FakeProvider(grade()),
+    )
+
+    met = [goal["met"] for goal in result.details["goals"]]
+    assert met == [True, False, True, True, False, True, False, True]
+    assert result.details["goals"][1]["actual"] == "36"
+    assert result.scores["goals_met"] == 5 / 8
+
+
+def test_a_task_without_goals_has_no_goal_score(conn: psycopg.Connection, tmp_path: Path) -> None:
+    result = refined(conn, tmp_path, FakeProvider(grade()))
+
+    assert "goals" not in result.details and "goals_met" not in result.scores
+
+
+def test_a_saved_runs_goals_are_checked_without_a_model(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    from datetime import UTC, datetime
+
+    from mtg_deck_advisor.evaluation.deck_tasks import check_goals
+    from mtg_deck_advisor.evaluation.runner import EvalRun
+
+    saved = EvalRun(
+        suite="deck_tasks",
+        variant=Variant(name="sonnet", model="claude-sonnet-5-5"),
+        started_at=datetime(2026, 10, 8, tzinfo=UTC),
+        budget_usd=1.0,
+        results=[refined(conn, tmp_path, FakeProvider(grade()))],
+    )
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    goals = [{"kind": "lands", "equals": 36}]
+    tasks = [task(id="T09", kind="refine", request="r", start=start, goals=goals)]
+
+    checked = check_goals(conn, saved, tasks)
+
+    (result,) = checked.results
+    assert result.details["goals"][0]["met"] is True
+    assert result.scores["goals_met"] == 1.0
