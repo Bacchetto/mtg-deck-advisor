@@ -766,7 +766,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         notes += f" Run again and merged: {', '.join(sorted(t.id for t in tasks))}."
     report = comparison_report("Deck tasks", runs, notes=notes) + "\n" + deck_section(runs)
     path = save_report(report, "deck-tasks")
-    print(report)
+    _print(report)
     print(f"saved {path}")
     return 0
 
@@ -812,14 +812,15 @@ def _check_main(path: Path) -> int:
     with connect(get_settings()) as conn:
         run = check_goals(conn, EvalRun.load(path), load_tasks())
     run.save(path.parent.parent)  # back to the same file
-    # Windows consoles may not print "→"; the run file has the full text.
-    text = "\n".join(_goal_lines([run]))
-    print(
-        text.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
-            sys.stdout.encoding or "utf-8"
-        )
-    )
+    _print("\n".join(_goal_lines([run])))
     return 0
+
+
+def _print(text: str) -> None:
+    """Print, with what the console can't show replaced: a Windows console may not print
+    "→". The saved files have the full text."""
+    encoding = sys.stdout.encoding or "utf-8"
+    print(text.encode(encoding, errors="replace").decode(encoding))
 
 
 def _regrade_main(path: Path, *, budget: float, yes: bool) -> int:
