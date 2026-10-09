@@ -80,6 +80,84 @@ class StartDeck(BaseModel):
     cards: dict[str, int]
 
 
+# --- goals a refine's request sets, checked by code (#136) ---------------------------------
+# Each compares the refined deck with the deck it started from. Mana values and
+# roles are over nonland cards besides the commander, as analyze_deck counts them.
+
+
+class LandsGoal(BaseModel):
+    kind: Literal["lands"]
+    equals: int
+
+    def describe(self) -> str:
+        return f"exactly {self.equals} lands"
+
+
+class LandsChangeGoal(BaseModel):
+    kind: Literal["lands_change"]
+    equals: int
+
+    def describe(self) -> str:
+        return f"lands change by {self.equals:+d}"
+
+
+class RoleChangeGoal(BaseModel):
+    kind: Literal["role_change"]
+    role: str
+    at_least: int
+    # Count only cards at or below this mana value ("cheap removal").
+    max_mana_value: float | None = None
+
+    def describe(self) -> str:
+        cheap = f" at mana value {self.max_mana_value:g} or less" if self.max_mana_value else ""
+        return f"{self.role}{cheap} up by {self.at_least} or more"
+
+
+class TypeChangeGoal(BaseModel):
+    kind: Literal["type_change"]
+    type: str
+    at_least: int
+
+    def describe(self) -> str:
+        return f"{self.type} cards up by {self.at_least} or more"
+
+
+class TypeCutGoal(BaseModel):
+    kind: Literal["type_cut"]
+    type: str
+    at_least: int
+
+    def describe(self) -> str:
+        return f"{self.at_least} or more {self.type} cards cut"
+
+
+class NoneAtOrAboveGoal(BaseModel):
+    kind: Literal["none_at_or_above"]
+    mana_value: float
+
+    def describe(self) -> str:
+        return f"no nonland card at mana value {self.mana_value:g} or more"
+
+
+class AverageManaValueLowerGoal(BaseModel):
+    kind: Literal["average_mana_value_lower"]
+
+    def describe(self) -> str:
+        return "a lower average mana value"
+
+
+Goal = Annotated[
+    LandsGoal
+    | LandsChangeGoal
+    | RoleChangeGoal
+    | TypeChangeGoal
+    | TypeCutGoal
+    | NoneAtOrAboveGoal
+    | AverageManaValueLowerGoal,
+    Field(discriminator="kind"),
+]
+
+
 class DeckTask(BaseModel):
     id: str
     # A pool file under evals/datasets/.
@@ -92,6 +170,8 @@ class DeckTask(BaseModel):
     # For a refine: the deck it starts from.
     start: StartDeck | None
     notes: str
+    # For a refine: what its request asks for, as goals code can check.
+    goals: list[Goal] = []
 
     @model_validator(mode="after")
     def _starts(self) -> Self:
@@ -139,6 +219,85 @@ class DeckGrade(BaseModel):
     def quality(self) -> float:
         given: list[int] = [s for s in self.scores.model_dump().values() if s is not None]
         return statistics.mean(given)
+
+
+# --- checking a refine's goals ---------------------------------------------------------------
+
+
+def _facts(
+    conn: psycopg.Connection, ids: Sequence[UUID]
+) -> dict[UUID, tuple[float, str, list[str]]]:
+    """Each card's mana value, type line and roles."""
+    rows = conn.execute(
+        "SELECT c.oracle_id, c.cmc, c.type_line, coalesce(r.roles, '{}') FROM cards c "
+        "LEFT JOIN card_roles r USING (oracle_id) WHERE c.oracle_id = ANY(%s)",
+        (list(ids),),
+    ).fetchall()
+    return {row[0]: (float(row[1] or 0), row[2], list(row[3])) for row in rows}
+
+
+def goal_results(
+    conn: psycopg.Connection, goals: Sequence[Goal], start: DeckState, final: DeckState
+) -> list[dict[str, Any]]:
+    """Each goal, whether the refined deck meets it, and the value that decided it."""
+    facts = _facts(conn, list({*start.cards, *final.cards}))
+
+    def is_land(card: UUID) -> bool:
+        return "Land" in facts[card][1].split("—")[0]
+
+    def count(deck: DeckState, keep: Callable[[UUID], bool]) -> int:
+        return sum(n for card, n in deck.cards.items() if keep(card))
+
+    def average(deck: DeckState) -> float:
+        values = [facts[c][0] for c, n in deck.cards.items() if not is_land(c) for _ in range(n)]
+        return sum(values) / len(values) if values else 0.0
+
+    results = []
+    for goal in goals:
+        if isinstance(goal, LandsGoal):
+            actual = count(final, is_land)
+            met, shown = actual == goal.equals, str(actual)
+        elif isinstance(goal, LandsChangeGoal):
+            actual = count(final, is_land) - count(start, is_land)
+            met, shown = actual == goal.equals, f"{actual:+d}"
+        elif isinstance(goal, RoleChangeGoal):
+
+            def has_role(card: UUID, goal: RoleChangeGoal = goal) -> bool:
+                cheap = goal.max_mana_value is None or facts[card][0] <= goal.max_mana_value
+                return not is_land(card) and goal.role in facts[card][2] and cheap
+
+            actual = count(final, has_role) - count(start, has_role)
+            met, shown = actual >= goal.at_least, f"{actual:+d}"
+        elif isinstance(goal, TypeChangeGoal):
+
+            def typed(card: UUID, goal: TypeChangeGoal | TypeCutGoal = goal) -> bool:
+                return goal.type in facts[card][1].split("—")[0]
+
+            actual = count(final, typed) - count(start, typed)
+            met, shown = actual >= goal.at_least, f"{actual:+d}"
+        elif isinstance(goal, TypeCutGoal):
+            cut = sum(
+                max(start.count(card) - final.count(card), 0)
+                for card in start.cards
+                if goal.type in facts[card][1].split("—")[0]
+            )
+            met, shown = cut >= goal.at_least, str(cut)
+        elif isinstance(goal, NoneAtOrAboveGoal):
+            ceiling = goal.mana_value
+            above = sum(
+                n for c, n in final.cards.items() if not is_land(c) and facts[c][0] >= ceiling
+            )
+            met, shown = above == 0, f"{above} at or above"
+        else:
+            before, after = average(start), average(final)
+            met, shown = after < before, f"{before:.2f} → {after:.2f}"
+        results.append({"goal": goal.describe(), "met": met, "actual": shown})
+    return results
+
+
+def _start_state(conn: psycopg.Connection, start: StartDeck) -> DeckState:
+    ids = _ids(conn, [start.commander, *start.cards])
+    return DeckState.new(ids[start.commander], {ids[n]: c for n, c in start.cards.items()})
 
 
 # --- what the grader sees --------------------------------------------------------------------
@@ -287,6 +446,8 @@ def run_task(
             details["commander"] == task.commander if task.commander else None
         )
         details["deck_text"] = deck_text(conn, state, task.request, start)
+        if start is not None and task.goals:
+            details["goals"] = goal_results(conn, task.goals, start, state)
         try:
             grade = grade_deck(grader, details["deck_text"])
         except InvalidOutputError as exc:
@@ -297,6 +458,9 @@ def run_task(
             scores["quality"] = grade.quality
             details["reasons"] = grade.reasons.model_dump()
             details["summary"] = grade.summary
+        if "goals" in details:
+            met = [goal["met"] for goal in details["goals"]]
+            scores["goals_met"] = sum(met) / len(met)
     set_archived(conn, deck_id, True)
     record_audit(conn, "system", "archive", f"deck:{deck_id}", {"reason": "eval deck"})
     result = result_from_run(conn, run.run_id, task.id, success=bool(legal), details=details)
@@ -318,6 +482,23 @@ def _final_deck(conn: psycopg.Connection, text: str) -> DeckState:
     return DeckState.new(ids[commander.group(1)], {ids[n]: c for n, c in cards.items()})
 
 
+def check_goals(conn: psycopg.Connection, run: EvalRun, tasks: Sequence[DeckTask]) -> EvalRun:
+    """A saved run with its refines' goals checked by code. Free: no model is called."""
+    by_id = {t.id: t for t in tasks}
+    checked = run.model_copy(deep=True)
+    for result in checked.results:
+        task = by_id.get(result.case_id)
+        text = result.details.get("deck_text")
+        if task is None or task.start is None or not task.goals or not text:
+            continue
+        goals = goal_results(
+            conn, task.goals, _start_state(conn, task.start), _final_deck(conn, text)
+        )
+        result.details["goals"] = goals
+        result.scores["goals_met"] = sum(g["met"] for g in goals) / len(goals)
+    return checked
+
+
 def regrade(
     conn: psycopg.Connection, grader: ModelClient, run: EvalRun, tasks: Sequence[DeckTask]
 ) -> EvalRun:
@@ -334,10 +515,7 @@ def regrade(
         if task is None or task.kind != "refine" or task.start is None or not text:
             results.append(result)
             continue
-        ids = _ids(conn, [task.start.commander, *task.start.cards])
-        start = DeckState.new(
-            ids[task.start.commander], {ids[n]: c for n, c in task.start.cards.items()}
-        )
+        start = _start_state(conn, task.start)
         new_text = deck_text(conn, _final_deck(conn, text), task.request, start)
         before = grader.spent_usd
         grade = grade_deck(grader, new_text)
@@ -384,6 +562,9 @@ def deck_metrics(run: EvalRun) -> dict[str, float]:
     }
     for name in CRITERIA:
         metrics[name] = _mean([r.scores[name] for r in graded if name in r.scores])
+    checked = [r.scores["goals_met"] for r in ran if "goals_met" in r.scores]
+    metrics["goals_met"] = _mean(checked)
+    metrics["all_goals_met"] = _mean([float(share == 1.0) for share in checked])
     return metrics
 
 
@@ -407,7 +588,31 @@ def deck_section(runs: Sequence[EvalRun]) -> str:
         ]
         cells += [f"{m[name]:.2f}" for name in CRITERIA]
         lines.append("| " + " | ".join(cells) + " |")
-    return "\n".join(lines) + "\n"
+    goal_lines = _goal_lines(runs)
+    return "\n".join(lines + goal_lines) + "\n"
+
+
+def _goal_lines(runs: Sequence[EvalRun]) -> list[str]:
+    """Refines' goals, checked by code: the share met, and each task's goals."""
+    if not any("goals_met" in r.scores for run in runs for r in run.results):
+        return []
+    lines = [
+        "",
+        "## Refine goals, checked by code",
+        "",
+        "| Variant | Goals met | Refines meeting every goal |",
+        "|---|---|---|",
+    ]
+    for run in runs:
+        m = deck_metrics(run)
+        lines.append(f"| {run.variant.name} | {m['goals_met']:.0%} | {m['all_goals_met']:.0%} |")
+    for run in runs:
+        lines += ["", f"**{run.variant.name}:**", ""]
+        for r in run.results:
+            for goal in r.details.get("goals", []):
+                mark = "met" if goal["met"] else "**not met**"
+                lines.append(f"- {r.case_id}: {goal['goal']}: {mark} ({goal['actual']})")
+    return lines
 
 
 def estimate_usd(variants: Sequence[Variant], tasks: Sequence[DeckTask]) -> float:
@@ -433,6 +638,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--rerun", type=Path, help="run --ids again for a saved run, and merge them into it"
     )
     parser.add_argument(
+        "--check", type=Path, help="check a saved run's refine goals by code, in place (free)"
+    )
+    parser.add_argument(
         "--regrade",
         type=Path,
         help="grade a saved run's refines again on their change, without the agent (paid)",
@@ -440,6 +648,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.regrade:
         return _regrade_main(args.regrade, budget=args.budget, yes=args.yes)
+    if args.check:
+        return _check_main(args.check)
     if bool(args.variant) == bool(args.rerun):
         parser.error("give --variant to run, or --rerun RUN.json with --ids")
     if args.rerun and not args.ids:
@@ -501,6 +711,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     path = save_report(report, "deck-tasks")
     print(report)
     print(f"saved {path}")
+    return 0
+
+
+def _check_main(path: Path) -> int:
+    from mtg_deck_advisor.config import get_settings
+    from mtg_deck_advisor.db.connection import connect
+
+    with connect(get_settings()) as conn:
+        run = check_goals(conn, EvalRun.load(path), load_tasks())
+    run.save(path.parent.parent)  # back to the same file
+    # Windows consoles may not print "→"; the run file has the full text.
+    text = "\n".join(_goal_lines([run]))
+    print(
+        text.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
+            sys.stdout.encoding or "utf-8"
+        )
+    )
     return 0
 
 
