@@ -30,15 +30,17 @@ GoalKind = Literal[
     "average_mana_value_lower",
 ]
 
-# Kinds that count cards and take either at_least or an exact equals.
+# Kinds that count cards and take either at_least or an exact equals; with
+# neither, at least one ("add more removal").
 COUNTED = ("role_added", "type_cut")
+AT_LEAST_ONE = ("role_change", "type_change", *COUNTED)
 # Each kind's required fields.
 REQUIRED: dict[str, tuple[str, ...]] = {
     "lands": ("equals",),
     "lands_change": ("equals",),
-    "role_change": ("role", "at_least"),
+    "role_change": ("role",),
     "role_added": ("role",),
-    "type_change": ("type", "at_least"),
+    "type_change": ("type",),
     "type_cut": ("type",),
     "none_at_or_above": ("mana_value",),
     "average_mana_value_lower": (),
@@ -60,19 +62,28 @@ class Goal(BaseModel):
         "none_at_or_above: no nonland card at `mana_value` or more. "
         "average_mana_value_lower: a lower average mana value."
     )
-    equals: int | None = Field(default=None, description="For lands and lands_change.")
+    equals: int | None = Field(
+        default=None,
+        description="An exact count: required for lands and lands_change, optional for "
+        "role_added and type_cut.",
+    )
     at_least: int | None = Field(
-        default=None, description="For role_change, type_change and type_cut."
+        default=None,
+        description="A minimum count for role_change, role_added, type_change and type_cut; "
+        "leave it out to mean at least 1.",
     )
     role: str | None = Field(
-        default=None, description="For role_change: a role tag, such as 'removal'."
+        default=None,
+        description="For role_change and role_added: a role tag, such as 'removal'.",
     )
     type: str | None = Field(
-        default=None, description="For type_change and type_cut: a card type, such as 'Creature'."
+        default=None,
+        description="For type_change and type_cut: a card type, such as 'Creature'.",
     )
     mana_value: float | None = Field(default=None, description="For none_at_or_above.")
     max_mana_value: float | None = Field(
-        default=None, description="For role_change: only cards at or below this mana value."
+        default=None,
+        description="For role_change and role_added: only cards at or below this mana value.",
     )
 
     @model_validator(mode="after")
@@ -80,8 +91,11 @@ class Goal(BaseModel):
         missing = [name for name in REQUIRED[self.kind] if getattr(self, name) is None]
         if missing:
             raise ValueError(f"a {self.kind} goal needs {', '.join(missing)}")
-        if self.kind in COUNTED and (self.equals is None) == (self.at_least is None):
-            raise ValueError(f"a {self.kind} goal needs one of equals or at_least")
+        if self.kind in COUNTED and self.equals is not None and self.at_least is not None:
+            raise ValueError(f"a {self.kind} goal takes equals or at_least, not both")
+        if self.kind in AT_LEAST_ONE and self.equals is None and self.at_least is None:
+            # The live agent leaves the count out of "add more removal" (#136).
+            self.at_least = 1
         return self
 
     def _how_many(self, noun: str) -> str:
