@@ -23,19 +23,23 @@ GoalKind = Literal[
     "lands",
     "lands_change",
     "role_change",
+    "role_added",
     "type_change",
     "type_cut",
     "none_at_or_above",
     "average_mana_value_lower",
 ]
 
+# Kinds that count cards and take either at_least or an exact equals.
+COUNTED = ("role_added", "type_cut")
 # Each kind's required fields.
 REQUIRED: dict[str, tuple[str, ...]] = {
     "lands": ("equals",),
     "lands_change": ("equals",),
     "role_change": ("role", "at_least"),
+    "role_added": ("role",),
     "type_change": ("type", "at_least"),
-    "type_cut": ("type", "at_least"),
+    "type_cut": ("type",),
     "none_at_or_above": ("mana_value",),
     "average_mana_value_lower": (),
 }
@@ -48,9 +52,11 @@ class Goal(BaseModel):
 
     kind: GoalKind = Field(
         description="lands: exactly `equals` lands. lands_change: lands change by `equals` "
-        "(-2 for two fewer). role_change: cards with `role` up by `at_least`, optionally only "
-        "those at or below `max_mana_value`. type_change: cards with `type` in their type line "
-        "up by `at_least`. type_cut: at least `at_least` cards of `type` cut. "
+        "(-2 for two fewer). role_change: cards with `role` up by `at_least` overall, optionally "
+        "only those at or below `max_mana_value`. role_added: the cards added that have `role` "
+        "(and are at or below `max_mana_value`, if given), exactly `equals` or at least "
+        "`at_least`. type_change: cards with `type` in their type line up by `at_least`. "
+        "type_cut: cards of `type` cut, exactly `equals` or at least `at_least`. "
         "none_at_or_above: no nonland card at `mana_value` or more. "
         "average_mana_value_lower: a lower average mana value."
     )
@@ -74,7 +80,14 @@ class Goal(BaseModel):
         missing = [name for name in REQUIRED[self.kind] if getattr(self, name) is None]
         if missing:
             raise ValueError(f"a {self.kind} goal needs {', '.join(missing)}")
+        if self.kind in COUNTED and (self.equals is None) == (self.at_least is None):
+            raise ValueError(f"a {self.kind} goal needs one of equals or at_least")
         return self
+
+    def _how_many(self, noun: str) -> str:
+        if self.equals is not None:
+            return f"exactly {self.equals} {noun}{'' if self.equals == 1 else 's'}"
+        return f"{self.at_least} or more {noun}s"
 
     def describe(self) -> str:
         match self.kind:
@@ -87,14 +100,24 @@ class Goal(BaseModel):
                     f" at mana value {self.max_mana_value:g} or less" if self.max_mana_value else ""
                 )
                 return f"{self.role}{cheap} up by {self.at_least} or more"
+            case "role_added":
+                cheap = (
+                    f" at mana value {self.max_mana_value:g} or less" if self.max_mana_value else ""
+                )
+                return f"{self._how_many(f'{self.role} card')}{cheap} added"
             case "type_change":
                 return f"{self.type} cards up by {self.at_least} or more"
             case "type_cut":
-                return f"{self.at_least} or more {self.type} cards cut"
+                return f"{self._how_many(f'{self.type} card')} cut"
             case "none_at_or_above":
                 return f"no nonland card at mana value {self.mana_value:g} or more"
             case _:
                 return "a lower average mana value"
+
+
+def _enough(goal: Goal, count: int) -> bool:
+    """A counted goal: exactly `equals`, or at least `at_least`."""
+    return count == goal.equals if goal.equals is not None else count >= (goal.at_least or 0)
 
 
 def _facts(
@@ -151,13 +174,20 @@ def check_goals(
         elif goal.kind in ("role_change", "type_change"):
             actual = count(final, goal) - count(start, goal)
             met, shown = actual >= (goal.at_least or 0), f"{actual:+d}"
+        elif goal.kind == "role_added":
+            added = sum(
+                max(final.count(card) - start.count(card), 0)
+                for card in final.cards
+                if counted(goal, card)
+            )
+            met, shown = _enough(goal, added), str(added)
         elif goal.kind == "type_cut":
             cut = sum(
                 max(start.count(card) - final.count(card), 0)
                 for card in start.cards
                 if has_type(card, goal.type or "")
             )
-            met, shown = cut >= (goal.at_least or 0), str(cut)
+            met, shown = _enough(goal, cut), str(cut)
         elif goal.kind == "none_at_or_above":
             ceiling = goal.mana_value or 0.0
             above = sum(
