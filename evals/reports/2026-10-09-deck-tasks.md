@@ -1,0 +1,34 @@
+# Deck tasks, 2026-10-09 17:27 UTC
+
+Refines from `evals/runs/deck_tasks/2026-10-08T222201-sonnet-regraded.json` graded again by claude-opus-5-5, with the starting deck and the change shown ([the rubric](../rubrics/deck_quality.md)); the agent wasn't rerun.
+
+## Variants
+
+| Variant | Model | Prompt | Card search | Rules search | Rerank | Commit |
+|---|---|---|---|---|---|---|
+| sonnet-regraded-regraded | claude-sonnet-5-5 | default | hybrid | vector | yes | 7ec9d85 |
+
+## Results
+
+| Variant | Cases | Success | Total cost | Mean cost | Median latency | Mean turns | Tool errors | Rejected proposals | Skipped | Grading cost |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sonnet-regraded-regraded | 6 | 100% | $0.3196 | $0.0533 | 42.1 s | 5.0 | 0 | 4 | 0 | $1.1513 |
+
+## Per case
+
+| Case | sonnet-regraded-regraded |
+|---|---|
+| T09 | pass |
+| T10 | pass |
+| T11 | pass |
+| T12 | pass |
+| T13 | pass |
+| T14 | pass |
+
+## Deck quality
+
+Graded 1-5 per rubric criterion; quality is the mean. Fit is over tasks with a request.
+
+| Variant | Legal deck | Quality | Named commander used | plan | fit | mana | ramp | draw | interaction |
+|---|---|---|---|---|---|---|---|---|---|
+| sonnet-regraded-regraded | 100% | 3.25 | 0% | 3.00 | 3.33 | 2.83 | 3.00 | 4.00 | 3.33 |
