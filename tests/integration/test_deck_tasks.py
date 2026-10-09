@@ -458,3 +458,44 @@ def test_a_preference_that_flips_with_the_order_is_a_tie(
     (pair,) = comparison.pairs
     assert pair.winner == "same"
     assert comparison.after_win_rate == 0.5
+
+
+def test_goals_count_cards_added_with_a_role_and_exact_cuts(
+    conn: psycopg.Connection, tmp_path: Path
+) -> None:
+    # "Add three removal spells and cut three creatures": a cut creature that
+    # was itself removal mustn't undo the removal added, and cutting four
+    # creatures isn't cutting three.
+    from tests.integration.test_agent_tools import COHORT, DELVER, tag
+
+    tag(conn, COHORT, "removal")
+    tag(conn, DELVER, "removal")
+    goals = [
+        {"kind": "role_added", "role": "removal", "equals": 1},
+        {"kind": "role_added", "role": "removal", "equals": 2},
+        {"kind": "role_change", "role": "removal", "at_least": 1},
+        {"kind": "type_cut", "type": "Creature", "equals": 1},
+        {"kind": "type_cut", "type": "Creature", "equals": 2},
+    ]
+    start = {"commander": ATRAXA, "cards": LEGAL}
+    change = calls(
+        call(
+            "propose_changes",
+            add=[{"name": "Delver of Secrets"}],
+            remove=[{"name": COHORT}],
+            rationale="Swap one removal creature for another.",
+        )
+    )
+
+    result = run(
+        conn,
+        tmp_path,
+        task(id="T26", kind="refine", request="Swap.", start=start, goals=goals),
+        change,
+        answer("Swapped."),
+        grader=FakeProvider(grade()),
+    )
+
+    assert [g["met"] for g in result.details["goals"]] == [True, False, False, True, False]
+    assert result.details["goals"][0]["goal"] == "exactly 1 removal card added"
+    assert result.details["goals"][3]["goal"] == "exactly 1 Creature card cut"
