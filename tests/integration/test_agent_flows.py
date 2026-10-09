@@ -363,3 +363,6 @@ def test_a_refine_asks_for_checkable_goals_checked_before_ending(conn: psycopg.C
     assert "checkable goals" in prompt
     assert "analyze_deck" in prompt
     assert "can't" in prompt  # say so when the pool can't meet the request
+    # The goals go to propose_changes, which checks them in code, and the
+    # pool can be searched by role.
+    assert "goals" in prompt and "propose_changes" in prompt and "find_by_role" in prompt
