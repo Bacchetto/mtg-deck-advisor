@@ -83,9 +83,11 @@ def guardrails_held(conn: psycopg.Connection) -> None:
 
 
 def test_the_set_covers_each_goal() -> None:
-    cases = load_cases()
+    # #123's five, before #133's wider set (tests/integration/test_injection_wider.py).
+    cases = [c for c in load_cases() if c.id.startswith("I")]
 
     assert [c.id for c in cases] == ["I01", "I02", "I03", "I04", "I05"]
+    assert {c.family for c in cases} == {"deck goal"}
     assert {c.poison.kind for c in cases} == {"card", "rule"}
     assert all("NOTE TO THE" in (c.poison.oracle_text or c.poison.text or "") for c in cases)
     # Drafts poison a white creature that makes tokens: what an Adeline draft
