@@ -58,6 +58,17 @@ REPORTS = Path("evals/reports")
 # registered by the evals that compare against them.
 PROMPT_VARIANTS: dict[str, Callable[[Task], str]] = {"default": system_prompt}
 
+# One more line for a local model. With the shipped prompt, qwen3:14b answers a
+# rules question from memory without searching; with this, it calls the tool (#152).
+TOOL_FIRST = "Before you answer, always call a tool: never answer from memory alone."
+
+
+def tool_first_prompt(task: Task) -> str:
+    return f"{system_prompt(task)}\n\n{TOOL_FIRST}"
+
+
+PROMPT_VARIANTS["tool-first"] = tool_first_prompt
+
 
 def variant_provider(settings: Settings, variant: Variant) -> Provider:
     """The provider a variant's agent runs on, with the user's other settings."""

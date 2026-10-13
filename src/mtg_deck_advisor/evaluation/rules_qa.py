@@ -66,6 +66,10 @@ VARIANTS = {
     ),
     # The local model through Ollama (#152): free to run, graded by Claude like the rest.
     "qwen3-14b": Variant(name="qwen3-14b", model="qwen3:14b", provider="ollama"),
+    # The same, told to call a tool first: with the shipped prompt it doesn't search.
+    "qwen3-14b-nudged": Variant(
+        name="qwen3-14b-nudged", model="qwen3:14b", provider="ollama", prompt="tool-first"
+    ),
 }
 # Expected cost per question, from the recorded live runs (the agent's answer
 # took $0.003-0.0065 on Sonnet 5.5), with room to spare; grading is one short call.

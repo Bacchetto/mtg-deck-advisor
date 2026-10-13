@@ -72,6 +72,10 @@ VARIANTS = {
     "haiku": Variant(name="haiku", model="claude-haiku-4-5"),
     # The local model through Ollama (#152): free to run, graded by Claude like the rest.
     "qwen3-14b": Variant(name="qwen3-14b", model="qwen3:14b", provider="ollama"),
+    # The same, told to call a tool first: with the shipped prompt it doesn't search.
+    "qwen3-14b-nudged": Variant(
+        name="qwen3-14b-nudged", model="qwen3:14b", provider="ollama", prompt="tool-first"
+    ),
 }
 # Expected cost per task, from the recorded live runs (a draft $0.12-0.13, a
 # refine $0.065 on Sonnet 5.5), with room to spare; a grade reads a whole deck.

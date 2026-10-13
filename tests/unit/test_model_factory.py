@@ -116,9 +116,9 @@ def test_the_local_model_can_be_run_with_a_tool_first_nudge() -> None:
     from mtg_deck_advisor.evaluation.runner import PROMPT_VARIANTS
 
     for task in ("rules", "draft", "refine"):
-        nudged = PROMPT_VARIANTS["tool-first"](task)  # type: ignore[arg-type]
-        assert nudged.startswith(system_prompt(task))  # type: ignore[arg-type]
-        assert "always call a tool" in nudged.removeprefix(system_prompt(task))  # type: ignore[arg-type]
+        nudged = PROMPT_VARIANTS["tool-first"](task)
+        assert nudged.startswith(system_prompt(task))
+        assert "always call a tool" in nudged.removeprefix(system_prompt(task))
     for suite in (rules_qa, deck_tasks):
         shipped, nudged_variant = suite.VARIANTS["qwen3-14b"], suite.VARIANTS["qwen3-14b-nudged"]
         assert shipped.prompt == "default" and nudged_variant.prompt == "tool-first"

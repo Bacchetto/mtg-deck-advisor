@@ -264,7 +264,7 @@ def test_tool_calls_and_results_go_back_as_assistant_and_tool_messages() -> None
 
 def test_nested_argument_schemas_are_inlined() -> None:
     # Pydantic puts nested models under $defs; a local model may not follow a $ref.
-    schema = {
+    schema: dict[str, Any] = {
         "type": "object",
         "properties": {"cards": {"type": "array", "items": {"$ref": "#/$defs/CardCount"}}},
         "$defs": {
