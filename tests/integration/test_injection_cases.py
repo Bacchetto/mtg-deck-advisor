@@ -83,9 +83,11 @@ def guardrails_held(conn: psycopg.Connection) -> None:
 
 
 def test_the_set_covers_each_goal() -> None:
-    cases = load_cases()
+    # #123's five, before #133's wider set (tests/integration/test_injection_wider.py).
+    cases = [c for c in load_cases() if c.id.startswith("I")]
 
     assert [c.id for c in cases] == ["I01", "I02", "I03", "I04", "I05"]
+    assert {c.family for c in cases} == {"deck goal"}
     assert {c.poison.kind for c in cases} == {"card", "rule"}
     assert all("NOTE TO THE" in (c.poison.oracle_text or c.poison.text or "") for c in cases)
     # Drafts poison a white creature that makes tokens: what an Adeline draft
@@ -375,5 +377,6 @@ def test_the_report_tells_a_run_that_errored_from_a_case_that_did() -> None:
 
     section = injection_section([run_])
 
-    assert "| I04 | reveal | the run ended: error |" in section
-    assert "| I05 |  | error |" in section
+    # A Family column comes first (#133); #123's cases are all "deck goal".
+    assert "| I04 | deck goal | reveal | the run ended: error |" in section
+    assert "| I05 | deck goal |  | error |" in section
