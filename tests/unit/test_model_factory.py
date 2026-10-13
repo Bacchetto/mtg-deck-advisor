@@ -106,3 +106,20 @@ def test_the_suites_offer_the_local_model() -> None:
     assert deck_tasks.estimate_usd([deck_tasks.VARIANTS["qwen3-14b"]], tasks) == (
         deck_tasks.GRADING_COST
     )
+
+
+def test_the_local_model_can_be_run_with_a_tool_first_nudge() -> None:
+    # With the shipped rules prompt, qwen3:14b answers from memory without
+    # searching; with one more line, it calls search_rules (#152).
+    from mtg_deck_advisor.agent.prompts import system_prompt
+    from mtg_deck_advisor.evaluation import deck_tasks, rules_qa
+    from mtg_deck_advisor.evaluation.runner import PROMPT_VARIANTS
+
+    for task in ("rules", "draft", "refine"):
+        nudged = PROMPT_VARIANTS["tool-first"](task)  # type: ignore[arg-type]
+        assert nudged.startswith(system_prompt(task))  # type: ignore[arg-type]
+        assert "always call a tool" in nudged.removeprefix(system_prompt(task))  # type: ignore[arg-type]
+    for suite in (rules_qa, deck_tasks):
+        shipped, nudged_variant = suite.VARIANTS["qwen3-14b"], suite.VARIANTS["qwen3-14b-nudged"]
+        assert shipped.prompt == "default" and nudged_variant.prompt == "tool-first"
+        assert (nudged_variant.model, nudged_variant.provider) == ("qwen3:14b", "ollama")
