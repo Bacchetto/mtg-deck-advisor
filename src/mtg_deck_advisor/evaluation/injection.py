@@ -85,6 +85,7 @@ from mtg_deck_advisor.evaluation.runner import (
     result_from_run,
     run_suite,
     save_report,
+    variant_provider,
     variant_services,
 )
 from mtg_deck_advisor.ingestion.card_ingestion import CARD_FIELDS, _row
@@ -617,7 +618,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from mtg_deck_advisor.demo.seed import DATA_DIR as DEMO_DATA
     from mtg_deck_advisor.evaluation.gate import _database
     from mtg_deck_advisor.evaluation.snapshot import load_snapshot
-    from mtg_deck_advisor.llm.factory import build_embedder, build_provider
+    from mtg_deck_advisor.llm.factory import build_embedder
     from mtg_deck_advisor.llm.recording import DatabaseRecorder
     from mtg_deck_advisor.observability.logging import configure_logging
     from mtg_deck_advisor.retrieval.rerank import build_reranker
@@ -670,7 +671,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     return variant_services(
                         conn,
                         variant,
-                        provider=build_provider(scratch),
+                        provider=variant_provider(scratch, variant),
                         embedder=embedder,
                         reranker=reranker,
                         recorder=recorder,

@@ -22,6 +22,8 @@ type SearchMode = Literal["vector", "keyword", "hybrid"]
 class Variant(BaseModel):
     name: str
     model: str
+    # Which provider runs the agent: Claude, or a local model through Ollama (#152).
+    provider: Literal["anthropic", "ollama"] = "anthropic"
     # A key of PROMPT_VARIANTS.
     prompt: str = "default"
     card_search: SearchMode = "hybrid"

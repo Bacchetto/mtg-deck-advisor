@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 300
     # The local chat model, when MODEL_PROVIDER is ollama or for comparisons.
     ollama_chat_model: str = "qwen3:14b"
+    # The context length asked for when a local model runs the agent (a request
+    # with tools). Ollama's default is a few thousand tokens and it cuts a
+    # longer prompt silently; an agent turn carries a decklist and tool results.
+    ollama_agent_num_ctx: int = 16384
     # The embedding model for retrieval, chosen on the retrieval dev set (#73),
     # and the size its vectors are cut to: the schema's vector(1024).
     embedding_model: str = "qwen3-embedding:8b"

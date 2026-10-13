@@ -13,6 +13,7 @@ call per text, and the ports free up within a minute or two. That's waited
 out and retried a few times (#76).
 """
 
+import json
 import math
 import time
 from collections.abc import Callable, Sequence
@@ -21,7 +22,7 @@ from typing import Any, Protocol
 import httpx2
 
 from mtg_deck_advisor.llm.errors import ModelCallError
-from mtg_deck_advisor.llm.types import ProviderRequest, ProviderResponse, Usage
+from mtg_deck_advisor.llm.types import ProviderRequest, ProviderResponse, ToolCall, Usage
 
 # Effort levels at which a thinking model (such as Qwen3) is allowed to think.
 # Below them thinking is turned off: it would spend the output budget on
@@ -99,11 +100,90 @@ class _OllamaHttp:
         return result
 
 
+def _inlined(schema: Any, defs: dict[str, Any] | None = None) -> Any:
+    """A JSON schema with each `$ref` replaced by what it points to in `$defs`.
+
+    Pydantic puts nested models under `$defs`. A local model reads the schema as
+    text, and may not follow a reference.
+    """
+    if isinstance(schema, list):
+        return [_inlined(item, defs) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    if defs is None:
+        defs = schema.get("$defs", {})
+    ref = schema.get("$ref")
+    if isinstance(ref, str) and ref.startswith("#/$defs/"):
+        return _inlined(defs.get(ref.removeprefix("#/$defs/"), {}), defs)
+    return {key: _inlined(value, defs) for key, value in schema.items() if key != "$defs"}
+
+
+def _chat_messages(request: ProviderRequest) -> list[dict[str, Any]]:
+    """The conversation as Ollama's /api/chat takes it.
+
+    A tool result names the tool it came from, which the project's ToolResult
+    doesn't carry: it's looked up from the call that asked for it.
+    """
+    messages: list[dict[str, Any]] = [{"role": "system", "content": request.system}]
+    names: dict[str, str] = {}
+    for message in request.messages:
+        if message.role == "assistant":
+            turn: dict[str, Any] = {"role": "assistant", "content": message.content}
+            if message.tool_calls:
+                turn["tool_calls"] = [
+                    {"id": call.id, "function": {"name": call.name, "arguments": call.arguments}}
+                    for call in message.tool_calls
+                ]
+                names |= {call.id: call.name for call in message.tool_calls}
+            messages.append(turn)
+            continue
+        for result in message.tool_results:
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": result.tool_call_id,
+                    "tool_name": names.get(result.tool_call_id, ""),
+                    "content": result.content,
+                }
+            )
+        if message.content or not message.tool_results:
+            messages.append({"role": "user", "content": message.content})
+    return messages
+
+
+def _tool_calls(reply: dict[str, Any]) -> tuple[ToolCall, ...]:
+    calls = []
+    for number, call in enumerate(reply.get("message", {}).get("tool_calls") or [], 1):
+        function = call.get("function", {})
+        arguments = function.get("arguments") or {}
+        if isinstance(arguments, str):  # some models send the arguments as JSON text
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                arguments = {}
+        calls.append(
+            ToolCall(
+                # Older Ollama versions give a call no id.
+                id=call.get("id") or f"call_{number}",
+                name=function.get("name", ""),
+                arguments=arguments if isinstance(arguments, dict) else {},
+            )
+        )
+    return tuple(calls)
+
+
 class OllamaProvider(_OllamaHttp):
     def __init__(
-        self, *, base_url: str, timeout_seconds: float, http_client: httpx2.Client | None = None
+        self,
+        *,
+        base_url: str,
+        timeout_seconds: float,
+        http_client: httpx2.Client | None = None,
+        agent_num_ctx: int | None = None,
     ) -> None:
         super().__init__(base_url, timeout_seconds, http_client)
+        # The context length to ask for when a request uses tools (an agent run).
+        self._agent_num_ctx = agent_num_ctx
 
     @property
     def name(self) -> str:
@@ -114,15 +194,10 @@ class OllamaProvider(_OllamaHttp):
         return False
 
     def complete(self, request: ProviderRequest, model: str) -> ProviderResponse:
-        if request.tools or any(m.tool_calls or m.tool_results for m in request.messages):
-            # The agent runs on Claude (ADR 0012); local models only tag and rerank.
-            raise ModelCallError("tool calling isn't supported with Ollama yet")
+        agent = bool(request.tools) or any(m.tool_calls or m.tool_results for m in request.messages)
         body: dict[str, Any] = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": request.system},
-                *({"role": m.role, "content": m.content} for m in request.messages),
-            ],
+            "messages": _chat_messages(request),
             "stream": False,
             "think": request.effort in THINKING_EFFORTS,
             # Temperature 0: the same card gets the same tags, run to run.
@@ -130,17 +205,35 @@ class OllamaProvider(_OllamaHttp):
         }
         if request.output_schema is not None:
             body["format"] = request.output_schema
+        if request.tools:
+            body["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": _inlined(tool.input_schema),
+                    },
+                }
+                for tool in request.tools
+            ]
+        if agent and self._agent_num_ctx is not None:
+            # Ollama cuts a prompt longer than its context silently, and its
+            # default is a few thousand tokens: less than one agent turn.
+            body["options"]["num_ctx"] = self._agent_num_ctx
 
         reply = self._post("/api/chat", body, model)
         done_reason = reply.get("done_reason", "")
+        calls = _tool_calls(reply)
         return ProviderResponse(
             text=reply.get("message", {}).get("content", ""),
-            stop_reason=STOP_REASONS.get(done_reason, done_reason),
+            stop_reason="tool_use" if calls else STOP_REASONS.get(done_reason, done_reason),
             model=reply.get("model", model),
             usage=Usage(
                 input_tokens=reply.get("prompt_eval_count", 0),
                 output_tokens=reply.get("eval_count", 0),
             ),
+            tool_calls=calls,
         )
 
 
