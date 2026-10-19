@@ -28,7 +28,6 @@ from mtg_deck_advisor.agent.sdk import (
     sdk_tools,
 )
 from mtg_deck_advisor.agent.tools import ToolContext, tool_specs
-from mtg_deck_advisor.config import get_settings
 from mtg_deck_advisor.evaluation.results import Variant
 from mtg_deck_advisor.evaluation.runner import variant_services
 from mtg_deck_advisor.llm.fake import FakeEmbedder, FakeProvider
@@ -134,6 +133,8 @@ def test_an_sdk_variant_runs_its_flows_on_the_sdk(
         recorder=MemoryRecorder(),
         cost_cap_usd=0.75,
         max_turns=12,
+        # Claude Code makes its own model calls, so it needs the key itself.
+        api_key="sk-ant-test",
     )
     ctx = session_for(conn, "draft").context
     seen: dict[str, Any] = {}
@@ -145,12 +146,9 @@ def test_an_sdk_variant_runs_its_flows_on_the_sdk(
         return ran_on_sdk
 
     monkeypatch.setattr(sdk, "run_sdk_agent", fake_sdk_agent)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-    get_settings.cache_clear()
-    try:
-        ran = flows._run(services, ctx, "Draft a deck.")
-    finally:
-        get_settings.cache_clear()
+    # Nothing comes from the process's settings: a test run has none.
+    monkeypatch.setattr(flows, "get_settings", None, raising=False)
+    ran = flows._run(services, ctx, "Draft a deck.")
 
     assert services.harness == "sdk"
     assert ran is ran_on_sdk
