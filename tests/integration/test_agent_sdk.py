@@ -137,9 +137,11 @@ def test_an_sdk_variant_runs_its_flows_on_the_sdk(
     ctx = session_for(conn, "draft").context
     seen: dict[str, Any] = {}
 
-    def fake_sdk_agent(ctx: ToolContext, **kwargs: Any) -> str:
+    ran_on_sdk: Any = object()
+
+    def fake_sdk_agent(ctx: ToolContext, **kwargs: Any) -> Any:
         seen.update(kwargs)
-        return "ran on the SDK"
+        return ran_on_sdk
 
     monkeypatch.setattr(sdk, "run_sdk_agent", fake_sdk_agent)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
@@ -150,7 +152,7 @@ def test_an_sdk_variant_runs_its_flows_on_the_sdk(
         get_settings.cache_clear()
 
     assert services.harness == "sdk"
-    assert ran == "ran on the SDK"
+    assert ran is ran_on_sdk
     # The same prompt, model, turn limit and cost cap as the hand-built loop.
     assert seen == {
         "system": services.system("draft"),
