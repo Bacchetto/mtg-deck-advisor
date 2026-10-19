@@ -175,7 +175,11 @@ Claude finishes in ([report](evals/reports/2026-10-19-local-model.md)).
 held every time. The cases span 12 attack families, from exfiltration and phishing to obfuscated,
 second-order and fake-authority instructions. Sonnet and Haiku both resisted all 20 of the wider
 cases, but only Sonnet warned the user about them, in 18 of 20
-([report](evals/reports/2026-10-09-injection-wider.md)).
+([report](evals/reports/2026-10-09-injection-wider.md)). Harder cases, run 3 times each, found
+two weak spots: both models relay a false *rule* planted in the rules corpus, and the local
+summariser writes whatever a card's text tells it to into the summaries search uses. False card
+text, fake tool results, split instructions and steering didn't work
+([report](evals/reports/2026-10-19-injection-harder.md)).
 
 **CI runs** on every pull request: lint, strict mypy, unit and integration tests, a secret scan, a
 dependency audit and an image build. It also runs:
@@ -198,9 +202,10 @@ on a deliberately degraded setting.
   rules ([#138](https://github.com/Bacchetto/mtg-deck-advisor/issues/138)), but answers still cite
   supporting general rules, such as the casting steps for a question about flash. Citation
   precision is 92-94%.
-- **The injection cases no longer tell the models apart.** Both resist all of them, so harder
-  attacks are needed: longer multi-turn plants, attacks split across cards, and text posing as the
-  user's own request ([report](evals/reports/2026-10-09-injection-wider.md)).
+- **Retrieved rules are trusted.** A false rule in the rules corpus is relayed as fact, so the
+  corpus's integrity is the defense (it comes from Wizards' official file, with content hashes).
+- **The local summariser follows card text.** A card can make its own summary promotional, which
+  could lift it in pool searches ([report](evals/reports/2026-10-19-injection-harder.md)).
 - **A prompt change isn't caught before merge.** The live eval runs on `main`, not on pull
   requests: a deliberate trade against paying for every push.
 - **There's no authentication.** The API listens only on `127.0.0.1`, and users, keys, rate limits
