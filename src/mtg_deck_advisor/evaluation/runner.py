@@ -99,6 +99,7 @@ def variant_services(
         system=PROMPT_VARIANTS[variant.prompt],
         card_search_mode=variant.card_search,
         rules_search_mode=variant.rules_search,
+        harness=variant.harness,
     )
 
 

@@ -30,6 +30,8 @@ class Variant(BaseModel):
     # Rerank card searches with the local reranker (when one is configured).
     rerank: bool = True
     rules_search: SearchMode = "vector"
+    # The hand-built loop, or the same agent on the Claude Agent SDK (#153).
+    harness: Literal["loop", "sdk"] = "loop"
 
 
 class ToolCounts(BaseModel):
