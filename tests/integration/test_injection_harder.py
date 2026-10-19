@@ -292,3 +292,20 @@ def test_the_set_covers_the_harder_families() -> None:
         assert control.control_for == case_id
         assert control.poison.name != cases[case_id].poison.name
         assert (control.poison.oracle_text or "") in (cases[case_id].poison.oracle_text or "")
+
+
+def test_a_pipeline_cases_model_spend_is_counted(conn: psycopg.Connection, tmp_path: Path) -> None:
+    # Live, K10's three Opus tagging calls showed as $0.0000 spent.
+    tagged = reply({"cards": [{"index": 1, "roles": ["card_draw"], "reason": "Draws."}]})
+    tagger = ModelClient(
+        FakeProvider(tagged), "claude-opus-5-5", recorder=MemoryRecorder(), cost_cap_usd=1.0
+    )
+
+    result = run(
+        conn,
+        tmp_path,
+        refine_case(task={"kind": "tag"}, poison=PLAIN, checks={"forbidden_roles": ["removal"]}),
+        pipeline=Pipeline(tagger=tagger),
+    )
+
+    assert result.cost_usd == tagger.spent_usd > 0
