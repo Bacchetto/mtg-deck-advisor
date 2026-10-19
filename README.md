@@ -166,6 +166,13 @@ for free. With the shipped prompt it rarely searched, so the guardrail withheld 
 86% correct, against Haiku's 93% and Sonnet's 99%. It couldn't finish a deck draft in the 30 turns
 Claude finishes in ([report](evals/reports/2026-10-19-local-model.md)).
 
+**The hand-built loop, against an agent framework.** The same agent on the Claude Agent SDK, with
+the same tools, model and prompt, drafted legal decks on all 8 tasks, for about the same cost
+($0.112 a deck against $0.122) and quality (3.21 against 3.48). But its model calls bypass the
+project's client: they aren't recorded or replayable, and the cost cap is checked after spending,
+not before. On one task Claude Code turned away 16 malformed tool calls that never reached the
+project's records. The project keeps its own loop ([write-up](docs/findings/agent-sdk-comparison.md)).
+
 **How far the graders can be trusted.** The owner graded samples blind:
 - **Deck grades:** they agreed with the Opus grader at a weighted kappa of **0.90** over 102 scores, and 99% of scores were within one point.
 - **Rules answers:** they agreed with the Sonnet grader on 88% exactly.

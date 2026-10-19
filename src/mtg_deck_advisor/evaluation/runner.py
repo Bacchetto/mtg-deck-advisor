@@ -87,8 +87,12 @@ def variant_services(
     recorder: CallRecorder,
     cost_cap_usd: float,
     max_turns: int,
+    api_key: str = "",
 ) -> AgentServices:
-    """The agent's services set up as the variant says."""
+    """The agent's services set up as the variant says.
+
+    `api_key` is for the SDK harness, whose model calls don't go through `provider`.
+    """
     client = ModelClient(provider, variant.model, recorder=recorder, cost_cap_usd=cost_cap_usd)
     return AgentServices(
         conn=conn,
@@ -99,6 +103,8 @@ def variant_services(
         system=PROMPT_VARIANTS[variant.prompt],
         card_search_mode=variant.card_search,
         rules_search_mode=variant.rules_search,
+        harness=variant.harness,
+        api_key=api_key,
     )
 
 

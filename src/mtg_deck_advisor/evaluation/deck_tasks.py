@@ -76,6 +76,8 @@ VARIANTS = {
     "qwen3-14b-nudged": Variant(
         name="qwen3-14b-nudged", model="qwen3:14b", provider="ollama", prompt="tool-first"
     ),
+    # The same agent on the Claude Agent SDK instead of the hand-built loop (#153).
+    "sonnet-sdk": Variant(name="sonnet-sdk", model="claude-sonnet-5-5", harness="sdk"),
 }
 # Expected cost per task, from the recorded live runs (a draft $0.12-0.13, a
 # refine $0.065 on Sonnet 5.5), with room to spare; a grade reads a whole deck.
@@ -737,6 +739,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_provider(settings), GRADER_MODEL, recorder=recorder, cost_cap_usd=args.budget
         )
         embedder, reranker = build_embedder(settings), build_reranker(settings)
+        key = settings.anthropic_api_key
         for variant in variants:
 
             def services_for(variant: Variant = variant) -> AgentServices:
@@ -749,6 +752,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     recorder=recorder,
                     cost_cap_usd=settings.agent_cost_cap_usd,
                     max_turns=settings.agent_max_turns,
+                    api_key=key.get_secret_value() if key else "",
                 )
 
             run = run_suite(

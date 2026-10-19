@@ -15,6 +15,7 @@ the user.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
 import psycopg
@@ -63,6 +64,10 @@ class AgentServices:
     system: Callable[[Task], str] = system_prompt
     card_search_mode: SearchMode = "hybrid"
     rules_search_mode: SearchMode = "vector"
+    # The hand-built loop, or the same agent on the Claude Agent SDK (#153).
+    harness: Literal["loop", "sdk"] = "loop"
+    # For the SDK harness only: Claude Code makes its own model calls, so it needs the key.
+    api_key: str = ""
 
 
 def build_services(conn: psycopg.Connection, settings: Settings) -> AgentServices:
@@ -353,6 +358,19 @@ def _context(
 
 
 def _run(services: AgentServices, ctx: ToolContext, prompt: str) -> RunResult:
+    if services.harness == "sdk":
+        # Imported here: the SDK is an optional extra (it bundles Claude Code).
+        from mtg_deck_advisor.agent import sdk
+
+        return sdk.run_sdk_agent(
+            ctx,
+            system=services.system(ctx.task),
+            prompt=prompt,
+            model=services.client.model,
+            max_turns=services.max_turns,
+            budget_usd=services.client.remaining_usd,
+            api_key=services.api_key,
+        )
     return run_agent(
         services.client,
         ctx,
