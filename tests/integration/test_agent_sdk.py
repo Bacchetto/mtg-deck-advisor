@@ -12,10 +12,13 @@ SDK's result becomes a run. A live comparison runs through the deck tasks.
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import psycopg
+import pytest
 from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny, ResultMessage
 
+from mtg_deck_advisor.agent import flows, sdk
 from mtg_deck_advisor.agent.runs import tool_calls_for
 from mtg_deck_advisor.agent.sdk import (
     SERVER,
@@ -24,7 +27,12 @@ from mtg_deck_advisor.agent.sdk import (
     sdk_options,
     sdk_tools,
 )
-from mtg_deck_advisor.agent.tools import tool_specs
+from mtg_deck_advisor.agent.tools import ToolContext, tool_specs
+from mtg_deck_advisor.config import get_settings
+from mtg_deck_advisor.evaluation.results import Variant
+from mtg_deck_advisor.evaluation.runner import variant_services
+from mtg_deck_advisor.llm.fake import FakeEmbedder, FakeProvider
+from mtg_deck_advisor.llm.recording import MemoryRecorder
 from tests.integration.test_agent_flows import conn  # noqa: F401
 from tests.integration.test_agent_tools import loaded, session_for  # noqa: F401
 
@@ -96,8 +104,11 @@ def test_each_sdk_tool_runs_the_same_code_as_the_hand_built_loop(
     session = session_for(conn, "draft")
     tools = {t.name: t for t in sdk_tools(session.context)}
 
-    found = asyncio.run(tools["get_card"].handler({"name": "Sol Ring"}))
-    missing = asyncio.run(tools["get_card"].handler({"name": "Not A Card"}))
+    async def get_card(name: str) -> dict[str, Any]:
+        return await tools["get_card"].handler({"name": name})
+
+    found = asyncio.run(get_card("Sol Ring"))
+    missing = asyncio.run(get_card("Not A Card"))
 
     assert sorted(tools) == sorted(spec.name for spec in tool_specs("draft"))
     assert "Sol Ring" in found["content"][0]["text"] and not found.get("is_error")
@@ -108,6 +119,47 @@ def test_each_sdk_tool_runs_the_same_code_as_the_hand_built_loop(
         (1, "get_card", "ok"),
         (2, "get_card", "error"),
     ]
+
+
+def test_an_sdk_variant_runs_its_flows_on_the_sdk(
+    conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = variant_services(
+        conn,
+        Variant(name="sonnet-sdk", model="claude-sonnet-5-5", harness="sdk"),
+        provider=FakeProvider(),
+        embedder=FakeEmbedder(),
+        reranker=None,
+        recorder=MemoryRecorder(),
+        cost_cap_usd=0.75,
+        max_turns=12,
+    )
+    ctx = session_for(conn, "draft").context
+    seen: dict[str, Any] = {}
+
+    def fake_sdk_agent(ctx: ToolContext, **kwargs: Any) -> str:
+        seen.update(kwargs)
+        return "ran on the SDK"
+
+    monkeypatch.setattr(sdk, "run_sdk_agent", fake_sdk_agent)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    get_settings.cache_clear()
+    try:
+        ran = flows._run(services, ctx, "Draft a deck.")
+    finally:
+        get_settings.cache_clear()
+
+    assert services.harness == "sdk"
+    assert ran == "ran on the SDK"
+    # The same prompt, model, turn limit and cost cap as the hand-built loop.
+    assert seen == {
+        "system": services.system("draft"),
+        "prompt": "Draft a deck.",
+        "model": "claude-sonnet-5-5",
+        "max_turns": 12,
+        "budget_usd": 0.75,
+        "api_key": "sk-ant-test",
+    }
 
 
 def test_the_sdks_result_becomes_a_runs_status() -> None:
