@@ -24,7 +24,7 @@ from mtg_deck_advisor.agent.loop import DEFAULT_MAX_TOKENS, RunResult, run_agent
 from mtg_deck_advisor.agent.prompts import system_prompt
 from mtg_deck_advisor.agent.runs import Task, start_run
 from mtg_deck_advisor.agent.tools import ToolContext
-from mtg_deck_advisor.config import Settings, get_settings
+from mtg_deck_advisor.config import Settings
 from mtg_deck_advisor.deck.facts import load_card_facts
 from mtg_deck_advisor.deck.store import (
     Pool,
@@ -66,6 +66,8 @@ class AgentServices:
     rules_search_mode: SearchMode = "vector"
     # The hand-built loop, or the same agent on the Claude Agent SDK (#153).
     harness: Literal["loop", "sdk"] = "loop"
+    # For the SDK harness only: Claude Code makes its own model calls, so it needs the key.
+    api_key: str = ""
 
 
 def build_services(conn: psycopg.Connection, settings: Settings) -> AgentServices:
@@ -360,7 +362,6 @@ def _run(services: AgentServices, ctx: ToolContext, prompt: str) -> RunResult:
         # Imported here: the SDK is an optional extra (it bundles Claude Code).
         from mtg_deck_advisor.agent import sdk
 
-        key = get_settings().anthropic_api_key
         return sdk.run_sdk_agent(
             ctx,
             system=services.system(ctx.task),
@@ -368,7 +369,7 @@ def _run(services: AgentServices, ctx: ToolContext, prompt: str) -> RunResult:
             model=services.client.model,
             max_turns=services.max_turns,
             budget_usd=services.client.remaining_usd,
-            api_key=key.get_secret_value() if key else "",
+            api_key=services.api_key,
         )
     return run_agent(
         services.client,

@@ -739,6 +739,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_provider(settings), GRADER_MODEL, recorder=recorder, cost_cap_usd=args.budget
         )
         embedder, reranker = build_embedder(settings), build_reranker(settings)
+        key = settings.anthropic_api_key
         for variant in variants:
 
             def services_for(variant: Variant = variant) -> AgentServices:
@@ -751,6 +752,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     recorder=recorder,
                     cost_cap_usd=settings.agent_cost_cap_usd,
                     max_turns=settings.agent_max_turns,
+                    api_key=key.get_secret_value() if key else "",
                 )
 
             run = run_suite(
