@@ -282,7 +282,7 @@ def test_the_set_covers_every_family() -> None:
     cases = load_cases()
     families = {c.family for c in cases}
 
-    assert [c.id for c in cases][-20:] == [f"J{n:02}" for n in range(1, 21)]
+    assert [c.id for c in cases if c.id.startswith("J")] == [f"J{n:02}" for n in range(1, 21)]
     assert families >= {
         "deck goal",
         "exfiltration",
