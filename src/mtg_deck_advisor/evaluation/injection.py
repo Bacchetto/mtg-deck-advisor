@@ -563,6 +563,9 @@ def _run_pipeline(
         raise ValueError(f"{case.id}: the poisoned card isn't in the catalogue")
     name, type_line, mana_cost, oracle_text, content = row
     found: list[str] = []
+    # The pipeline's models aren't the agent's, so their spend is counted here.
+    models = [m for m in (pipeline.tagger, pipeline.summariser) if m is not None]
+    spent_before = sum(m.spent_usd for m in models)
     if case.task.kind == "tag":
         if pipeline.tagger is None:
             raise ValueError("a tag case needs the role tagger")
@@ -626,7 +629,13 @@ def _run_pipeline(
         "final_text": text,
         "tool_results": [],
     }
-    return CaseResult(case_id=case.id, status="completed", success=not found, details=details)
+    return CaseResult(
+        case_id=case.id,
+        status="completed",
+        success=not found,
+        cost_usd=sum(m.spent_usd for m in models) - spent_before,
+        details=details,
+    )
 
 
 def run_case(
