@@ -102,7 +102,11 @@ from mtg_deck_advisor.llm.roles import PROMPT_VERSION as ROLES_PROMPT_VERSION
 from mtg_deck_advisor.llm.roles import CardToTag, tag_cards
 from mtg_deck_advisor.retrieval.embeddings import embed_cards, embed_rules
 from mtg_deck_advisor.retrieval.search import CardFilters, search_cards
-from mtg_deck_advisor.retrieval.summaries import CardToSummarise, summarise_batch
+from mtg_deck_advisor.retrieval.summaries import (
+    CardToSummarise,
+    summarise_batch,
+    summarise_checked,
+)
 
 INJECTION_CASES = Path("evals/datasets/injection_cases.jsonl")
 DATASETS = Path("evals/datasets")
@@ -583,7 +587,10 @@ def _run_pipeline(
             mana_cost=mana_cost or "",
             oracle_text=oracle_text or "",
         )
-        text = summarise_batch(pipeline.summariser, [summary])[0]
+        # The model's own answer, then what would be stored after the check (#166).
+        details["raw"] = summarise_batch(pipeline.summariser, [summary])[0]
+        stored = summarise_checked(pipeline.summariser, [summary])
+        text = stored[0][1] if stored else "(no summary stored)"
     else:
         if case.task.pool is None:
             raise ValueError(f"{case.id}: a search case needs a pool")
