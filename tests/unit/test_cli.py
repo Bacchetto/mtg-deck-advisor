@@ -125,3 +125,47 @@ def test_a_refused_run_is_shown_as_refused_not_as_an_error() -> None:
     assert "refused after 2 turns" in out
     assert "refused: The model declined to continue on turn 3." in out
     assert "error:" not in out
+
+
+# --- terminal escape codes (#160) -----------------------------------------------------------
+# Card text, names and model replies reach the terminal. Escape sequences in them
+# could clear the screen, move the cursor to overwrite a line, or hide a link;
+# bidirectional overrides can make text read differently from what it is.
+
+HOSTILE = (
+    "Done.\x1b[2J\x1b[H"  # clear the screen, cursor home
+    "\x1b]8;;https://evil.example\x07click\x1b]8;;\x07"  # a hidden hyperlink
+    "\x1b[1A\x1b[2KApproved!"  # up a line, erase it, overwrite
+    "\x07\x08\x9b31m"  # bell, backspace, an 8-bit escape
+    "\u202eexe.dab\u202c"  # right-to-left override
+)
+
+
+def test_escape_codes_in_a_run_never_reach_the_terminal() -> None:
+    api = Api()
+    api.polls = [run_view("completed", 2, 0.02) | {"final_text": HOSTILE, "error": HOSTILE}]
+
+    _, out, _, _ = cli(api, "draft", "pool-1")
+
+    assert "\x1b" not in out and "\x07" not in out and "\x08" not in out and "\x9b" not in out
+    assert "\u202e" not in out and "\u202c" not in out
+    assert "Done." in out and "click" in out and "Approved!" in out  # the text itself survives
+
+
+def test_escape_codes_in_an_error_never_reach_the_terminal() -> None:
+    def refuse(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(404, json={"detail": f"no pool {HOSTILE}"})
+
+    _, _, err, _ = cli(refuse, "draft", "pool-1")
+
+    assert "\x1b" not in err and "\u202e" not in err
+    assert "no pool Done." in err
+
+
+def test_json_output_escapes_them_as_it_always_has() -> None:
+    api = Api()
+    api.polls = [run_view("completed", 2, 0.02) | {"final_text": HOSTILE}]
+
+    _, out, _, _ = cli(api, "--json", "draft", "pool-1")
+
+    assert "\x1b" not in out and "\\u001b" in out  # escaped by json.dumps

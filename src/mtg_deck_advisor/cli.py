@@ -24,6 +24,7 @@ unreachable API exits with code 1 and the reason; a usage error with 2.
 
 import argparse
 import json
+import re
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -70,6 +71,24 @@ class Api:
         return response
 
 
+# Card text, names, model replies and error details reach the terminal (#160).
+# Escape sequences could clear the screen, move the cursor to overwrite a line,
+# or hide a link; bidirectional controls can make text read differently from
+# what it is. They're stripped, and the text itself is kept.
+ESCAPES = re.compile(
+    r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?"  # OSC: hyperlinks, titles
+    r"|\x1b\[[0-?]*[ -/]*[@-~]"  # CSI: colours, cursor moves, erasing
+    r"|\x9b[0-?]*[ -/]*[@-~]"  # CSI as one 8-bit character
+    r"|\x1b[@-_]?"  # any other escape
+)
+CONTROLS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f‪-‮⁦-⁩]")
+
+
+def terminal_safe(text: str) -> str:
+    """Text with what could take over a terminal removed: escapes, controls, bidi overrides."""
+    return CONTROLS.sub("", ESCAPES.sub("", text))
+
+
 class Printer:
     def __init__(self, out: TextIO, as_json: bool) -> None:
         self.out = out
@@ -77,7 +96,7 @@ class Printer:
 
     def line(self, text: str = "") -> None:
         if not self.as_json:
-            self.out.write(text + "\n")
+            self.out.write(terminal_safe(text) + "\n")
 
     def result(self, data: Any, show: Callable[[Any], None]) -> None:
         if self.as_json:
@@ -105,7 +124,7 @@ def main(
     try:
         args.handler(Api(client), args, printer, sleep)
     except ApiError as exc:
-        err.write(f"error: {exc}\n")
+        err.write(f"error: {terminal_safe(str(exc))}\n")
         return 1
     except httpx2.TransportError as exc:
         err.write(
