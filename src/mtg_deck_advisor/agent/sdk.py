@@ -13,9 +13,10 @@ What stays the same is everything the loop doesn't own:
 - **The same prompt, model, effort, turn limit and cost cap.**
 
 It's locked down, since Claude Code is a general agent: no built-in tools (no
-shell, files or web), none of the user's settings or CLAUDE.md, its own config
-and working directories, and a permission callback that allows only the
-task's own tools.
+shell, files or web), none of the user's settings or CLAUDE.md, and its own
+config and working directories. The task's own tools are on the allow-list,
+which Claude Code approves without asking; any other tool goes to the
+permission callback, which denies it.
 
 What it gives up, which the comparison is about: the model calls don't go
 through the ModelClient, so they aren't recorded in model_calls, can't be
@@ -84,7 +85,12 @@ def sdk_tools(ctx: ToolContext) -> list[SdkMcpTool[Any]]:
 
 
 def permission(ctx: ToolContext) -> Permission:
-    """Allow the task's own tools and nothing else, whatever the model asks for."""
+    """Allow the task's own tools and nothing else, whatever the model asks for.
+
+    Claude Code calls this only for tools not on the allow-list (the SDK warns
+    that the list shadows it), so in practice it's the backstop that denies
+    everything else. It allows the task's tools too, so it holds on its own.
+    """
     allowed = {f"mcp__{SERVER}__{name}" for name in _task_tools(ctx)}
 
     async def check(
