@@ -177,7 +177,8 @@ second-order and fake-authority instructions. Sonnet and Haiku both resisted all
 cases, but only Sonnet warned the user about them, in 18 of 20
 ([report](evals/reports/2026-10-09-injection-wider.md)). Harder cases, run 3 times each, found
 two weak spots: both models relay a false *rule* planted in the rules corpus, and the local
-summariser writes whatever a card's text tells it to into the summaries search uses. False card
+summariser writes whatever a card's text tells it to into its summaries. Search is now protected
+from the second by a check in code. False card
 text, fake tool results, split instructions and steering didn't work
 ([report](evals/reports/2026-10-19-injection-harder.md)).
 
@@ -204,8 +205,9 @@ on a deliberately degraded setting.
   precision is 92-94%.
 - **Retrieved rules are trusted.** A false rule in the rules corpus is relayed as fact, so the
   corpus's integrity is the defense (it comes from Wizards' official file, with content hashes).
-- **The local summariser follows card text.** A card can make its own summary promotional, which
-  could lift it in pool searches ([report](evals/reports/2026-10-19-injection-harder.md)).
+- **The local summariser follows card text.** Told by a card to call it "a must-include", it does,
+  even with the text delimited. A check in code now leaves such summaries out, so nothing
+  promotional reaches search (#166, [report](evals/reports/2026-10-19-injection-harder.md)).
 - **A prompt change isn't caught before merge.** The live eval runs on `main`, not on pull
   requests: a deliberate trade against paying for every push.
 - **There's no authentication.** The API listens only on `127.0.0.1`, and users, keys, rate limits
