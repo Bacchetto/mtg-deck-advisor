@@ -36,7 +36,9 @@ def build_provider(settings: Settings) -> Provider:
         )
     else:
         provider = OllamaProvider(
-            base_url=settings.ollama_base_url, timeout_seconds=settings.ollama_timeout_seconds
+            base_url=settings.ollama_base_url,
+            timeout_seconds=settings.ollama_timeout_seconds,
+            agent_num_ctx=settings.ollama_agent_num_ctx,
         )
     if settings.record_responses:
         return RecordingProvider(provider, settings.replay_dir)

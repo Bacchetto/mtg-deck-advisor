@@ -1,0 +1,2005 @@
+{
+  "suite": "rules_qa",
+  "variant": {
+    "name": "qwen3-14b-nudged",
+    "model": "qwen3:14b",
+    "provider": "ollama",
+    "prompt": "tool-first",
+    "card_search": "hybrid",
+    "rerank": true,
+    "rules_search": "vector"
+  },
+  "started_at": "2026-10-13T15:27:26.260246Z",
+  "finished_at": "2026-10-13T15:36:15.306083Z",
+  "commit": "b8d5151",
+  "budget_usd": 0.25,
+  "results": [
+    {
+      "case_id": "R01",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0013472,
+      "latency_s": 5.418298100004904,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "eace9d5f-042c-47a8-9583-bbede0282a7a",
+      "details": {
+        "question": "How many cards must a Commander deck have?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A Commander deck must have exactly 100 cards.",
+        "reason": "",
+        "cited": [
+          "903.5a"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "The commander counts toward the 100."
+        ],
+        "contradictions": [],
+        "grade_reason": "The answer states the exact 100-card requirement but never says the commander counts toward the 100, so one key fact is missing and nothing is contradicted."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R02",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014071999999999997,
+      "latency_s": 5.651583399972878,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "c9f31efb-cd75-45a5-a101-368eb629c19d",
+      "details": {
+        "question": "Can I run more than one copy of a card in Commander?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "No, you cannot run more than one copy of a card in Commander. Each deck must contain exactly 100 cards, including its commander.",
+        "reason": "",
+        "cited": [
+          "903.5a"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "Basic lands are the exception."
+        ],
+        "contradictions": [],
+        "grade_reason": "The answer states key fact 1 (no, only one copy of each card) but never mentions the basic land exception; the 100-card detail is true extra information."
+      },
+      "scores": {
+        "citation_hit": 0.0,
+        "citation_precision": 1.0,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R03",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0022632,
+      "latency_s": 12.64258250000421,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "3b576e29-3a82-48e0-aa45-7476bf244641",
+      "details": {
+        "question": "Which cards can go in my deck, given my commander's colors?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "The cards that can go in your deck are those whose color identity is a subset of your commander's color identity. This includes cards that are only in one of the commander's colors, both colors, or have no color. Additionally, if you're using a two-commander deck, the combined color identity of both commanders determines which cards can be included.",
+        "reason": "",
+        "cited": [
+          "903.4",
+          "903.5c",
+          "903.5d",
+          "903.11a",
+          "702.124c"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [],
+        "contradictions": [
+          "The answer assumes the commander has exactly two colors (\"both colors\"), which is a minor inaccuracy because a commander can have any number of colors, including none."
+        ],
+        "grade_reason": "The answer states the key fact (a card's color identity must be a subset of the commander's) and the partner note is true. The \"both colors\" assumption is a minor inaccuracy that wouldn't change how the game is played, so it is partly correct under the rubric."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.6,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R04",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012252,
+      "latency_s": 7.0440881999675184,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "66da8bef-a6a7-4058-9f8d-2c5fd7b0cd65",
+      "details": {
+        "question": "Does reminder text count toward a card's color identity?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Reminder text is ignored when determining a card’s color identity.",
+        "reason": "",
+        "cited": [
+          "903.4c"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states that reminder text is ignored when determining color identity, which is the key fact (the implied 'no'), and says nothing that contradicts it."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R05",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012352000000000005,
+      "latency_s": 8.389108199975453,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "866e00e4-aa63-470b-b140-20168e9a43f4",
+      "details": {
+        "question": "Does the back face of a double-faced card count for color identity?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Yes, the back face of a double-faced card counts for color identity. This is explicitly stated in rule 903.4d.",
+        "reason": "",
+        "cited": [
+          "903.4d"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer plainly says yes, the back face counts for color identity, which is the only key fact, and it adds nothing that contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R06",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0010991999999999998,
+      "latency_s": 15.638884600019082,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "40e00bfa-2f67-4a26-a50f-446d54924cb0",
+      "details": {
+        "question": "What life total do players start with in Commander?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Players start with a life total of 40 in a Commander game.",
+        "reason": "",
+        "cited": [
+          "119.1c"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer plainly states the starting life total is 40, which is the only key fact, and says nothing that contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R07",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012771999999999992,
+      "latency_s": 8.69614840002032,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "6103cb16-7ae3-48a8-bfc7-625bcdf3badf",
+      "details": {
+        "question": "How much more does my commander cost each time I recast it from the command zone?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Each time you recast your commander from the command zone, it costs an additional {2} for each previous time you have cast it from the command zone that game.",
+        "reason": "",
+        "cited": [
+          "903.8"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact: {2} more for each previous time the commander was cast from the command zone that game. Nothing in it contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R08",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0041692,
+      "latency_s": 10.549654800037388,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "9c23026c-9489-4b68-9a29-25bef5b57d43",
+      "details": {
+        "question": "What happens when my commander would die or be exiled?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "When your commander would die or be exiled, its owner may put it into the command zone. This is a state-based action.",
+        "reason": "",
+        "cited": [
+          "704.6d",
+          "903.9a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says the owner may put the commander into the command zone, and \"may\" conveys that it is optional. The extra claim that this is a state-based action matches rule 903.9a, so nothing contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R09",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0013372000000000002,
+      "latency_s": 10.346197800012305,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "f1ce345c-af58-4ce2-8c94-922aecdb7dec",
+      "details": {
+        "question": "Can my commander go to the command zone instead of my hand or library?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Yes, in a Commander game, if your commander would be put into your hand or library from anywhere, you may put it into the command zone instead.",
+        "reason": "",
+        "cited": [
+          "903.9b",
+          "903.9a",
+          "903.9",
+          "903.9c",
+          "704.6d"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says yes and states that if the commander would go to hand or library from anywhere, you may put it into the command zone instead, which covers the optional replacement."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.8,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R10",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012991999999999986,
+      "latency_s": 14.44081310002366,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "73e11197-5b7d-41e6-938c-b5bc6b556aa2",
+      "details": {
+        "question": "How much commander damage makes a player lose?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A player loses the game when they have been dealt 21 or more combat damage by the same commander over the course of the game.",
+        "reason": "",
+        "cited": [
+          "104.3j"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: 21 or more combat damage from the same commander over the game, and that the player loses the game. Nothing in it contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R11",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.004277199999999998,
+      "latency_s": 11.737281300011091,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "8f82e890-ac0b-4cfd-8e4d-afbe7898384d",
+      "details": {
+        "question": "Can a Vehicle be my commander?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Yes, a Vehicle can be your commander. According to rule 903.3, a Vehicle card can be designated as a commander.",
+        "reason": "",
+        "cited": [
+          "903.3"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "The Vehicle card must be legendary to be a commander."
+        ],
+        "contradictions": [
+          "Implies any Vehicle card can be a commander, when only a legendary Vehicle can."
+        ],
+        "grade_reason": "The answer correctly says yes, but it leaves out the legendary requirement and so overgeneralizes to all Vehicles."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R12",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012071999999999986,
+      "latency_s": 8.69325889996253,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "15026526-ec7e-40ff-89ab-da5e7f03ecac",
+      "details": {
+        "question": "A planeswalker says it can be your commander. Is that allowed?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Yes, a planeswalker can be your commander if it has an ability that states the card can be your commander. This is allowed by the rules for deck construction.",
+        "reason": "",
+        "cited": [
+          "903.3a",
+          "903.3"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says yes, and that a planeswalker whose text states it can be your commander is allowed, which matches the key fact."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R13",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0011491999999999995,
+      "latency_s": 10.091839200002141,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "67883e83-1605-4fea-bed4-f8088c635e3e",
+      "details": {
+        "question": "Where does my commander start the game?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "In a Commander game, your commander starts the game in the command zone. Specifically, at the start of the game, each player puts their commander from their deck face up into the command zone.",
+        "reason": "",
+        "cited": [
+          "103.2c",
+          "903.6"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the commander starts in the command zone and is put there face up, which covers the single key fact with no contradictions."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R14",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0013752,
+      "latency_s": 13.442028300021775,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "cbff0658-3e24-4f67-b534-76532ef0d1c7",
+      "details": {
+        "question": "Can I include a land with a basic land type that makes a color outside my commander's identity?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "No, you cannot include a land with a basic land type that makes a color outside your commander's identity in a Commander deck. According to the rules, a card with a basic land type may be included in a Commander deck only if each color of mana it could produce is included in the commander’s color identity.",
+        "reason": "",
+        "cited": [
+          "903.5d",
+          "903.5c",
+          "903.11a",
+          "903.4"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says no and states the key fact: a card with a basic land type can be included only if each color of mana it could produce is in the commander's color identity."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.5,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R15",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.006293199999999999,
+      "latency_s": 18.679332999978215,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "bceacd6b-d39e-4333-9cc1-823ae0ef0c8e",
+      "details": {
+        "question": "How do partner commanders work?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Partner commanders allow you to designate two legendary cards as your commander rather than one if each of them has the same \"partner—[text]\" ability. These commanders function independently, and when casting a commander with partner, you ignore how many times your other commander has been cast. Additionally, when determining whether a player has been dealt 21 or more combat damage by the same commander, consider damage from each of your two commanders separately.",
+        "reason": "",
+        "cited": [
+          "702.124i",
+          "702.124h",
+          "702.124a",
+          "702.124d",
+          "702.124j"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "Each kind of partner ability has its own requirements for the pair (e.g. plain partner, partner with a named card, Friends forever, Choose a Background, Doctor's companion)."
+        ],
+        "contradictions": [
+          "Saying both commanders need 'the same partner—[text] ability' oversimplifies. Some kinds pair different cards, such as partner with a named card, Choose a Background, and Doctor's companion."
+        ],
+        "grade_reason": "The answer states that partner lets you have two legendary commanders instead of one. It gives a single 'same ability' pairing rule rather than saying each kind has its own requirements, and that rule is inaccurate for several kinds."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R16",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014391999999999981,
+      "latency_s": 10.500684699974954,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "3d37f774-7486-4530-84e0-ffaebbb41060",
+      "details": {
+        "question": "Is the first mulligan free in a multiplayer game?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Yes, the first mulligan is free in a multiplayer game. It doesn't count toward the number of cards that player will put on the bottom of their library or the number of mulligans that player may take.",
+        "reason": "",
+        "cited": [
+          "800.6",
+          "103.5c"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says yes and states that the first mulligan doesn't count toward the cards put on the bottom of the library. The extra clause about the number of mulligans is a harmless addition."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R17",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.006423199999999997,
+      "latency_s": 17.164542500046082,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "a04517cb-832d-4593-85f3-f6c16467dfba",
+      "details": {
+        "question": "What does deathtouch do?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Deathtouch is an ability that causes any creature with toughness greater than 0 that has been dealt damage by a source with deathtouch since the last time state-based actions were checked to be destroyed as a state-based action. This applies regardless of the zone from which the damage is dealt, and the ability functions even if the object is no longer in the zone it's expected to be in.",
+        "reason": "",
+        "cited": [
+          "702.2b",
+          "702.2c",
+          "702.2d",
+          "702.2e",
+          "704.5h"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says a creature dealt damage by a deathtouch source is destroyed as a state-based action, which conveys the key fact. The extra detail about zones is harmless and doesn't contradict the key fact."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R18",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0016731999999999997,
+      "latency_s": 9.867149799945764,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "3a59625e-c340-4318-b6d7-615e2695469f",
+      "details": {
+        "question": "How does a creature with trample assign its combat damage?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A creature with trample first assigns damage to the creature(s) blocking it. Once all those blocking creatures are assigned lethal damage, any excess damage is assigned as its controller chooses among those blocking creatures and the player, planeswalker, or battle the creature is attacking.",
+        "reason": "",
+        "cited": [
+          "702.19b"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states that lethal damage must be assigned to all blockers first, and that the excess can go to the player, planeswalker or battle being attacked. It also says the excess may go to the blockers, which is true under the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R19",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0016511999999999985,
+      "latency_s": 14.12607899995055,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "3b33fafe-e0ef-4544-9457-45ed494e968b",
+      "details": {
+        "question": "How does lifelink work?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Lifelink causes the controller of the source that deals damage to gain life equal to the amount of damage dealt. This happens in addition to any other results from the damage. If the source has no controller, its owner gains life instead. The lifelink effect works regardless of the zone the object is in when it deals damage. If multiple sources with lifelink deal damage at the same time, they cause separate life gain events.",
+        "reason": "",
+        "cited": [
+          "120.3f",
+          "702.15b",
+          "702.15d",
+          "702.15e",
+          "702.15c"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact that damage dealt by a lifelink source makes its controller gain that much life. The extra details (owner fallback, separate life gain events) are consistent with the rules and do not contradict the key fact."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R20",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.001253200000000003,
+      "latency_s": 6.316551800002344,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "f5317718-8742-4104-aff7-3297417eb9fa",
+      "details": {
+        "question": "What does hexproof mean?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Hexproof means that a permanent can't be the target of spells or abilities your opponents control.",
+        "reason": "",
+        "cited": [
+          "702.11b"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the single key fact: a hexproof permanent can't be targeted by spells or abilities your opponents control, and it adds nothing incorrect."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R21",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014052000000000023,
+      "latency_s": 7.843547500029672,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "f0bad304-14e3-46b9-a314-532fd86e12fc",
+      "details": {
+        "question": "Can an indestructible creature be destroyed by damage?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "No, an indestructible creature cannot be destroyed by damage. The indestructible ability prevents the creature from being destroyed, and it ignores the state-based action that checks for lethal damage.",
+        "reason": "",
+        "cited": [
+          "702.12b"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says no, an indestructible creature isn't destroyed by lethal damage, which matches the key fact; the extra detail about the state-based action is consistent with the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R22",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014612000000000028,
+      "latency_s": 12.038787800003774,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "8eab1a1d-9dcc-4e47-80d0-ac0b3bd653a3",
+      "details": {
+        "question": "When can I cast a spell with flash?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A spell with flash can be cast any time you could cast an instant. Additionally, if certain conditions are met, you may cast a spell as though it had flash even if it doesn't normally have the flash ability.",
+        "reason": "",
+        "cited": [
+          "601.3d",
+          "601.3c",
+          "601.3b",
+          "702.8a",
+          "601.6a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact that a spell with flash can be cast any time you could cast an instant. The extra remark about casting spells as though they had flash is true under the rules, so it is acceptable extra detail."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.2,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R23",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0017771999999999996,
+      "latency_s": 8.879684399988037,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "05a64c9a-e5e1-48bc-afa4-fe07ec17a836",
+      "details": {
+        "question": "What does ward do when my creature is targeted?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "When a creature with ward becomes the target of a spell or ability an opponent controls, the ward ability triggers, allowing you to counter that spell or ability unless the opponent pays the specified cost.",
+        "reason": "",
+        "cited": [
+          "702.21a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says ward triggers when an opponent's spell or ability targets the creature, and that spell or ability is countered unless its controller pays the ward cost. This matches the key fact. \"Allowing you to counter\" is slightly loose wording but doesn't change how the game is played."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R24",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0020031999999999966,
+      "latency_s": 16.35705789999338,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "d595dfc0-b609-4d0f-a643-3154c65b190c",
+      "details": {
+        "question": "How does cascade work?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Cascade is a triggered ability that functions only while the spell with cascade is on the stack. When you cast a spell with cascade, you exile cards from the top of your library until you exile a nonland card whose mana value is less than this spell’s mana value. You may cast that card without paying its mana cost if the resulting spell’s mana value is less than this spell’s mana value. Then, you put all cards exiled this way that weren’t cast on the bottom of your library in a random order. If a spell has multiple instances of cascade, each triggers separately.",
+        "reason": "",
+        "cited": [
+          "702.85a",
+          "702.85b",
+          "702.85c",
+          "112.1",
+          "701.30c"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states all three key facts: exile until a nonland card with lesser mana value, optionally cast it free, and put the rest on the bottom in random order. The extra detail about the resulting spell's mana value matches the actual rules and doesn't contradict anything."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.6,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R25",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0015471999999999986,
+      "latency_s": 12.95994490000885,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "5b6d23ec-58cb-43d6-91ed-490175345d23",
+      "details": {
+        "question": "How does storm copy a spell?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "When a spell with storm is cast, it creates a copy of itself for each other spell that was cast before it this turn. These copies are put onto the stack and may have new targets chosen for them. The copies retain the characteristics of the original spell, including modes, targets, and the value of X, but choices made on resolution are not copied.",
+        "reason": "",
+        "cited": [
+          "702.40a",
+          "707.10"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states that storm makes a copy for each other spell cast before it that turn and that the copies may have new targets chosen, and the extra detail about modes, X and resolution choices is accurate."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R26",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0027811999999999976,
+      "latency_s": 14.10112800000934,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "5c2d6ef0-f68f-4b98-9e54-c651e95154d7",
+      "details": {
+        "question": "How does flashback let me cast a card from my graveyard?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Flashback allows you to cast a card from your graveyard by letting you pay its flashback cost instead of its mana cost. This is done as though the card had flash, which means you can cast it any time you could cast an instant.",
+        "reason": "",
+        "cited": [
+          "702.34a",
+          "601.3c",
+          "601.3b",
+          "601.3d",
+          "702.8a"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "If cast with flashback, it's exiled when it leaves the stack."
+        ],
+        "contradictions": [
+          "Claims flashback casts the card \"as though the card had flash\", letting you cast it any time you could cast an instant. Flashback only changes the zone and cost; timing still follows the card's type (a sorcery with flashback stays sorcery-speed)."
+        ],
+        "grade_reason": "The answer states key fact 1 (cast from graveyard by paying the flashback cost) but omits the exile-on-leaving-the-stack fact. It also adds an incorrect claim about flash timing that would change how the game is played, so it is only partly correct."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.2,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R27",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012411999999999979,
+      "latency_s": 8.23212970001623,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "514e5b2d-4a09-4fff-9d83-36e6c75c4f84",
+      "details": {
+        "question": "What does it mean to mill cards?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "To mill cards means for a player to put a specified number of cards from the top of their library into their graveyard.",
+        "reason": "",
+        "cited": [
+          "701.17a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact: milling means putting that number of cards from the top of your library into your graveyard, and it says nothing that contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R28",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0015032000000000031,
+      "latency_s": 11.66781799995806,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "00fb98e8-7ac8-4bad-93df-9c2c08077118",
+      "details": {
+        "question": "What happens to a permanent when it phases out?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "When a permanent phases out, it is treated as though it does not exist. It can't affect or be affected by anything else in the game. It is also removed from combat.",
+        "reason": "",
+        "cited": [
+          "702.26b",
+          "702.26d",
+          "610.4a",
+          "502.1",
+          "702.26e"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "It phases back in during its controller's next untap step."
+        ],
+        "contradictions": [],
+        "grade_reason": "The answer states the first key fact (treated as though it doesn't exist) and adds accurate detail, but never says it phases back in during its controller's next untap step."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.8,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R29",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.002155200000000003,
+      "latency_s": 17.329224799992517,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "22a4c026-5eb0-4611-9810-fb2cb1b9ada6",
+      "details": {
+        "question": "How does ninjutsu work?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Ninjutsu is an activated ability that functions only while the card with ninjutsu is in a player’s hand. It allows you to reveal the card from your hand, return an unblocked attacking creature you control to its owner’s hand, and put this card onto the battlefield from your hand tapped and attacking. If the card has \"Commander ninjutsu,\" it can also be used while the card is in the command zone. The creature put onto the battlefield with the ninjutsu ability enters attacking the same player, planeswalker, or battle as the creature that was returned to its owner’s hand.",
+        "reason": "",
+        "cited": [
+          "702.49a",
+          "702.49b",
+          "702.49c",
+          "702.49d"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [
+          "You pay the ninjutsu cost (the answer never mentions paying the cost)"
+        ],
+        "contradictions": [],
+        "grade_reason": "The answer states that the ability works from hand, that you reveal the card and return an unblocked attacker, and that the card enters tapped and attacking. It never says you pay the ninjutsu cost, which is part of key fact 1."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R30",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.001253200000000003,
+      "latency_s": 9.086556599999312,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "6888cd3c-7e85-499a-8caf-82d843f97ed5",
+      "details": {
+        "question": "What does proliferate do?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Proliferate is an action that allows you to choose any number of permanents and/or players that have a counter, then give each one additional counter of each kind that permanent or player already has.",
+        "reason": "",
+        "cited": [
+          "701.34a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: choose any number of permanents and/or players with counters, and each gets one more counter of each kind it already has."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R31",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0016911999999999969,
+      "latency_s": 14.061897000006866,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "24df4e4d-1915-4d4c-b93e-d38ac44f377d",
+      "details": {
+        "question": "How does double strike deal damage in combat?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Double strike allows a creature to deal combat damage in two separate combat damage steps. First, during the initial combat damage step, creatures with double strike deal their damage. Then, after this step, a second combat damage step occurs, during which creatures with double strike deal their damage again, along with any remaining attackers and blockers that did not have first strike or double strike in the first step.",
+        "reason": "",
+        "cited": [
+          "510.4",
+          "702.4a",
+          "702.4b",
+          "702.4d",
+          "702.7b"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says a double strike creature deals combat damage in the first combat damage step and again in the second (regular) step, which matches the key fact. Its extra detail about creatures without first strike dealing damage in the second step is also accurate."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.8,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R32",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014051999999999953,
+      "latency_s": 8.444420299958438,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "da71caf8-cec8-4b74-bab6-61f5a547b531",
+      "details": {
+        "question": "What happens if I control two legendary permanents with the same name?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "If you control two or more legendary permanents with the same name, you must choose one of them, and the rest are put into their owners’ graveyards. This is called the “legend rule.”",
+        "reason": "",
+        "cited": [
+          "704.5j"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the single key fact: you choose one legendary permanent and the rest go to their owners' graveyards under the legend rule. It contains nothing that contradicts the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R33",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.001383200000000001,
+      "latency_s": 7.5161529000033624,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "63cbc0d2-96c6-4cc8-a5a9-42967f556b88",
+      "details": {
+        "question": "What happens to a creature with 0 toughness?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A creature with 0 toughness is put into its owner’s graveyard as a state-based action. This event cannot be replaced by regeneration.",
+        "reason": "",
+        "cited": [
+          "704.5f"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact that the creature is put into its owner's graveyard. The extra detail that it's a state-based action and can't be regenerated is true and doesn't contradict the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R34",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012411999999999979,
+      "latency_s": 10.287667100026738,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "5172978f-5e82-4215-8c08-f7b74d5c7aff",
+      "details": {
+        "question": "What happens if I have to draw from an empty library?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "If a player is required to draw a card from an empty library, they lose the game the next time a player would receive priority. This is a state-based action.",
+        "reason": "",
+        "cited": [
+          "704.5b",
+          "121.4",
+          "104.3c",
+          "121.3",
+          "121.6a"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact that the player loses the game, and the added detail (state-based action, checked when a player would receive priority) is consistent with the rules."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.6,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R35",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0010812000000000044,
+      "latency_s": 7.534054999996442,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "00bfc97c-7ec9-4073-a8e4-a64c4afcee2b",
+      "details": {
+        "question": "When does a player lose the game for having no life?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A player loses the game when they have 0 or less life, as this triggers a state-based action.",
+        "reason": "",
+        "cited": [
+          "119.6"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states that a player loses when their life total is 0 or less, and the added note about state-based actions is true."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R36",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0014432000000000056,
+      "latency_s": 10.066742399998475,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "ce37ae91-359f-46af-ad19-47f347871025",
+      "details": {
+        "question": "Why can't my creature use a tap ability the turn it enters?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A creature can't use a tap ability the turn it enters because it hasn't been under its controller's control continuously since their most recent turn began. This is known as \"summoning sickness.\"",
+        "reason": "",
+        "cited": [
+          "302.6",
+          "602.5a",
+          "107.5"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states the key fact: tap-symbol abilities need the creature to have been under its controller's control continuously since their most recent turn began, and it names this summoning sickness."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.6666666666666666,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R37",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012831999999999982,
+      "latency_s": 9.283581099996809,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "5d07ca3a-528e-490a-9fa6-6da3f302d913",
+      "details": {
+        "question": "What happens to a token that leaves the battlefield?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "When a token leaves the battlefield, it ceases to exist. This is a state-based action, and it happens the next time state-based actions are checked.",
+        "reason": "",
+        "cited": [
+          "111.7",
+          "111.8",
+          "704.5d"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says a token that leaves the battlefield ceases to exist, which is the key fact. The extra detail about it being a state-based action is accurate."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R38",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012992000000000004,
+      "latency_s": 11.473031800007448,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "49f86f07-cb1c-4a7b-bf5c-f46dd335ed05",
+      "details": {
+        "question": "What happens to a spell that gets countered?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A spell that gets countered is canceled, removed from the stack, and doesn’t resolve or have any effects. It is put into its owner’s graveyard.",
+        "reason": "",
+        "cited": [
+          "701.6a",
+          "701.6b",
+          "112.1",
+          "603.10e",
+          "113.9"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: the countered spell is removed from the stack without resolving or having any effects, and it is put into its owner's graveyard."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.4,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R39",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0012172000000000016,
+      "latency_s": 11.922320700017735,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "897d2060-bd7c-461b-92cc-cbb8cddb712f",
+      "details": {
+        "question": "What is the mana value of a card with X in its cost?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "The mana value of a card with X in its cost is treated as 0 when the card is not on the stack. While the card is on the stack, X is treated as the number chosen for it.",
+        "reason": "",
+        "cited": [
+          "202.3e",
+          "107.3g",
+          "107.3h",
+          "107.3a",
+          "107.3e"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: X counts as 0 off the stack and as the chosen number while the card is on the stack."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R40",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0018872000000000055,
+      "latency_s": 8.90197010000702,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "dda250c5-b9f2-4690-827f-c8106efa3b54",
+      "details": {
+        "question": "How many lands can I play each turn?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "You can play as many lands as you want each turn unless restricted by an effect. However, if you have already played the same number of lands as you are allowed to play this turn, you can't play any more lands.",
+        "reason": "",
+        "cited": [
+          "305.2b"
+        ],
+        "verdict": "incorrect",
+        "missing_facts": [
+          "One land per turn normally"
+        ],
+        "contradictions": [
+          "Says you can play as many lands as you want each turn unless restricted; the normal limit is one land per turn, with effects allowing more."
+        ],
+        "grade_reason": "The answer reverses the default rule: it says there is no limit unless an effect restricts it, when the limit is one land per turn unless an effect allows more. That would change how the game is played."
+      },
+      "scores": {
+        "citation_hit": 0.0,
+        "citation_precision": 1.0,
+        "correct": 0.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R41",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0015571999999999947,
+      "latency_s": 11.850928100000601,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "e3c7d2d3-30f4-4bc5-93c7-cd6b30272bea",
+      "details": {
+        "question": "What is the maximum hand size, and when do I discard down to it?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "The maximum hand size is normally seven cards. During the cleanup step, if a player's hand contains more than seven cards, they must discard enough cards to reduce their hand size to seven. This is part of the cleanup step, which occurs after all other phases of the turn.",
+        "reason": "",
+        "cited": [
+          "402.2",
+          "514.1",
+          "703.4n"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: the maximum hand size is normally seven, and discarding down to it happens during the cleanup step. The extra detail that cleanup comes after all other phases of the turn is accurate."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 1.0,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R42",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0015611999999999987,
+      "latency_s": 10.933116700034589,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "48cbe48a-e29b-485c-b28c-300b93ad09c8",
+      "details": {
+        "question": "Which spell on the stack resolves first?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "The spell that was most recently added to the stack resolves first. This is because the stack operates on a last-in, first-out basis, where the most recent spell or ability is on top and resolves first.",
+        "reason": "",
+        "cited": [
+          "608.1",
+          "117.7",
+          "405.2",
+          "112.1",
+          "405.3"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer says the most recently added spell (top of the stack, last-in-first-out) resolves first, which states the key fact. It omits the 'once all players pass in succession' condition, but that is a minor detail and does not change the answer."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.4,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R43",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.002375199999999994,
+      "latency_s": 13.052222999976948,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "dc3d70b8-90e6-4bc6-adfe-351ea9d6d196",
+      "details": {
+        "question": "How do extra turns work?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "Extra turns are added directly after the specified turn. If a player is given multiple extra turns, they are added one at a time. If multiple players are given extra turns, they are added one at a time, in APNAP order. The most recently created turn will be taken first.",
+        "reason": "",
+        "cited": [
+          "500.7",
+          "702.174g",
+          "500.10a",
+          "727.4",
+          "502.2a"
+        ],
+        "verdict": "partly correct",
+        "missing_facts": [],
+        "contradictions": [
+          "States that when multiple players are given extra turns they are added in APNAP order; this is not in the key facts and is not a rule for extra turns (the rules say the most recently created extra turn is taken first, with no APNAP ordering)."
+        ],
+        "grade_reason": "The answer states both key facts: extra turns come directly after the specified turn, and the most recently created one is taken first. It adds an unsupported claim about APNAP ordering, which is a minor inaccuracy, so it is partly correct."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.2,
+        "correct": 0.5
+      },
+      "error": null
+    },
+    {
+      "case_id": "R44",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0015272000000000063,
+      "latency_s": 12.840055799984839,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "ba1a886c-679e-4c51-91be-318a363290c3",
+      "details": {
+        "question": "What is a Treasure token?",
+        "answerable": true,
+        "found": true,
+        "abstained": false,
+        "answer": "A Treasure token is a colorless Treasure artifact token with the ability “{T}, Sacrifice this token: Add one mana of any color.” These tokens are created by spells or abilities and have characteristics defined by the effect that created them. They are not cards and are subject to effects that affect permanents.",
+        "reason": "",
+        "cited": [
+          "111.10a",
+          "702.174h",
+          "111.3",
+          "111.6",
+          "111.4"
+        ],
+        "verdict": "correct",
+        "missing_facts": [],
+        "contradictions": [],
+        "grade_reason": "The answer states both key facts: a colorless Treasure artifact token, and the ability to tap, sacrifice it, and add one mana of any color. The extra detail about tokens is accurate."
+      },
+      "scores": {
+        "citation_hit": 1.0,
+        "citation_precision": 0.2,
+        "correct": 1.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "R45",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 5.212769000034314,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "030c17f3-c5e6-434c-bdab-db5578cf54cf",
+      "details": {
+        "question": "What does it mean to sacrifice a permanent?",
+        "answerable": true,
+        "found": false,
+        "abstained": false,
+        "answer": null,
+        "reason": "The answer cited rules it never retrieved (701.8, 701.8a, 701.8b), so it was withheld.",
+        "cited": []
+      },
+      "scores": {
+        "correct": 0.0
+      },
+      "error": null
+    },
+    {
+      "case_id": "N01",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 11.916781900043134,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "2cbd597a-2a5d-45cb-ae6a-58a640439d3a",
+      "details": {
+        "question": "Is it OK to use proxies in a casual Commander game?",
+        "answerable": false,
+        "found": true,
+        "abstained": false,
+        "answer": "The rules do not explicitly address the use of proxies in casual Commander games. However, rule 100.2d and rule 408.3 suggest that some formats and casual play variants allow the use of nontraditional Magic cards or specially designated cards. Whether proxies are allowed in a casual Commander game depends on the specific agreement among the players involved.",
+        "reason": "",
+        "cited": [
+          "100.2d",
+          "408.3",
+          "713.3",
+          "903.11",
+          "903.11a"
+        ]
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N02",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 5.2914797000121325,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "a7b6a1a0-9d14-454e-82df-41c01b35ade0",
+      "details": {
+        "question": "Which cards are currently banned in Commander?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information about banned cards in Commander but did not find any relevant rules in the provided content.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N03",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 1.4225899000302888,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "45a776ac-dff4-4fe8-aeef-9162e3ab73e0",
+      "details": {
+        "question": "Is Sol Ring worth putting in my deck?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information on whether Sol Ring is worth putting in a deck.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N04",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 1.4997277000220492,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "0efaa3e8-e66d-4c15-8ed6-7e28158687e0",
+      "details": {
+        "question": "Which power bracket is my Commander deck in?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information about determining the power bracket of a Commander deck.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N05",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 4.403714400017634,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "152c22c1-7580-47f8-9ddb-0fd5106f84f4",
+      "details": {
+        "question": "How long is a round at a Magic tournament?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information about the duration of a round in a Magic tournament.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N06",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 5.101317399996333,
+      "turns": 2,
+      "tools": {
+        "ok": 1,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "280fd54c-7db6-4e89-9a04-88928972d409",
+      "details": {
+        "question": "What's the penalty for drawing an extra card at a Competitive event?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for the penalty for drawing an extra card at a Competitive event.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N07",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 2.0028124999953434,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "d23a4c28-83ac-43e1-af7f-169b3fdefb13",
+      "details": {
+        "question": "How much is a Black Lotus worth?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information on the value of a Black Lotus in the Magic: The Gathering Comprehensive Rules.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N08",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 1.2244787000236101,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "df1bc01c-a79d-43bc-8c9a-f41ee0b0ab1b",
+      "details": {
+        "question": "Who won the most recent Magic World Championship?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information about the most recent Magic World Championship winner.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N09",
+      "status": "completed",
+      "success": true,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 1.4372287000296637,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "b73a9ef2-faa8-4951-974e-1c4c1a9a6e7b",
+      "details": {
+        "question": "When is the next Commander banned list update?",
+        "answerable": false,
+        "found": false,
+        "abstained": true,
+        "answer": null,
+        "reason": "NOT FOUND. I searched for information regarding the next Magic: The Gathering Commander banned list update.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    },
+    {
+      "case_id": "N10",
+      "status": "completed",
+      "success": false,
+      "cost_usd": 0.0,
+      "grading_cost_usd": 0.0,
+      "latency_s": 3.3585287999594584,
+      "turns": 1,
+      "tools": {
+        "ok": 0,
+        "error": 0,
+        "rejected": 0
+      },
+      "run_id": "17b3d7dc-7a00-4c03-9f64-fd103cc7f6af",
+      "details": {
+        "question": "Can I use sleeves of different colors in a tournament?",
+        "answerable": false,
+        "found": false,
+        "abstained": false,
+        "answer": null,
+        "reason": "The answer cited rules it never retrieved (903.4, 903.5c), so it was withheld.",
+        "cited": []
+      },
+      "scores": {},
+      "error": null
+    }
+  ]
+}

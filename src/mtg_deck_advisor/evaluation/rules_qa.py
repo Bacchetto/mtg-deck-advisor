@@ -47,6 +47,7 @@ from mtg_deck_advisor.evaluation.runner import (
     result_from_run,
     run_suite,
     save_report,
+    variant_provider,
     variant_services,
 )
 from mtg_deck_advisor.llm.client import ModelClient
@@ -63,10 +64,16 @@ VARIANTS = {
     "sonnet-hybrid-rules": Variant(
         name="sonnet-hybrid-rules", model="claude-sonnet-5-5", rules_search="hybrid"
     ),
+    # The local model through Ollama (#152): free to run, graded by Claude like the rest.
+    "qwen3-14b": Variant(name="qwen3-14b", model="qwen3:14b", provider="ollama"),
+    # The same, told to call a tool first: with the shipped prompt it doesn't search.
+    "qwen3-14b-nudged": Variant(
+        name="qwen3-14b-nudged", model="qwen3:14b", provider="ollama", prompt="tool-first"
+    ),
 }
 # Expected cost per question, from the recorded live runs (the agent's answer
 # took $0.003-0.0065 on Sonnet 5.5), with room to spare; grading is one short call.
-AGENT_COST_PER_CASE = {"claude-sonnet-5-5": 0.008, "claude-haiku-4-5": 0.004}
+AGENT_COST_PER_CASE = {"claude-sonnet-5-5": 0.008, "claude-haiku-4-5": 0.004, "qwen3:14b": 0.0}
 GRADING_COST_PER_CASE = 0.004
 
 
@@ -367,7 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     return variant_services(
                         conn,
                         variant,
-                        provider=build_provider(settings),
+                        provider=variant_provider(settings, variant),
                         embedder=embedder,
                         reranker=None,  # rules search doesn't rerank
                         recorder=recorder,

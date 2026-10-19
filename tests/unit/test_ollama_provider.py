@@ -8,7 +8,13 @@ import pytest
 
 from mtg_deck_advisor.llm.errors import ModelCallError
 from mtg_deck_advisor.llm.ollama import OllamaEmbedder, OllamaProvider
-from mtg_deck_advisor.llm.types import Message, ProviderRequest, ToolSpec
+from mtg_deck_advisor.llm.types import (
+    Message,
+    ProviderRequest,
+    ToolCall,
+    ToolResult,
+    ToolSpec,
+)
 
 BASE_URL = "http://ollama.test:11434"
 SCHEMA: dict[str, Any] = {
@@ -148,13 +154,148 @@ def test_a_model_that_is_not_pulled_gives_an_actionable_error() -> None:
         provider_for(server).complete(request(), "qwen3:8b")
 
 
-def test_tool_calling_is_refused_rather_than_silently_dropped() -> None:
-    server = Server(httpx2.Response(200, json=chat_payload()))
-    tool = ToolSpec(name="search_pool", description="d", input_schema={"type": "object"})
+# --- tool calling (#152) -------------------------------------------------------------------
+# The payloads are Ollama 0.40's own, recorded from qwen3:14b on 2026-10-13.
 
-    with pytest.raises(ModelCallError, match="tool calling"):
-        provider_for(server).complete(request(tools=(tool,)), "qwen3:8b")
-    assert server.requests == []
+GET_CARD = ToolSpec(
+    name="get_card",
+    description="Look up one card by name.",
+    input_schema={
+        "type": "object",
+        "properties": {"name": {"type": "string", "description": "The card name."}},
+        "required": ["name"],
+    },
+)
+TOOL_CALL_REPLY: dict[str, Any] = {
+    "model": "qwen3:14b",
+    "created_at": "2026-10-13T14:46:28.946296Z",
+    "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {
+                "id": "call_c8nzindu",
+                "function": {"index": 0, "name": "get_card", "arguments": {"name": "Sol Ring"}},
+            }
+        ],
+    },
+    "done": True,
+    "done_reason": "stop",
+    "prompt_eval_count": 160,
+    "eval_count": 21,
+}
+
+
+def test_tools_are_sent_as_function_definitions() -> None:
+    server = Server(httpx2.Response(200, json=TOOL_CALL_REPLY))
+
+    provider_for(server).complete(request(tools=(GET_CARD,)), "qwen3:14b")
+
+    assert server.body()["tools"] == [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_card",
+                "description": "Look up one card by name.",
+                "parameters": GET_CARD.input_schema,
+            },
+        }
+    ]
+
+
+def test_a_tool_call_reply_becomes_the_projects_tool_calls() -> None:
+    server = Server(httpx2.Response(200, json=TOOL_CALL_REPLY))
+
+    reply = provider_for(server).complete(request(tools=(GET_CARD,)), "qwen3:14b")
+
+    assert reply.stop_reason == "tool_use"
+    assert reply.tool_calls == (
+        ToolCall(id="call_c8nzindu", name="get_card", arguments={"name": "Sol Ring"}),
+    )
+    assert (reply.usage.input_tokens, reply.usage.output_tokens) == (160, 21)
+
+
+def test_a_tool_call_without_an_id_or_with_text_arguments_still_maps() -> None:
+    # Older Ollama versions send no id, and some models send arguments as a JSON string.
+    payload = json.loads(json.dumps(TOOL_CALL_REPLY))
+    del payload["message"]["tool_calls"][0]["id"]
+    payload["message"]["tool_calls"][0]["function"]["arguments"] = '{"name": "Sol Ring"}'
+    server = Server(httpx2.Response(200, json=payload))
+
+    (call,) = provider_for(server).complete(request(tools=(GET_CARD,)), "qwen3:14b").tool_calls
+
+    assert call.id == "call_1" and call.arguments == {"name": "Sol Ring"}
+
+
+def test_tool_calls_and_results_go_back_as_assistant_and_tool_messages() -> None:
+    server = Server(httpx2.Response(200, json=chat_payload()))
+    asked = ToolCall(id="call_c8nzindu", name="get_card", arguments={"name": "Sol Ring"})
+    messages = (
+        Message(role="user", content="Look up the card Sol Ring."),
+        Message(role="assistant", tool_calls=(asked,)),
+        Message(
+            role="user",
+            tool_results=(
+                ToolResult(tool_call_id="call_c8nzindu", content="Sol Ring | {1} | Artifact"),
+            ),
+        ),
+    )
+
+    provider_for(server).complete(request(messages=messages, tools=(GET_CARD,)), "qwen3:14b")
+
+    sent = server.body()["messages"]
+    assert sent[2] == {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {
+                "id": "call_c8nzindu",
+                "function": {"name": "get_card", "arguments": {"name": "Sol Ring"}},
+            }
+        ],
+    }
+    assert sent[3] == {
+        "role": "tool",
+        "tool_call_id": "call_c8nzindu",
+        "tool_name": "get_card",
+        "content": "Sol Ring | {1} | Artifact",
+    }
+
+
+def test_nested_argument_schemas_are_inlined() -> None:
+    # Pydantic puts nested models under $defs; a local model may not follow a $ref.
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"cards": {"type": "array", "items": {"$ref": "#/$defs/CardCount"}}},
+        "$defs": {
+            "CardCount": {"type": "object", "properties": {"name": {"type": "string"}}},
+        },
+    }
+    server = Server(httpx2.Response(200, json=TOOL_CALL_REPLY))
+    tool = ToolSpec(name="propose_changes", description="d", input_schema=schema)
+
+    provider_for(server).complete(request(tools=(tool,)), "qwen3:14b")
+
+    sent = server.body()["tools"][0]["function"]["parameters"]
+    assert sent["properties"]["cards"]["items"] == schema["$defs"]["CardCount"]
+    assert "$defs" not in sent and "$ref" not in json.dumps(sent)
+
+
+def test_an_agent_request_asks_for_a_context_that_fits_it() -> None:
+    # Ollama's default context is a few thousand tokens and it cuts a longer
+    # prompt silently: an agent turn with a decklist and tool results is longer.
+    server = Server(httpx2.Response(200, json=TOOL_CALL_REPLY))
+    provider = OllamaProvider(
+        base_url=BASE_URL, timeout_seconds=30, http_client=http(server), agent_num_ctx=16384
+    )
+
+    provider.complete(request(tools=(GET_CARD,)), "qwen3:14b")
+    with_tools = server.body()["options"]
+    provider.complete(request(), "qwen3:8b")
+    without = server.body()["options"]
+
+    assert with_tools["num_ctx"] == 16384
+    assert "num_ctx" not in without  # tagging and reranking keep their small footprint
 
 
 # --- embeddings ------------------------------------------------------------

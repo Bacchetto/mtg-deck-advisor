@@ -39,6 +39,7 @@ from pydantic import BaseModel
 from mtg_deck_advisor.agent.flows import AgentServices
 from mtg_deck_advisor.agent.prompts import system_prompt
 from mtg_deck_advisor.agent.runs import Task
+from mtg_deck_advisor.config import Settings
 
 # Re-exported: the run records live in results.py, so reading runs stays light.
 from mtg_deck_advisor.evaluation.results import CaseResult as CaseResult
@@ -56,6 +57,24 @@ REPORTS = Path("evals/reports")
 # System prompts a variant can name. "default" is what ships; others are
 # registered by the evals that compare against them.
 PROMPT_VARIANTS: dict[str, Callable[[Task], str]] = {"default": system_prompt}
+
+# One more line for a local model. With the shipped prompt, qwen3:14b answers a
+# rules question from memory without searching; with this, it calls the tool (#152).
+TOOL_FIRST = "Before you answer, always call a tool: never answer from memory alone."
+
+
+def tool_first_prompt(task: Task) -> str:
+    return f"{system_prompt(task)}\n\n{TOOL_FIRST}"
+
+
+PROMPT_VARIANTS["tool-first"] = tool_first_prompt
+
+
+def variant_provider(settings: Settings, variant: Variant) -> Provider:
+    """The provider a variant's agent runs on, with the user's other settings."""
+    from mtg_deck_advisor.llm.factory import build_provider
+
+    return build_provider(settings.model_copy(update={"model_provider": variant.provider}))
 
 
 def variant_services(
