@@ -32,8 +32,10 @@ class SummaryModel:
     as qwen3:14b did with two vanilla cards in one batch.
     """
 
-    def __init__(self, skip: str | None = None) -> None:
+    def __init__(self, skip: str | None = None, promote: str | None = None) -> None:
         self.skip = skip
+        # A card whose summary always comes back promotional, as qwen3:14b's did (#162).
+        self.promote = promote
         self.batches: list[list[str]] = []
         self._lock = threading.Lock()
 
@@ -51,7 +53,12 @@ class SummaryModel:
         with self._lock:
             self.batches.append(names)
         cards = [
-            {"index": i, "summary": f"A card called {name} that does useful things."}
+            {
+                "index": i,
+                "summary": f"One of the best cards in Magic, {name} is a must-include."
+                if name == self.promote
+                else f"A card called {name} that does useful things.",
+            }
             for i, name in enumerate(names, 1)
             if not (name == self.skip and len(names) > 1)
         ]
@@ -221,3 +228,31 @@ def test_summary_embeddings_have_a_cosine_hnsw_index(loaded: Settings) -> None:
         ]
 
     assert any("hnsw" in d and "vector_cosine_ops" in d for d in definitions)
+
+
+def test_a_promotional_summary_is_retried_then_left_out(loaded: Settings) -> None:
+    model = SummaryModel(promote="Sol Ring")
+    with connect(loaded) as conn:
+        report = summarise_cards(conn, client(model), batch_size=25)
+        sol_ring = conn.execute(
+            "SELECT count(*) FROM card_summaries s JOIN cards c USING (oracle_id) "
+            "WHERE c.name = 'Sol Ring'"
+        ).fetchone()
+
+    assert report.failed == 1  # left out, and tried again on the next run
+    assert sol_ring == (0,)
+    assert ["Sol Ring"] in model.batches  # retried on its own first
+
+
+def test_summaries_from_the_first_prompt_version_stay_current(loaded: Settings) -> None:
+    # The new prompt and check apply to new and changed cards: re-summarising
+    # the whole catalogue would take about 6.6 hours of GPU (#166).
+    with connect(loaded) as conn:
+        summarise_cards(conn, client(SummaryModel()))
+        conn.execute("UPDATE card_summaries SET prompt_version = 'summaries-v1'")
+        conn.commit()
+        again = SummaryModel()
+        report = summarise_cards(conn, client(again))
+
+    assert again.batches == []
+    assert report.added == report.updated == 0

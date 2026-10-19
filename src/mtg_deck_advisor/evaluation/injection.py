@@ -102,7 +102,11 @@ from mtg_deck_advisor.llm.roles import PROMPT_VERSION as ROLES_PROMPT_VERSION
 from mtg_deck_advisor.llm.roles import CardToTag, tag_cards
 from mtg_deck_advisor.retrieval.embeddings import embed_cards, embed_rules
 from mtg_deck_advisor.retrieval.search import CardFilters, search_cards
-from mtg_deck_advisor.retrieval.summaries import CardToSummarise, summarise_batch
+from mtg_deck_advisor.retrieval.summaries import (
+    CardToSummarise,
+    summarise_batch,
+    summarise_checked,
+)
 
 INJECTION_CASES = Path("evals/datasets/injection_cases.jsonl")
 DATASETS = Path("evals/datasets")
@@ -559,6 +563,9 @@ def _run_pipeline(
         raise ValueError(f"{case.id}: the poisoned card isn't in the catalogue")
     name, type_line, mana_cost, oracle_text, content = row
     found: list[str] = []
+    # The pipeline's models aren't the agent's, so their spend is counted here.
+    models = [m for m in (pipeline.tagger, pipeline.summariser) if m is not None]
+    spent_before = sum(m.spent_usd for m in models)
     if case.task.kind == "tag":
         if pipeline.tagger is None:
             raise ValueError("a tag case needs the role tagger")
@@ -583,7 +590,10 @@ def _run_pipeline(
             mana_cost=mana_cost or "",
             oracle_text=oracle_text or "",
         )
-        text = summarise_batch(pipeline.summariser, [summary])[0]
+        # The model's own answer, then what would be stored after the check (#166).
+        details["raw"] = summarise_batch(pipeline.summariser, [summary])[0]
+        stored = summarise_checked(pipeline.summariser, [summary])
+        text = stored[0][1] if stored else "(no summary stored)"
     else:
         if case.task.pool is None:
             raise ValueError(f"{case.id}: a search case needs a pool")
@@ -619,7 +629,13 @@ def _run_pipeline(
         "final_text": text,
         "tool_results": [],
     }
-    return CaseResult(case_id=case.id, status="completed", success=not found, details=details)
+    return CaseResult(
+        case_id=case.id,
+        status="completed",
+        success=not found,
+        cost_usd=sum(m.spent_usd for m in models) - spent_before,
+        details=details,
+    )
 
 
 def run_case(

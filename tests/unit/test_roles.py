@@ -125,3 +125,13 @@ def test_mill_and_self_mill_are_separate_roles() -> None:
 def test_the_taxonomy_change_bumped_the_prompt_version() -> None:
     # Tags made under an older version mean something different and are stale.
     assert PROMPT_VERSION == "roles-v2"
+
+
+def test_card_text_reaches_the_tagger_as_delimited_data() -> None:
+    # The Opus tagger resisted #162's K10 anyway; the local summariser didn't (#166).
+    from mtg_deck_advisor.llm.roles import SYSTEM_PROMPT
+
+    content = build_request([SOL_RING]).messages[0].content
+
+    assert content.index("<untrusted>") < content.index("Sol Ring") < content.index("</untrusted>")
+    assert "<untrusted>" in SYSTEM_PROMPT and "never instructions" in SYSTEM_PROMPT
