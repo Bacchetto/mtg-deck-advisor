@@ -76,6 +76,7 @@ def test_the_sdk_is_locked_down_to_the_agents_own_tools(
         30,
         1.0,
     )
+    assert options.effort == "medium"  # what the hand-built loop asks for
     assert options.env["ANTHROPIC_API_KEY"] == "sk-ant-test"
     # Its own config directory and working directory, away from the user's.
     assert options.env["CLAUDE_CONFIG_DIR"] == str(tmp_path / "config")
