@@ -10,7 +10,7 @@ What stays the same is everything the loop doesn't own:
   from an in-process MCP server that calls the same `execute()` the loop
   calls, so validation, guardrails, proposals and tool-call recording are
   identical.
-- **The same prompt, model, turn limit and cost cap.**
+- **The same prompt, model, effort, turn limit and cost cap.**
 
 It's locked down, since Claude Code is a general agent: no built-in tools (no
 shell, files or web), none of the user's settings or CLAUDE.md, its own config
@@ -28,7 +28,7 @@ import tempfile
 import uuid
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -49,6 +49,8 @@ from mtg_deck_advisor.llm.types import ToolCall
 
 # The in-process MCP server's name: Claude Code calls its tools mcp__deck__<tool>.
 SERVER = "deck"
+# The effort the hand-built loop asks for (run_agent's default).
+DEFAULT_EFFORT: Literal["medium"] = "medium"
 
 type Permission = Callable[
     [str, dict[str, Any], ToolPermissionContext],
@@ -114,6 +116,7 @@ def sdk_options(
         can_use_tool=permission(ctx),
         system_prompt=system,
         model=model,
+        effort=DEFAULT_EFFORT,
         max_turns=max_turns,
         max_budget_usd=budget_usd,
         setting_sources=[],
