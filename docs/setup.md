@@ -213,6 +213,7 @@ limits and a spending cap come before any deployment.
 
 - **The free gate:** `python -m mtg_deck_advisor.evaluation.gate`. It's what every pull request runs, from a committed embedding snapshot.
 - **The paid suites:** `python -m mtg_deck_advisor.evaluation.rules_qa`, `deck_tasks` and `injection`. They need a key and Ollama, and each asks for a budget.
+- **The agent on the local model:** `--variant qwen3-14b` (the shipped prompt) or `qwen3-14b-nudged` (told to call a tool first), with the rules Q&A or deck tasks. The local model is free; only the Claude grading is paid. Agent requests ask Ollama for `OLLAMA_AGENT_NUM_CTX` tokens of context.
 - **Hand grading:** `python -m mtg_deck_advisor.evaluation.hand_grade`.
 - **After changing a labelled query, or what gets embedded:** export the snapshot again with `python -m mtg_deck_advisor.evaluation.snapshot` (about 40 s, with Ollama running).
 - **After changing the demo collection:** export the demo dataset again with `python -m mtg_deck_advisor.demo.dataset`.

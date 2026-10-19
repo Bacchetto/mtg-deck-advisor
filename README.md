@@ -160,6 +160,12 @@ Everything below was measured, and the run files behind each number are committe
 **The cheaper model cost more per deck.** Haiku proposed illegal decks about five times per draft,
 and each rejection cost another turn. See [the write-up](docs/findings/haiku-costs-more.md).
 
+**A local model is a fallback, not an alternative.** The agent can run on `qwen3:14b` through Ollama
+for free. With the shipped prompt it rarely searched, so the guardrail withheld most of its answers:
+23% of rules questions answered correctly. With one added line telling it to use its tools, it was
+86% correct, against Haiku's 93% and Sonnet's 99%. It couldn't finish a deck draft in the 30 turns
+Claude finishes in ([report](evals/reports/2026-10-19-local-model.md)).
+
 **How far the graders can be trusted.** The owner graded samples blind:
 - **Deck grades:** they agreed with the Opus grader at a weighted kappa of **0.90** over 102 scores, and 99% of scores were within one point.
 - **Rules answers:** they agreed with the Sonnet grader on 88% exactly.
