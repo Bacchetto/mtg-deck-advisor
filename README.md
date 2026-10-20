@@ -69,6 +69,10 @@ CI job runs these exact steps on every push, so the demo can't break silently
 ([`scripts/check_demo.sh`](scripts/check_demo.sh)). To use your own cards with live models, see
 [docs/setup.md](docs/setup.md).
 
+**What "done after 4 turns" means:** [Inside the demo](docs/inside-the-demo.md) shows each turn of
+the demo's draft, change and rules question: what the agent asked for, what came back, and what
+it cost when it was recorded live ($0.10 for the draft).
+
 ## How it works: the agent proposes, code decides
 
 ```mermaid
