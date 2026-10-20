@@ -12,6 +12,7 @@ service-account*.json
 
 # --- Personal notes (deliberately untracked) ---
 INTERVIEW-NOTES.md
+WALKTHROUGH.md
 WORKING-AGREEMENT.md
 
 # --- Personal Claude Code settings (e.g. enabling the project MCP server) ---
