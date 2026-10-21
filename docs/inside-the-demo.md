@@ -23,6 +23,30 @@ model calls.
 
 You pressed Enter, so the agent chose what to build.
 
+**The agent starts with a list of every possible commander.** Before the first turn, code finds
+each card in your pool that can legally lead a Commander deck, and lists them in the agent's
+first message by name and colors: 201 of them in the demo
+([`_draft_prompt`](../src/mtg_deck_advisor/agent/flows.py)):
+
+```
+Draft a Commander deck from my card pool.
+Choose the commander my pool supports best.
+
+My pool has 2057 cards (1396 different). These can be the commander:
+<untrusted>
+Aang, Swift Savior // Aang and La, Ocean's Fury (WU)
+Aang, the Last Airbender (W)
+Adeline, Resplendent Cathar (W)
+...
+</untrusted>
+```
+
+So the agent picks its commander from that list, by name, before reading any card. Its first turn
+then reads that card in full with `get_card`, since the list gives only names and colors. In the
+same turn it searches for what a deck around the card needs. Its reasons for the choice were in
+its thinking, which the API returns encrypted, so the recording doesn't show them. The final
+answer explains the choice instead.
+
 | Turn | What Claude asked for | What came back | Sent to Claude | Cost |
 |---|---|---|---|---|
 | 1 | `get_card` Sheoldred, Whispering One, and 4 pool searches: reanimation, ramp, removal and card draw | Sheoldred's card text, and 25, 20, 25 and 20 matching cards from your pool | 5,900 tokens | $0.007 |
