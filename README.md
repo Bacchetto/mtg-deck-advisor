@@ -132,10 +132,13 @@ run. Otherwise it says "not found".
 reciprocal rank. It has exact filters (color identity, types, mana value, "in this pool"), and a
 local model reranks the top 20 card candidates. Each rule is one chunk, cited by its number.
 
-**Three ways to drive it,** all through the same API:
-- the `mtg-advisor` CLI
-- the HTTP API (its docs are at `/docs`)
-- an MCP server for Claude Code or Claude Desktop, whose decision tools always bring up the client's permission prompt ([ADR 0015](docs/decisions/0015-decisions-through-mcp-permission-prompts.md))
+**Three ways to drive it,** all through the same tools and checks:
+- **the `mtg-advisor` CLI,** a thin client of the HTTP API, which runs this project's agent
+- **the HTTP API** itself (its docs are at `/docs`)
+- **an MCP server** for Claude Code or Claude Desktop, where the client's own model is the agent. It calls the tools directly, not through the API. Its decision tools always bring up Claude Code's permission prompt, and other clients are sent to the CLI to decide ([ADR 0015](docs/decisions/0015-decisions-through-mcp-permission-prompts.md))
+
+[The CLI and MCP paths](docs/cli-and-mcp.md) compares the two: who reasons and pays, the limits,
+and how decisions are made.
 
 ## Results
 
