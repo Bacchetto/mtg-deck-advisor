@@ -15,6 +15,9 @@ It's a portfolio project, built to show production AI engineering end to end:
 - human approval and an audit log
 - an evaluation suite that gates CI
 
+**[Watch the walkthrough](https://www.youtube.com/watch?v=UNwAO_2tdkk)** (video): the demo, the
+agent proposing while code decides, how it's measured, and the trade-offs.
+
 ## Try the demo
 
 The demo needs only **Docker**: no API key, GPU or local models, and nothing is paid for. It
