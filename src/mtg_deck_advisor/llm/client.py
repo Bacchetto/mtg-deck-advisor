@@ -54,6 +54,8 @@ class ModelResponse(BaseModel):
     provider: str
     model: str
     tool_calls: tuple[ToolCall, ...] = ()
+    # The provider's raw response blocks, thinking included. Nothing else in the
+    # app reads them; they go back unchanged with the next turn, as Claude requires.
     provider_content: tuple[dict[str, Any], ...] | None = None
 
     def as_message(self) -> Message:
@@ -85,6 +87,8 @@ class ModelClient:
         cost_cap_usd: float | None = None,
         clock: Callable[[], float] = time.perf_counter,
     ) -> None:
+        # `bills` is False for a free local model (Ollama): its calls cost $0 and
+        # skip the cost cap. A paid model must have a price, or it can't be budgeted.
         if provider.bills and model not in PRICES:
             raise ValueError(f"no price for model {model!r}: add it to llm.pricing.PRICES")
         self._provider = provider
