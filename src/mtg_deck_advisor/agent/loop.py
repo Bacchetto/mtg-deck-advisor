@@ -8,19 +8,23 @@ Every run is bounded and every run ends with a record:
 
 - **Turns.** At most `max_turns` model calls. A run still calling tools at the
   limit ends as `turn_limit`.
-- **Money.** The client's cost cap is checked before each call against its
-  worst case, so a run ends as `budget` before a call that could overspend,
-  not after.
+- **Money.** The client's cost cap is checked before each call against an
+  estimate of its worst case, so a run ends as `budget` before a call that
+  could overspend, not after.
+- **Refusals.** If the model declines to continue, the run ends as `refused`,
+  with a message for the user.
 - **Failures.** A model or provider error ends the run as `error`; so does an
   answer cut off by the output-token limit, which is not an answer.
 
 However a run ends, its transcript, turns and cost are saved in `agent_runs`,
 and any proposals it made stay in `proposals`: a run cut short keeps what it
-did (its partial results). Each turn is committed as it ends, so a crash loses
-at most the turn in progress.
+did (its partial results). Each turn's progress, tool calls and proposals are
+committed as the turn ends, so if the process dies mid-run, those survive;
+only the transcript, written when the run finishes, is lost.
 
-The transcript only ever grows: turns are appended, never edited, so the
-model's thinking stays valid when sent back (ADR 0012).
+The transcript only ever grows: turns are appended, never edited. With
+extended thinking on, Claude requires each earlier turn's thinking to be sent
+back exactly as it came, so an edited turn would be rejected (ADR 0012).
 """
 
 from dataclasses import dataclass
@@ -68,12 +72,14 @@ def run_agent(
 ) -> RunResult:
     """Run the agent on `prompt` until it answers or hits a limit, and record the run.
 
-    The run must already be started (`ctx.run_id`). The client's cost cap is the
-    run's budget; only what this run spends is counted.
+    The run must already be started (`ctx.run_id`). The client's remaining cost
+    cap is the run's budget; the cost reported is only what this run spent.
     """
     spent_before = client.spent_usd
     tools = tool_specs(ctx.task)
     messages: list[Message] = [Message(role="user", content=prompt)]
+    # Every `break` below sets its own status, so a loop that ends without one
+    # has used all its turns while still calling tools.
     status: RunStatus = "turn_limit"
     final_text: str | None = None
     error: str | None = None
@@ -82,6 +88,8 @@ def run_agent(
     try:
         while turns < max_turns:
             try:
+                # The client checks the cost cap before calling the provider and raises
+                # BudgetExceededError rather than make a call estimated to overspend.
                 response = client.generate(
                     ModelRequest(
                         purpose=f"agent_{ctx.task}",
@@ -112,13 +120,17 @@ def run_agent(
                     status, final_text = "completed", response.text
                 break
 
+            # Run every tool call and record it. The propose tools also add to
+            # ctx.proposals and update ctx.draft, which the RunResult reports.
             results = tuple(execute(ctx, call, turn=turns) for call in response.tool_calls)
+            # The API takes tool results back as a user turn, one result per call.
             messages.append(Message(role="user", tool_results=results))
             cost = client.spent_usd - spent_before
             record_progress(ctx.conn, ctx.run_id, turns=turns, cost_usd=cost)
             ctx.conn.commit()
     except Exception as exc:
-        # A bug, not a model failure: record the run as it stands, then raise.
+        # Something unexpected (a bug, a database failure), not a model failure:
+        # record the run as it stands, then raise.
         ctx.conn.rollback()
         _finish(ctx, client, spent_before, "error", turns, None, messages, repr(exc))
         raise
