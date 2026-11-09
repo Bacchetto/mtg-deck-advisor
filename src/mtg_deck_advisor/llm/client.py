@@ -1,7 +1,11 @@
-"""ModelClient: the one way the app calls a model (MOD-1). See ADR 0008.
+"""ModelClient: the one way the app's own code calls a chat model (MOD-1). See ADR 0008.
+
+The Agent SDK comparison harness (`agent/sdk.py`) is the deliberate exception:
+there, Claude Code makes its own model calls.
 
 It wraps whichever provider is configured and adds what every call needs:
-- a cost cap, checked against each call's worst case before it is made (MOD-3)
+- a cost cap, checked against an estimate of each call's worst case before it
+  is made (MOD-3)
 - structured output validated against a Pydantic schema, retried once with the
   validation errors, then rejected; invalid output is never passed on (MOD-2)
 - a record of every provider call: tokens, cost, latency, outcome, trace ID (OBS-1)
@@ -17,7 +21,7 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-# Re-exported so callers can import every model error from the client.
+# Re-exported so callers can import the common model errors from the client.
 from mtg_deck_advisor.llm.errors import BudgetExceededError as BudgetExceededError
 from mtg_deck_advisor.llm.errors import InvalidOutputError as InvalidOutputError
 from mtg_deck_advisor.llm.errors import ModelCallError as ModelCallError
@@ -54,8 +58,9 @@ class ModelResponse(BaseModel):
     provider: str
     model: str
     tool_calls: tuple[ToolCall, ...] = ()
-    # The provider's raw response blocks, thinking included. Nothing else in the
-    # app reads them; they go back unchanged with the next turn, as Claude requires.
+    # The provider's raw response blocks, thinking included. Only the Anthropic
+    # provider uses them, sending them back unchanged in every later request, as
+    # Claude requires. This client only measures their size for the cost estimate.
     provider_content: tuple[dict[str, Any], ...] | None = None
 
     def as_message(self) -> Message:
@@ -98,8 +103,9 @@ class ModelClient:
         self._clock = clock
         self._spent_usd = 0.0
         # Worst-case cost of calls in flight. A call's worst case is reserved
-        # before it is made and released when it finishes, all under one lock,
-        # so concurrent calls can't each pass the cap check and jointly break it.
+        # before it is made and released when it finishes, each step under the
+        # same lock (not held during the call itself), so concurrent calls can't
+        # each pass the cap check and jointly break it.
         self._reserved_usd = 0.0
         self._lock = threading.Lock()
 
@@ -121,7 +127,7 @@ class ModelClient:
         return self._spent_usd
 
     def generate(self, request: ModelRequest) -> ModelResponse:
-        """A plain text response."""
+        """A response with no output schema: its text and any tool calls."""
         provider_request = ProviderRequest(**request.model_dump())
         response = self._invoke(provider_request, attempt=1)
         self._record(provider_request, 1, "ok", response)

@@ -220,7 +220,8 @@ def test_the_budget_stops_a_run_partway(conn: psycopg.Connection) -> None:
         expensive_tool_reply(call("get_card", 2, name="Sol Ring")),
     )
 
-    # The first turn costs $0.07; the second could cost $0.07 + up to $0.08 more.
+    # The first turn costs $0.07. The second call's worst case is $0.08 of output
+    # (8,000 tokens) plus its input, which would take the run past the $0.15 cap.
     result = run(conn, provider, cost_cap_usd=0.15, max_tokens=8000)
 
     assert (result.status, result.turns) == ("budget", 1)
