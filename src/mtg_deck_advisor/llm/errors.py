@@ -29,4 +29,4 @@ class InvalidOutputError(ModelError):
 
 
 class BudgetExceededError(ModelError):
-    """The call could push this run's spending over its cost cap, so it was not made."""
+    """The call could push the client's spending over its cost cap, so it was not made."""

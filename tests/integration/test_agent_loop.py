@@ -81,6 +81,8 @@ def run(
 
 
 def run_row(conn: psycopg.Connection, run_id: UUID) -> tuple[Any, ...]:
+    """The run as saved: status, turns, cost, final text, the number of messages
+    in its transcript, error, and whether it has finished."""
     row = conn.execute(
         "SELECT status, turns, cost_usd, final_text, jsonb_array_length(transcript), error, "
         "finished_at IS NOT NULL FROM agent_runs WHERE id = %s",
@@ -115,6 +117,7 @@ def test_a_run_calls_tools_until_the_model_answers(conn: psycopg.Connection) -> 
     assert "Sol Ring" in result_part.content
 
     status, turns, cost, final, transcript, error, finished = run_row(conn, result.run_id)
+    # Four messages: the task, the tool call, its result, the answer.
     assert (status, turns, final, transcript, error, finished) == (
         "completed",
         2,
@@ -217,13 +220,15 @@ def test_the_budget_stops_a_run_partway(conn: psycopg.Connection) -> None:
         expensive_tool_reply(call("get_card", 2, name="Sol Ring")),
     )
 
-    # The first turn costs $0.07; the second could cost $0.07 + up to $0.08 more.
+    # The first turn costs $0.07. The second call's worst case is $0.08 of output
+    # (8,000 tokens) plus its input, which would take the run past the $0.15 cap.
     result = run(conn, provider, cost_cap_usd=0.15, max_tokens=8000)
 
     assert (result.status, result.turns) == ("budget", 1)
     assert len(provider.calls) == 1
     assert result.cost_usd == pytest.approx(0.07)
     status, turns, cost, _, transcript, _, _ = run_row(conn, result.run_id)
+    # Three messages: the task, the first turn's tool call, its result.
     assert (status, turns, transcript) == ("budget", 1, 3)
     assert float(cost) == pytest.approx(0.07)
 
@@ -244,6 +249,7 @@ def test_a_model_failure_ends_the_run_as_an_error_and_keeps_the_record(
     assert (result.status, result.turns) == ("error", 1)
     assert result.error == "the API is down"
     status, turns, _, _, transcript, error, finished = run_row(conn, result.run_id)
+    # The first turn is kept (task, tool call, result) though the second call failed.
     assert (status, turns, transcript, error, finished) == ("error", 1, 3, "the API is down", True)
 
 
@@ -262,6 +268,8 @@ def test_running_out_of_output_tokens_is_an_error_not_an_answer(
 # --- the system prompt ----------------------------------------------------------------
 
 
+# Not the loop itself, but the prompt it sends on every call: these checks keep
+# the guardrail wording (card text is data, the user approves) from being lost.
 def test_the_system_prompt_marks_delimited_content_as_data() -> None:
     for task in ("draft", "refine"):
         prompt = system_prompt(task)
